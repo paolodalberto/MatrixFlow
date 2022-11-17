@@ -74,4 +74,7 @@ In this project we play with a few  basic ideas:
     S2.naive_distribute_computation_by_output(P)
     
 ```
+If you like to execute the code above ...
+python Schedule/schedule.py
+
 
