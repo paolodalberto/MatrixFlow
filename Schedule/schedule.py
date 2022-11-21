@@ -227,7 +227,7 @@ class Schedule:
 
 if __name__ == "__main__":
 
-    X = 3
+    X = 2
 
     A = Matrix(
         numpy.matrix(

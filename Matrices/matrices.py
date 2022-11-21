@@ -17,6 +17,9 @@ class Matrix:
 
         
     def value(self): return self.matrix
+    def set_value(self, A):
+        self.matrix[...] = A;
+        return self.matrix 
         
     def __add__( self, A ):
         L = self.matrix
@@ -33,6 +36,21 @@ class Matrix:
                 L = numpy.pad(R, [ (0, mx[0]-rs[0]),(0, mx[1]-rs[1])]) 
         
         return Matrix(L+R)
+    def __sub__( self, A ):
+        L = self.matrix
+        R = A.value()
+
+        if False:
+            ls = L.shape
+            rs = R.shape
+            
+            mx  = A.logicalshape
+            if mx>ls:
+                L = numpy.pad(L, [ (0, mx[0]-ls[0]),(0, mx[1]-ls[1])]) 
+            if mx>rs:
+                L = numpy.pad(R, [ (0, mx[0]-rs[0]),(0, mx[1]-rs[1])]) 
+        
+        return Matrix(L-R)
 
     def __mul__( self, A ):
 

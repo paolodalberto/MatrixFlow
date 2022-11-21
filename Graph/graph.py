@@ -31,10 +31,18 @@ class Operation:
         self.temp_space = None
         self.operands = None
         
-
-        if self.left:  self.left.result  = self
-        if self.right: self.right.result = self
-
+        try:
+            if self.left:
+                if type(self.left) is list:
+                    for i in self.left:
+                        i.result   = self
+                else:
+                    self.left.result   = self
+            if self.right: self.right.result = self
+        except Exception as e :
+            print(e)
+            import pdb; pdb.set_trace()
+        
     def __str__(self):
         L = "" if self.left is None else str(self.left)
         R = "" if self.right is None else str(self.right)
@@ -44,8 +52,15 @@ class Operation:
 
     
     def space(self):
-        A = self.temp_result.space() if self.temp_result else 0
-        L = 0 if self.left is None else self.left.space()
+        if self.temp_result and type(self.temp_result) is list:
+            A = sum([ t.space() for t in self.temp_result])
+        else:
+            A = self.temp_result.space() if self.temp_result else 0
+
+        if self.left and type(self.left) is list:
+            L = sum([ t.space() for t in self.left])
+        else:
+            L = 0 if self.left is None else self.left.space()
         R = 0 if self.right is None else self.right.space()
         try:
             if L>0 and type(self.left) is Operation:
@@ -60,15 +75,27 @@ class Operation:
         return  A
 
     def compute(self):
-        
-        L =  self.left.compute()
+        if type(self.left) is list:
+            L =  [ i.compute() for i in self.left]
+        else:    
+            L =  self.left.compute()
         R =  self.right.compute()
         if self.operation == '+':
             self.temp_result = L + R
+        elif self.operation == '-':
+            self.temp_result = L - R
         elif self.operation == '*':
             self.temp_result = L * R
-        else : # =
-            self.left.temp_result = self.temp_result =  R
+        elif self.operation == '/':
+            self.temp_result = L / R
+        elif self.operation == '=':  # =
+            #import pdb;pdb.set_trace()
+            self.temp_result =  R
+            if type(self.left) is list:
+                for i in range(len(R)):
+                    self.left[i].set_value(R[i].value())
+            else: self.left.temp_result.set_value(R.value())
+                
         return  self.temp_result
 
     def next(self):
@@ -84,6 +111,10 @@ class Operation:
     
     def dependantOperands(self):
         r = []
+        if self.left and type(self.left) is list:
+            for left in self.left:
+                tr = [ q for q in left.dependantOperands() if q not in r]
+                r += tr
         if self.left:
             tr = [ q for q in self.left.dependantOperands() if q not in r]
             r += tr
@@ -125,6 +156,36 @@ class Operation:
 
             
 
+class Function(Operation):
+    def __init__(
+            self,
+            name : str,
+            func ,
+            Ops  : list
+            
+    ):
+        self.name = name
+        self.operation = func
+        self.right = None
+        self.left   = Ops
+        self.result = None
+        self.temp_result = None
+
+    def __str__(self):
+        L = "" if self.left is None else str(self.left)
+        R = "" if self.right is None else str(self.right)
+        tmp = self.name+"("+L  +" "+str(self.operation)+" "+ R+")"
+        
+        return tmp
+    def compute(self):
+        #import pdb; pdb.set_trace()
+        inps = [ o.compute().value() for o in self.left]
+        outs = self.operation(*inps)
+        self.temp_result = [ Matrix(o) for o in outs]
+        return self.temp_result
+
+    def dependantOperands(self):
+        return self.left
 
 
 
@@ -147,7 +208,10 @@ class Data(Operation):
         self.temp_result = Dest
     def compute(self):
         return self.temp_result
-
+    def set_value(self, A):
+        
+        self.temp_result.set_value(A)
+    
     def dependantOperands(self):
         return [self]
 
@@ -330,7 +394,12 @@ class Graph:
         for i in self.V:
             #if verbose: print(i)
             A = i.compute()
-            if verbose: print(i.left,"\n", A.value())
+            if verbose:
+                if type(i.left) is list:
+                    for ii in i.left:
+                        print(ii.left.value)
+                else:
+                    print(i.left,"\n", A.value()) 
         
             
     ## given a statement we return the right hand side operands 
@@ -360,8 +429,15 @@ class Graph:
             V = self.V
             
         for i in V:
-            if i.operation == '=': 
-                u = i.left.dependantOperands()
+            if i.operation == '=':
+                if type(i.left) is list:
+                    u = [] 
+                    for left in i.left:
+                        ut = left.dependantOperands()
+                        u += ut
+                else:
+                        
+                    u = i.left.dependantOperands()
                 r = i.right.dependantOperands()
                 t = i.right.space()
                 defs.append(r)
