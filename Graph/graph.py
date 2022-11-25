@@ -1,9 +1,9 @@
 import numpy
 import math
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar
-
-
-
+import networkx as nx
+import matplotlib.pyplot as plt
+import graphviz
 ###
 ## if we build a Abstract Syntax Tree os a sequence of matrix
 ## operations we have basically binary operatora such as +,* and
@@ -206,6 +206,10 @@ class Data(Operation):
         self.right  = None
         self.result = None
         self.temp_result = Dest
+        self.inputs = False
+        self.temps  = False
+        self.outputs= False
+        
     def compute(self):
         return self.temp_result
     def set_value(self, A):
@@ -324,9 +328,10 @@ class Graph:
 
         self.declarations = D
 
+        self.visgraph = graphviz.Digraph()
         
         
-    ## those operands that are on the lhs but then are not used
+    ## those operands that are on the lhs but then are recomputed
     ## afterwords
     def outputs(self, dep : dict = None):
         # so we can reuse this code for other graph and other stmt
@@ -337,17 +342,30 @@ class Graph:
             if self.dep is None:
                 self.dep = self.dependency()
             dep = self.dep
+        if self._outputs_: return  self._outputs_
+        
         O = []
         L = len(dep['uses'])
         for ii in range(L) :
             for i in dep['uses'][ii]:
                 A = False
-                for jj in range(ii,L):
-                    if i in dep['defs'][jj]:
+                for jj in range(ii+1,L):
+                    if i in dep['uses'][jj]:
                         A = True
                         break
                 if not A: O.append(i)
-        if local: self._ouputs_ = set(O)
+        OO = []
+        for i in O:
+            if i.outputs:
+                OO.append(i)
+            else:
+                print("TEMP?", i)
+        if len(OO) != len(O):
+            O = OO
+        
+        if local: self._outputs_ = set(O)
+
+
         return set(O)
 
     ## those data in the rhs that have no predecessor assignements
@@ -361,7 +379,7 @@ class Graph:
             if self.dep is None:
                 self.dep  = self.dependency()
             dep = self.dep
-            
+        if self._inputs_: return self._inputs_
 
         I = []
         
@@ -396,8 +414,8 @@ class Graph:
             A = i.compute()
             if verbose:
                 if type(i.left) is list:
-                    for ii in i.left:
-                        print(ii.left.value)
+                    for ii in range(len(i.left)):
+                        print(i.left[ii],"\n",A[ii].value())
                 else:
                     print(i.left,"\n", A.value()) 
         
@@ -427,7 +445,7 @@ class Graph:
         local = V is None
         if local:
             V = self.V
-            
+        t = None
         for i in V:
             if i.operation == '=':
                 if type(i.left) is list:
@@ -468,6 +486,15 @@ class Graph:
         Is = self.inputs()
         Os = self.outputs()
         dep = self.dep
+
+        D = [] 
+        
+        for j in self.declarations:
+            if type(j) is list:
+                D += j
+            
+        for i in D:
+            self.visgraph.node(i.name)
         
         lhs = dep['uses']
         rhs = dep['defs']
@@ -479,7 +506,11 @@ class Graph:
         adj.resize((len(self.V),  len(self.V)))
         for i in range(len(self.V)): adj[i,i] =1
 
-        for i in range(1,len(lhs)):
+        for w in lhs[0]:
+            for e in rhs[0]:
+                self.visgraph.edge(e.name, w.name) 
+
+        for i in range(0,len(lhs)):
             past = lhs[0:i]
             d = lhs[i]
             for e in rhs[i]:
@@ -487,10 +518,12 @@ class Graph:
                 v = prev_def(past,e,Is)
                 if v is not None:
                     adj[v,i] = 1
-                    
+                for w in lhs[i]:
+                    self.visgraph.edge(e.name, w.name) 
         self.adj = adj
 
-
+        self.visgraph
+        import pdb; pdb.set_trace()
 
 ## C = alpha A B
 
@@ -506,6 +539,7 @@ def algorithm_mult_example(
         sub = cc
     ## disjoint partition of input output
     CP = PartitionMatrix(C,sub)
+    
     BP = PartitionMatrix(B,sub)
     AP = PartitionMatrix(A,sub)
 
@@ -523,9 +557,17 @@ def algorithm_mult_example(
     ###
     alphai = Data('alpha', alpha)
     AD = Data.data_factory('a', AP)
+    for j in AD:
+        for i in j:
+            i.inputs = True
     BD = Data.data_factory('b', BP)
+    for j in BD:
+        for i in j:
+            i.inputs = True
     CD = Data.data_factory('c', CP)
-
+    for j in CD:
+        for i in j:
+            i.outputs = True
     ## 
     decls = [alphai,
              Data.data_factory_flat(AD) ,
@@ -662,10 +704,14 @@ def bini_mult_example(
 
 
     AD = Data.data_factory_flat(Data.data_factory('a', AP))
+    for i in AD: i.inputs = True
     BD = Data.data_factory_flat(Data.data_factory('b', BP))
+    for i in BD: i.inputs = True
     CD = Data.data_factory_flat(
         Data.data_factory('c', CP) if not deepmindformat else  Data.data_factory_transpose('c', CP)
     )
+    for i in CD: i.outputs = True
+
 
     for i in CD: print(i)
     import pdb; pdb.set_trace()

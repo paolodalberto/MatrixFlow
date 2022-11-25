@@ -156,9 +156,10 @@ class Schedule:
     ):
 
         self.graph.data_dependency()
+        import pdb; pdb.set_trace()
         Os = self.graph.outputs()
         Is = self.graph.inputs()
-
+        
         L = []
         V = []
         for pe in self.hw.pes:
