@@ -77,4 +77,5 @@ In this project we play with a few  basic ideas:
 If you like to execute the code above ...
 python Schedule/schedule.py
 
-
+data dependecy graph of Strassen Algorithm
+[Digraph.gv.pdf](https://github.com/paolodalberto/MatrixFlow/files/10095358/Digraph.gv.pdf)
