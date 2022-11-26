@@ -522,7 +522,7 @@ class Graph:
                     self.visgraph.edge(e.name, w.name) 
         self.adj = adj
 
-        self.visgraph
+        self.visgraph.render()
         import pdb; pdb.set_trace()
 
 ## C = alpha A B
