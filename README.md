@@ -77,5 +77,8 @@ In this project we play with a few  basic ideas:
 If you like to execute the code above ...
 python Schedule/schedule.py
 
-data dependecy graph of Strassen Algorithm
+I am trying to add graphical tools for the presentation of the data dependecy: for example  graph of Strassen Algorithm 
 [Digraph.gv.pdf](https://github.com/paolodalberto/MatrixFlow/files/10095358/Digraph.gv.pdf)
+but it is not very clear yet. 
+
+The introduction of the case Graph/lu.py (the LU factorization) shows how the linear algebra computation could return multiple "matrices" such as P, L, U ... 
