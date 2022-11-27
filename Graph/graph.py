@@ -508,20 +508,22 @@ class Graph:
 
         for w in lhs[0]:
             for e in rhs[0]:
-                self.visgraph.edge(e.name, w.name) 
+                if e in D:
+                    self.visgraph.edge(e.name, w.name) 
 
         for i in range(0,len(lhs)):
             past = lhs[0:i]
             d = lhs[i]
             for e in rhs[i]:
-            
+                
                 v = prev_def(past,e,Is)
                 if v is not None:
                     adj[v,i] = 1
-                for w in lhs[i]:
-                    self.visgraph.edge(e.name, w.name) 
-        self.adj = adj
 
+                if e in D:
+                    for w in lhs[i]:
+                        self.visgraph.edge(e.name, w.name) 
+        self.adj = adj
         self.visgraph.render()
         import pdb; pdb.set_trace()
 
