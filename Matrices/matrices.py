@@ -243,6 +243,13 @@ class Scalar:
         return 8
 
 
+## This is an algorithm because it suggests a computation order by a
+## permutation we know the order of the Gamma and our way to assign to
+## a PE. It is still in the Matrix box. It may move in the future.
+##
+## inputs : tensor sequence for A (alpha)
+##        : tensor for B (beta)
+##        : tensor for C  (gamma)
 
 class Algorithm:
     def __init__(
@@ -255,57 +262,71 @@ class Algorithm:
         self.beta  = beta
         self.gamma = gamma
 
-
+    
+        
+    ### group tells me the number of different computation we want to
+    ### have separated: 2 PEs ... 2 independent computations This is a
+    ### bilinear then we compute the number of temporary P_i we need
+    ### for each output and take the min_max. We return a permutation
+    ### of the Gamma tensor so that we can split and we introduce the
+    ### bound (we avoid any further comparison if any is larger than M
     def partition_by_output(self, group):
 
         sums = [ 0 for i in range(group)]        
 
+
+        ## minimum of the maximum number of temporary needed y
+        ## splitting the computation by k contiguous group
         def min_max(l, # permutation 
                     k, # cons group 
-                    G,  # gamma
-                    M
+                    G, # gamma
+                    M  # min_max so far
         ):
             for j in range(0, len(l), k):
+
+                # we could do this faster
                 temp = G[l[j:min((j+k), len(l))],:]
-                temp[temp!=0] = 1  
                 q = sum(temp)
-                q[q!=0] = 1
-                qs = sum(q)
+                qs = numpy.count_nonzero(q)
+                if qs > M :
+                    # no better, we quit 
+                    return M
                 sums[math.ceil(j/k)] = qs
 
-                if qs > M :
-                     return M
-                     
-                 #print(M,m)
-            #m1 = min(sums);
             M1 = max(sums)
             return M1
         
+        ## here come the combinatorial thing: we take every schedule
+        ## of the C computation and  [ group chosen over n] partitions 
         from itertools import permutations
+        G = self.gamma*1
+        G[G!=0] = 1
         
-        #L = list(permutations(range(self.gamma.shape[0])))
-        G = self.gamma
         
-            
-        
+        #import pdb; pdb.set_trace()
         M=G.shape[1]
+        ## this many permutations
         N = numpy.math.factorial(self.gamma.shape[0])
         K = None
         count =  0
         for l in permutations(range(self.gamma.shape[0])):
-            ## take every permutation
+
+            ## you will get bored at watching nothing happening
             count+=1
             if count %1000000 ==0:
                 print(count, N)
-            if count % 2049 < 100: continue
+            #if count % 2049 < 100: continue
 
+            ## take every permutation
             MM = min_max(l,math.ceil(len(l)/group),G,M)
             if MM<M:
+                ## if the max is smaller than before  
                 M = MM
                 K = l
                 print(M,l)
-                #
         
+
+        ## this is a permutation of indexes
         return K
             
         

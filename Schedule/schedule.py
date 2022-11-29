@@ -23,36 +23,6 @@ class Schedule:
         
 
 
-    def fit_hw_memory(self,
-                      graph : Graph = None ,
-                      hw    : AbstractHW = None):
-
-        import pdb; pdb.set_trace()
-        local = graph is None
-        
-        if local:
-            graph = self.graph
-        if graph.dep is None:
-            graph.dependency()
-        
-        if hw is None: hw = self.hw
-        
-
-
-        Is = graph.inputs()
-        Os = graph.outputs()
-
-        
-        ispace = 0
-        for i in Is:
-            print(i)
-            ispace += i.space()
-        ospace = 0
-        for i in Os:
-            print(i)
-            ospace += i.space()
-
-        return hw.memory.space() > ispace+ospace
 
 
 
@@ -115,6 +85,9 @@ class Schedule:
         return pe.space() > ispace+ospace
 
 
+
+    ### We take a graph and a HW description we split the computation
+    ### of the graph in a round robin fashion.
     def naive_distribute_computation(self,
                       graph : Graph = None ,
                       hw    : AbstractHW = None):
@@ -150,13 +123,19 @@ class Schedule:
         print("Compute")
         hw.compute()
 
+
+    ###
+    ## if Os_group is None we distribute the outputs a round robin and
+    ## then we add the assignments necessary for those outputs. The PE
+    ## may recompute stuff
+    ##
     def naive_distribute_computation_by_output(
             self,
             Os_groups : tuple = None
     ):
 
         self.graph.data_dependency()
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         Os = self.graph.outputs()
         Is = self.graph.inputs()
         
@@ -177,7 +156,7 @@ class Schedule:
                 if one in d:
                     Os = d
                     break
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             W = math.ceil(len(Os_groups)/len(self.hw.pes))
 
             for i in range(len(self.hw.pes)):
@@ -190,14 +169,14 @@ class Schedule:
                 for i in l:
                     print(i)
                 print("\n")
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
         else:
             count =0
             for v in Os:
                 L[count % len(L)].append(v)
                 count +=1
 
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         for i in range(len(L)): # for every output group 
             w = set()
             for v in L[i]: # for every output compute the instructions
@@ -206,11 +185,11 @@ class Schedule:
                                                    self.graph.adj)
                 w = w.union(w1)
             I = sorted(w)
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             print([ str(i) for i in L[i]],I)
             V[i] = [ self.graph.V[i] for i in I ]
 
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
         print("distribute")
         for i in range(len(L)):
             
@@ -228,7 +207,7 @@ class Schedule:
 
 if __name__ == "__main__":
 
-    X = 2
+    X = 3
 
     A = Matrix(
         numpy.matrix(
@@ -248,33 +227,44 @@ if __name__ == "__main__":
 
     alpha = Scalar(1)
     alphai = Data('alpha', alpha)
+
     ## Pure Python Interface
-
-
     C = alpha*A*B
     print(C.value())
-    import pdb; pdb.set_trace()    
+    #import pdb; pdb.set_trace()    
 
+    ## C_ij = sum_k A_ik B_kj
     G1 = algorithm_mult_example(C, alpha,A,B,X)
     
     S = Schedule(G1)
     print(S.fit_hw_memory())
-    
-    #import pdb; pdb.set_trace()    
     S.naive_distribute_computation()
 
-    import pdb; pdb.set_trace()    
+    ## Bilinear using the deepmind format C^t = A*B
+    #import pdb; pdb.set_trace()    
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
 
+    
+    ### We take the tensor a, b, and C, for the only porpose to split
+    ### the computation by the output by many PEs.  The gamma is
+    ### actually the schedule of the computation of the components of
+    ### C. We compute the minimum of the maximum number of computation
+    ### for partition. 
     AAA = Algorithm(a,b,c)
-    import pdb; pdb.set_trace()    
     P =  AAA.partition_by_output(len(S.hw.pes))
+    import pdb; pdb.set_trace()    
                                  
     
-    
-
+    ###
+    ## Every matrix has a tensor C matrix and c tensor
+    ## We create a computation
+    ## P_j = Add(A,a[j])*Add(B,b[j])
+    ## then we create C_i = Add(Ps, c[i])
+    ##
     G2 = bini_mult_example(C,c, A,a,B,b)
+
+    
     S2 = Schedule(G2)
     print(S2.fit_hw_memory())
     S2.naive_distribute_computation_by_output(P)

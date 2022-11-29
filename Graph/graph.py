@@ -677,7 +677,7 @@ def bini_mult_example(
         
 
 
-    ## other
+    ## disjoint partition of B and A
     BP = PartitionMatrix(
         B,
         tuple (
@@ -704,26 +704,39 @@ def bini_mult_example(
     ## the computation ... compute. 
     ###
 
-
-    AD = Data.data_factory_flat(Data.data_factory('a', AP))
+    # linear description instead of 2d matrix  
+    AD = Data.data_factory_flat(Data.data_factory('a', AP)) 
     for i in AD: i.inputs = True
     BD = Data.data_factory_flat(Data.data_factory('b', BP))
     for i in BD: i.inputs = True
+
+
+    ## deepmind format need a transposition of the C to make it work
+
     CD = Data.data_factory_flat(
         Data.data_factory('c', CP) if not deepmindformat else  Data.data_factory_transpose('c', CP)
     )
+
+    ## WARNING: There is a problem in transforming a computation into
+    ## a DAG, the output is anbiguous unless we give a hint an
+    ## assignment within this computation will be used outside of
+    ## it. Think a temporary is defined and assigned within the
+    ## computation but I cannot say if it is used outside and thus it
+    ## is an output. Only who write the algorithms really knows.
+
     for i in CD: i.outputs = True
-
-
+    
     for i in CD: print(i)
-    import pdb; pdb.set_trace()
-    ## partial product 
+
+    ## we create a declaration of the temporary products and we
+    ## provide their maximum size ... in practce each product could be
+    ## of different size
     Ps = []
     for i in range(products):
         Ps.append(Data("p_%d" % i, CP.value()[0][0]))
     
 
-    ## 
+    ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
     
     ###
@@ -758,14 +771,12 @@ def bini_mult_example(
         V.append(O)
             
                 
-    #import pdb; pdb.set_trace()
     ###
     ## create a graph
     ###
     G1 = Graph("C = Fast A*B", V,decls)
     print(G1)
 
-    #import pdb; pdb.set_trace()
     ###
     ## Compute the graph for validation. Yep we can and we should run
     ## the graph
