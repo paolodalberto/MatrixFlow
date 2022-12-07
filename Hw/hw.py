@@ -1,3 +1,6 @@
+from Matrices.matrices import Matrix
+
+
 class Memory:
     def __init__(self,
                  name :str, 
@@ -24,13 +27,18 @@ class PE:
         return self.graph.compute() if self.graph else None 
     def __str__(self):
         return "PE %s %s " % (self.name, str(self.internal_memory))
+    def count(self,
+              operation : str = '*',
+              operands_type : list = [Matrix, Matrix]):
+        
+        return self.graph.count(operation,operands_type) if self.graph else 0 
 
 class AbstractHW:
     def __init__(self,
                  name : str,
                  pes : list = [
                      PE(str(i), Memory(str(i),1*(2**10)**2))
-                     for i in range(2)
+                     for i in range(4)
                  ], 
                  memory : Memory = Memory('main', 16*(2**10)**3)
     ):
@@ -55,3 +63,11 @@ class AbstractHW:
     def compute(self):
         for pe in self.pes:
             print(pe.compute())
+    def count(self,
+              operation : str = '*',
+              operands_type = [Matrix, Matrix]):
+        counts = []
+        for pe in self.pes:
+            counts.append(pe.count(operation,operands_type))
+        return counts
+                        

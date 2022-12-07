@@ -203,6 +203,8 @@ class Schedule:
         print("Compute")
         self.hw.compute()
 
+        print("Count")
+        print(self.hw.count())
 
 
 if __name__ == "__main__":

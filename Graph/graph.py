@@ -43,6 +43,29 @@ class Operation:
             print(e)
             import pdb; pdb.set_trace()
         
+    def count(self,
+              operation : str = '*',
+              operands_type = [Matrix, Matrix]):
+
+        #if self.operation == operation:
+        #    print(self.operation)
+        #    import pdb; pdb.set_trace()
+        count = 0
+        
+        if self.operation == operation and self.left and self.right and \
+           type(self.left.temp_result) == operands_type[0] and \
+           type(self.right.temp_result) == operands_type[1]:
+            count +=1
+        if self.left:
+            count += self.left.count(operation,operands_type)
+        if self.right:
+            count += self.right.count(operation,operands_type)
+
+        #if self.operation == operation:
+        #    print(self.operation,count)
+            
+        return count
+        
     def __str__(self):
         L = "" if self.left is None else str(self.left)
         R = "" if self.right is None else str(self.right)
@@ -171,6 +194,10 @@ class Function(Operation):
         self.result = None
         self.temp_result = None
 
+    def count(self,
+              operation : str = '*',
+              operands_type = [Matrix, Matrix]):
+        return 0
     def __str__(self):
         L = "" if self.left is None else str(self.left)
         R = "" if self.right is None else str(self.right)
@@ -210,6 +237,10 @@ class Data(Operation):
         self.temps  = False
         self.outputs= False
         
+    def count(self,
+              operation : str = '*',
+              operands_type = [Matrix, Matrix]):
+        return 0
     def compute(self):
         return self.temp_result
     def set_value(self, A):
@@ -329,7 +360,17 @@ class Graph:
         self.declarations = D
 
         self.visgraph = graphviz.Digraph()
-        
+
+
+    def count(self,
+              operation : str = '*',
+              operands_type : list = [Matrix,Matrix]):
+
+        count = 0
+        for v in self.V:
+            count += v.count(operation,operands_type)
+
+        return count
         
     ## those operands that are on the lhs but then are recomputed
     ## afterwords
