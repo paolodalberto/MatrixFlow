@@ -566,7 +566,7 @@ class Graph:
                         self.visgraph.edge(e.name, w.name) 
         self.adj = adj
         self.visgraph.render()
-        import pdb; pdb.set_trace()
+        #import pdb; pdb.set_trace()
 
 ## C = alpha A B
 
@@ -774,7 +774,7 @@ def bini_mult_example(
     ## of different size
     Ps = []
     for i in range(products):
-        Ps.append(Data("p_%d" % i, CP.value()[0][0]))
+        Ps.append(Data("p_%d" % i, Matrix(CP.value()[0][0].value()*0)))
     
 
     ## A,B,C partitions and Partial products
@@ -799,10 +799,12 @@ def bini_mult_example(
         V.append(O)
         try:
             O.compute()
-        except:
+        except Exception as e:
+            print(e)
             print(O)
             import pdb; pdb.set_trace() 
 
+    #import pdb; pdb.set_trace()
     for c in range(CT.shape[0]):
         O = Operation(
             'ta', '=',

@@ -33,12 +33,15 @@ class PE:
         
         return self.graph.count(operation,operands_type) if self.graph else 0 
 
+
+PEN = 1
+    
 class AbstractHW:
     def __init__(self,
                  name : str,
                  pes : list = [
                      PE(str(i), Memory(str(i),1*(2**10)**2))
-                     for i in range(4)
+                     for i in range(PEN)
                  ], 
                  memory : Memory = Memory('main', 16*(2**10)**3)
     ):

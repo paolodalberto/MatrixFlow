@@ -1,3 +1,4 @@
+
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, Algorithm
 from  Graph.graph import Graph, Operation, Data, algorithm_mult_example, \
     bini_mult_example, prev_def, all_prev_instruction_indexes
@@ -214,7 +215,7 @@ if __name__ == "__main__":
     A = Matrix(
         numpy.matrix(
             [
-                [ i for i in range(X*2)] for j in range(X*2)
+                [ 1+i for i in range(X*2)] for j in range(X*2)
             ]
         )
     )
@@ -222,7 +223,7 @@ if __name__ == "__main__":
     B = Matrix(
         numpy.matrix(
             [
-                [ i for i in range(X*2)] for j in range(X*2)
+                [ 2+i for i in range(X*2)] for j in range(X*2)
             ]
         )
     )
@@ -246,7 +247,7 @@ if __name__ == "__main__":
     #import pdb; pdb.set_trace()    
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
-
+    
     
     ### We take the tensor a, b, and C, for the only porpose to split
     ### the computation by the output by many PEs.  The gamma is
@@ -255,7 +256,7 @@ if __name__ == "__main__":
     ### for partition. 
     AAA = Algorithm(a,b,c)
     P =  AAA.partition_by_output(len(S.hw.pes))
-    import pdb; pdb.set_trace()    
+
                                  
     
     ###
@@ -264,10 +265,13 @@ if __name__ == "__main__":
     ## P_j = Add(A,a[j])*Add(B,b[j])
     ## then we create C_i = Add(Ps, c[i])
     ##
-    G2 = bini_mult_example(C,c, A,a,B,b)
-
+    D = Matrix(C.value()*0)
     
-    S2 = Schedule(G2)
-    print(S2.fit_hw_memory())
-    S2.naive_distribute_computation_by_output(P)
+    G2 = bini_mult_example(C,c, A,a,B,b)
+    import pdb; pdb.set_trace()    
+    
+    #S2 = Schedule(G2)
+    #print(S2.fit_hw_memory())
+    #S2.naive_distribute_computation_by_output(P)
+    
     
