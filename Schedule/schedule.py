@@ -1,5 +1,5 @@
 
-from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, Algorithm
+from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, Algorithm, read_alpha
 from  Graph.graph import Graph, Operation, Data, algorithm_mult_example, \
     bini_mult_example, prev_def, all_prev_instruction_indexes
 from  Hw.hw import Memory, PE, AbstractHW
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     ### for partition. 
     AAA = Algorithm(a,b,c)
     P =  AAA.partition_by_output(len(S.hw.pes))
-
+    import pdb; pdb.set_trace()    
                                  
     
     ###
@@ -267,11 +267,27 @@ if __name__ == "__main__":
     ##
     D = Matrix(C.value()*0)
     
-    G2 = bini_mult_example(C,c, A,a,B,b)
-    import pdb; pdb.set_trace()    
+    G2 = bini_mult_example(D,c, A,a,B,b)
+    
     
     #S2 = Schedule(G2)
     #print(S2.fit_hw_memory())
     #S2.naive_distribute_computation_by_output(P)
     
     
+    a1,b1,c1 = read_alpha('s3x3x3_23.Fawzi_b.bini.txt', numpy.float)
+    AAA1 = Algorithm(a1,b1,c1)
+    P1 =  AAA1.partition_by_output(len(S.hw.pes))
+    import pdb; pdb.set_trace()    
+                                 
+    
+    ###
+    ## Every matrix has a tensor C matrix and c tensor
+    ## We create a computation
+    ## P_j = Add(A,a[j])*Add(B,b[j])
+    ## then we create C_i = Add(Ps, c[i])
+    ##
+    D = Matrix(C.value()*0)
+    
+    G3 = bini_mult_example(D,c1, A,a1,B,b1,False)
+    import pdb; pdb.set_trace()    

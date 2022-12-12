@@ -158,8 +158,8 @@ class Operation:
             As : list(), ## this is a data partition already
             I  : numpy.ndarray
     ):
-        print(I)
-        print(I.shape)
+        #print(I)
+        #print(I.shape)
         O = None
         for i in range(I.shape[0]):
             if I[i] !=0:
@@ -501,7 +501,7 @@ class Graph:
                 t = i.right.space()
                 defs.append(r)
                 uses.append(u)
-                print("lhs",u, '= rhs', r)
+                #print("lhs",u, '= rhs', r)
             else:
                 u = self
                 t = i.space()
@@ -509,7 +509,7 @@ class Graph:
                 r = i.dependantOperands()
                 defs.append(r[0])
                 uses.append(u)
-                print("lhs",u, ': rhs', r)
+                #print("lhs",u, ': rhs', r)
 
         dep =  {'uses' : uses,
                 'defs' : defs,
@@ -639,7 +639,7 @@ def algorithm_mult_example(
     ## create a graph
     ###
     G1 = Graph("C = alpha*A*B", V,decls)
-    print(G1)
+    #print(G1)
 
     ###
     ## Compute the graph for validation. Yep we can and we should run
@@ -767,7 +767,7 @@ def bini_mult_example(
 
     for i in CD: i.outputs = True
     
-    for i in CD: print(i)
+    #for i in CD: print(i)
 
     ## we create a declaration of the temporary products and we
     ## provide their maximum size ... in practce each product could be
@@ -817,16 +817,19 @@ def bini_mult_example(
     ###
     ## create a graph
     ###
+    import pdb; pdb.set_trace()
     G1 = Graph("C = Fast A*B", V,decls)
-    print(G1)
+    #print(G1)
 
     ###
     ## Compute the graph for validation. Yep we can and we should run
     ## the graph
     ###
+    print("Compute")
     G1.compute()
 
     ## we create a stmt-by-stm data dependency
+    print("Dependency")
     G1.dependency()
 
     return G1

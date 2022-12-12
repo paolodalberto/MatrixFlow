@@ -104,7 +104,7 @@ class PartitionMatrix:
             logicalShape = self.logicalshape
 
         
-        print(A, self.logicalshape)
+        #print(A, self.logicalshape)
         #import pdb; pdb.set_trace()
         
         # we partition the matrix A in disjoint sub-matrices with up
@@ -141,8 +141,8 @@ class PartitionMatrix:
                 A.logicalshape =  self.logicalshape
             self.l.append(row)
 
-        for row in self.l:
-            print([a.logicalshape for a in row ])
+        #for row in self.l:
+        #    print([a.logicalshape for a in row ])
         #import pdb; pdb.set_trace()
 
 
@@ -331,3 +331,43 @@ class Algorithm:
             
         
         
+def read_alpha(filename, ty):
+    data = []
+    with open(filename,'r') as F:
+        data = F.read().split("\n")
+        F.close()
+
+    alpha = []
+    beta  = []
+    gamma = []
+    """
+product Gamma                        Alpha                        Beta
+    1 ;   0 -1 -1  0  0  0  0  0  0 ;  1  0  0  1  0  0  0  0  0 ;  0 -1  0  0 -1  0  0 -1  0
+    """
+    print(data)
+    for l in data:
+        if l.find(";")<0 : continue
+        print(l)
+        l, g,a,b = l.split(";")
+        gamma.append([ float(i) for i in g.strip().split()])
+        alpha.append([ float(i) for i in a.strip().split()])
+        beta.append([ float(i) for i in b.strip().split()])
+
+
+    A =  numpy.ndarray(
+        shape =(len(alpha), len(alpha[0])),
+        dtype = ty,
+        buffer = numpy.array(alpha)
+    ).transpose()
+    B =  numpy.ndarray(
+        shape =(len(beta), len(beta[0])),
+        dtype = ty,
+        buffer = numpy.array(beta)
+    ).transpose()
+    C =  numpy.ndarray(
+        shape =(len(gamma), len(gamma[0])),
+        dtype = ty,
+        buffer = numpy.array(gamma)
+    ).transpose()
+
+    return A,B,C
