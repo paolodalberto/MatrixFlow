@@ -4,6 +4,8 @@ from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar
 import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
+import time
+
 ###
 ## if we build a Abstract Syntax Tree os a sequence of matrix
 ## operations we have basically binary operatora such as +,* and
@@ -448,7 +450,8 @@ class Graph:
         return red
 
     ## We execute each statement in the V list in order
-    def compute(self, verbose = True):
+    def compute(self, verbose = False):
+        start = time.time()
 
         for i in self.V:
             #if verbose: print(i)
@@ -460,6 +463,8 @@ class Graph:
                 else:
                     print(i.left,"\n", A.value()) 
         
+        end = time.time()
+        print("compute", end - start)
             
     ## given a statement we return the right hand side operands 
     def dependantOperands(self, op : Operation):
@@ -817,7 +822,7 @@ def bini_mult_example(
     ###
     ## create a graph
     ###
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     G1 = Graph("C = Fast A*B", V,decls)
     #print(G1)
 

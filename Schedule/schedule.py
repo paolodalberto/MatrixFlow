@@ -210,12 +210,15 @@ class Schedule:
 
 if __name__ == "__main__":
 
+    import time
+    import gc
     X = 3
+    Y = 4000
 
     A = Matrix(
         numpy.matrix(
             [
-                [ 1+i for i in range(X*2)] for j in range(X*2)
+                [ 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
             ]
         )
     )
@@ -223,7 +226,7 @@ if __name__ == "__main__":
     B = Matrix(
         numpy.matrix(
             [
-                [ 2+i for i in range(X*2)] for j in range(X*2)
+                [ 1/(2+i) for i in range(X*Y)] for j in range(X*Y)
             ]
         )
     )
@@ -232,16 +235,22 @@ if __name__ == "__main__":
     alphai = Data('alpha', alpha)
 
     ## Pure Python Interface
+    print("compute")
+    start = time.time()
     C = alpha*A*B
-    print(C.value())
+    end = time.time()
+    print(end - start)
+    #print(C.value())
     #import pdb; pdb.set_trace()    
 
     ## C_ij = sum_k A_ik B_kj
     G1 = algorithm_mult_example(C, alpha,A,B,X)
-    
-    S = Schedule(G1)
-    print(S.fit_hw_memory())
-    S.naive_distribute_computation()
+
+    del G1
+    gc.collect()
+    #S = Schedule(G1)
+    #print(S.fit_hw_memory())
+    #S.naive_distribute_computation()
 
     ## Bilinear using the deepmind format C^t = A*B
     #import pdb; pdb.set_trace()    
@@ -254,9 +263,10 @@ if __name__ == "__main__":
     ### actually the schedule of the computation of the components of
     ### C. We compute the minimum of the maximum number of computation
     ### for partition. 
-    AAA = Algorithm(a,b,c)
-    P =  AAA.partition_by_output(len(S.hw.pes))
-    import pdb; pdb.set_trace()    
+    if False:
+        AAA = Algorithm(a,b,c)
+        P =  AAA.partition_by_output(len(S.hw.pes))
+    #import pdb; pdb.set_trace()    
                                  
     
     ###
@@ -267,8 +277,10 @@ if __name__ == "__main__":
     ##
     D = Matrix(C.value()*0)
     
-    G2 = bini_mult_example(D,c, A,a,B,b)
-    
+    G1 = bini_mult_example(D,c, A,a,B,b)
+    del G1
+
+    gc.collect()
     
     #S2 = Schedule(G2)
     #print(S2.fit_hw_memory())
@@ -276,9 +288,11 @@ if __name__ == "__main__":
     
     
     a1,b1,c1 = read_alpha('s3x3x3_23.Fawzi_b.bini.txt', numpy.float)
-    AAA1 = Algorithm(a1,b1,c1)
-    P1 =  AAA1.partition_by_output(len(S.hw.pes))
-    import pdb; pdb.set_trace()    
+
+    if False:
+        AAA1 = Algorithm(a1,b1,c1)
+        P1 =  AAA1.partition_by_output(len(S.hw.pes))
+    #import pdb; pdb.set_trace()    
                                  
     
     ###
@@ -289,5 +303,7 @@ if __name__ == "__main__":
     ##
     D = Matrix(C.value()*0)
     
-    G3 = bini_mult_example(D,c1, A,a1,B,b1,False)
+    G1 = bini_mult_example(D,c1, A,a1,B,b1,False)
     import pdb; pdb.set_trace()    
+
+    

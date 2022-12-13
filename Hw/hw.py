@@ -34,7 +34,7 @@ class PE:
         return self.graph.count(operation,operands_type) if self.graph else 0 
 
 
-PEN = 9
+PEN = 1
     
 class AbstractHW:
     def __init__(self,
