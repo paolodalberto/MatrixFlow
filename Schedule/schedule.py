@@ -21,12 +21,6 @@ class Schedule:
         self.inputs = None
         
 
-        
-
-
-
-
-
     def fit_hw_memory(self,
                       graph : Graph = None ,
                       hw    : AbstractHW = None):
@@ -213,7 +207,7 @@ if __name__ == "__main__":
     import time
     import gc
     X = 3
-    Y = 4000
+    Y = 1000
 
     A = Matrix(
         numpy.matrix(
@@ -246,8 +240,10 @@ if __name__ == "__main__":
     ## C_ij = sum_k A_ik B_kj
     G1 = algorithm_mult_example(C, alpha,A,B,X)
 
+    #import pdb; pdb.set_trace()    
     del G1
     gc.collect()
+
     #S = Schedule(G1)
     #print(S.fit_hw_memory())
     #S.naive_distribute_computation()
@@ -277,9 +273,11 @@ if __name__ == "__main__":
     ##
     D = Matrix(C.value()*0)
     
-    G1 = bini_mult_example(D,c, A,a,B,b)
-    del G1
+    G2 = bini_mult_example(D,c, A,a,B,b)
 
+    
+
+    del G2
     gc.collect()
     
     #S2 = Schedule(G2)
@@ -303,7 +301,7 @@ if __name__ == "__main__":
     ##
     D = Matrix(C.value()*0)
     
-    G1 = bini_mult_example(D,c1, A,a1,B,b1,False)
-    import pdb; pdb.set_trace()    
+    G3 = bini_mult_example(D,c1, A,a1,B,b1,False)
+    #import pdb; pdb.set_trace()    
 
     

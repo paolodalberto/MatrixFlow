@@ -163,20 +163,25 @@ class Operation:
         #print(I)
         #print(I.shape)
         O = None
-        for i in range(I.shape[0]):
-            if I[i] !=0:
+        #for i in range(I.shape[0]): #numpy.argsort(-I):
+        for i in numpy.argsort(-I):
+            if I[i] ==0: continue
+            elif (I[i] == 1 or I[i] == -1 or I[i] == 1.0 or I[i] == -1.0) and O:
+                T = As[i]
+
+            else:
                 T = Operation(
                     "p", "*",
                     Data('i',Scalar(I[i])) ,
                     As[i]
                 )
                     
-                if O is None: O = T
-                else:
-                    O = Operation("a", "+",
-                                  O ,
-                                  T
-                    ) 
+            if O is None: O = T
+            else:
+                O = Operation("a", "-" if I[i] == -1 else "+" ,
+                              O ,
+                              T
+                ) 
         return O
 
             
@@ -636,7 +641,7 @@ def algorithm_mult_example(
             V.append(
                 Operation("s0", '=',
                           CD[i][j],
-                          Operation('c00', '*', alphai,T)
+                          T
                 )
             )
     
@@ -808,7 +813,7 @@ def bini_mult_example(
             print(e)
             print(O)
             import pdb; pdb.set_trace() 
-
+        
     #import pdb; pdb.set_trace()
     for c in range(CT.shape[0]):
         O = Operation(
@@ -817,7 +822,7 @@ def bini_mult_example(
             Operation.AdditionBini(Ps,CT[c,:])  # Sum p_iP_i
         )
         V.append(O)
-            
+    
                 
     ###
     ## create a graph
