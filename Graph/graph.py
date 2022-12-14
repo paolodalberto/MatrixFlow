@@ -1076,11 +1076,14 @@ def bini_mult_example(
 if __name__ == "__main__":
 
     
+    X = 4
+    
+    Y = 16*27
 
     A = Matrix(
         numpy.matrix(
             [
-                [ i for i in range(3)] for j in range(3)
+                [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
             ]
         )
     )
@@ -1088,61 +1091,36 @@ if __name__ == "__main__":
     B = Matrix(
         numpy.matrix(
             [
-                [ i for i in range(3)] for j in range(3)
+                [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
             ]
         )
     )
 
-    alpha = Scalar(0.3)
-    
-    ## Pure Python Interface
-    C = alpha*A*B
-    print(C)
-
-
-
-    ## A compiler will parse the instructiona above and create an
-    ## graph: each statement is a binary tree
-
-    ## Terminals
-    AI = Data('A', A)
-    BI = Data('B', B)
-    CI = Data('C', C)
+    alpha = Scalar(1)
     alphai = Data('alpha', alpha)
-    print(AI)
-    
-    ## Non-Terminals and one single statement
-    T1 = Operation('t1', '*', AI, BI);
-    T2 = Operation('t2', '*', alphai, T1) ; print(T2)
-    CT = Operation('ct', '=', CI,T2)     ; print(CT)
-    print(CT)
-    G = Graph("temp", [CT])
-    print(G)
-    
-    G.compute()
-    import pdb
-    pdb.set_trace()
-    G.dependency()
-    pdb.set_trace()
+
+    ## Pure Python Interface
+    print("compute")
+    start = time.time()
+    C = alpha*A*B
+    end = time.time()
+    print(end - start)
 
 
 
-    G1 = algorithm_mult_example(C, alpha,A,B,C)
-    r = G1.dep
-    
-    ispace = 0
-    for i in set(r['defs'][0]+r['defs'][1]):
-        print(i)
-        ispace += i.space()
-    ospace = 0
-    for i in set(r['uses'][0]+r['uses'][1]):
-        print(i)
-        ospace += i.space()
-    tspace = r['temp'][0] +r['temp'][0]
-    
-    print("\n I: %d O: %d T:%d \n" % (ispace, ospace, tspace))
-    for i in set(r['defs'][2]+r['defs'][3]):
-        print(i)
+
+    ## Bilinear using the deepmind format C^t = A*B
+    #import pdb; pdb.set_trace()    
+    fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
+    a,b,c = fact['%d,%d,%d' % (X,X,X)]
+
+    import pdb; pdb.set_trace()        
+    for recursion in range(1,4):
+        print(recursion)
+        D = Scalar(0)*C
+        D = bini(D,c,A,a,B,b,recursion=recursion)
+        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        import pdb; pdb.set_trace()        
 
     
     
