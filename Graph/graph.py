@@ -5,6 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
 import time
+import seaborn as sns
 
 ###
 ## if we build a Abstract Syntax Tree os a sequence of matrix
@@ -369,6 +370,37 @@ class Graph:
         self.visgraph = graphviz.Digraph()
 
 
+
+    def compare_graph(self,B, C:Matrix):
+        T = Matrix(C.value()*0)
+        Z = Matrix(C.value()*0)
+        self.single_output(T)
+        B.single_output(Z)
+        
+        C.set_value( numpy.absolute(T.value()-Z.value()))
+        return C
+
+    def heatmap_diff(self, C: Matrix):
+
+        print(numpy.max(C.value()))
+        cax = plt.imshow( C.value(), cmap = 'gray' ,interpolation = 'nearest' )
+        plt.colorbar(cax)
+        #ax = sns.heatmap( C.value() , linewidth = 0.5 , cmap = 'coolwarm' )
+        plt.title( "2-D Heat Map" )
+        plt.show()
+
+    def single_output(self,C : Matrix):
+        
+        for o in self.outputs():
+            Mat  = o.temp_result.value()
+            m = o.left.min
+            M = o.left.max
+            C.value()[m[0]:M[0],m[1]:M[1]] = Mat
+            
+
+        return C
+            
+        
     def count(self,
               operation : str = '*',
               operands_type : list = [Matrix,Matrix]):
@@ -575,7 +607,9 @@ class Graph:
                     for w in lhs[i]:
                         self.visgraph.edge(e.name, w.name) 
         self.adj = adj
+        #self.visgraph.view()
         self.visgraph.render()
+#        u.render()
         #import pdb; pdb.set_trace()
 
 ## C = alpha A B

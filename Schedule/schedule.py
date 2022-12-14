@@ -206,8 +206,9 @@ if __name__ == "__main__":
 
     import time
     import gc
-    X = 3
-    Y = 1000
+    X = 4
+    
+    Y = 90
 
     A = Matrix(
         numpy.matrix(
@@ -220,7 +221,7 @@ if __name__ == "__main__":
     B = Matrix(
         numpy.matrix(
             [
-                [ 1/(2+i) for i in range(X*Y)] for j in range(X*Y)
+                [ 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
             ]
         )
     )
@@ -241,8 +242,8 @@ if __name__ == "__main__":
     G1 = algorithm_mult_example(C, alpha,A,B,X)
 
     #import pdb; pdb.set_trace()    
-    del G1
-    gc.collect()
+    #del G1
+    #gc.collect()
 
     #S = Schedule(G1)
     #print(S.fit_hw_memory())
@@ -274,11 +275,15 @@ if __name__ == "__main__":
     D = Matrix(C.value()*0)
     
     G2 = bini_mult_example(D,c, A,a,B,b)
+    G2.data_dependency()
+    import pdb; pdb.set_trace()    
+    G1.single_output(D)
+    G2.compare_graph(G1,D)
+    G2.heatmap_diff(D)
 
-    
 
-    del G2
-    gc.collect()
+    #del G2
+    #gc.collect()
     
     #S2 = Schedule(G2)
     #print(S2.fit_hw_memory())
@@ -302,6 +307,10 @@ if __name__ == "__main__":
     D = Matrix(C.value()*0)
     
     G3 = bini_mult_example(D,c1, A,a1,B,b1,False)
+    G3.data_dependency()
+    G3.compare_graph(G1,D)
+    G3.heatmap_diff(D)
+    import pdb; pdb.set_trace()    
     #import pdb; pdb.set_trace()    
 
     
