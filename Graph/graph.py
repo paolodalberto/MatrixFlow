@@ -1,6 +1,6 @@
 import numpy
 import math
-from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar
+from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, read_alpha
 import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
@@ -1076,7 +1076,7 @@ def bini_mult_example(
 if __name__ == "__main__":
 
     
-    X = 4
+    X = 2
     
     Y = 16*27
 
@@ -1114,13 +1114,21 @@ if __name__ == "__main__":
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
 
-    import pdb; pdb.set_trace()        
+    
+    
     for recursion in range(1,4):
         print(recursion)
         D = Scalar(0)*C
         D = bini(D,c,A,a,B,b,recursion=recursion)
         Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
-        import pdb; pdb.set_trace()        
+        #import pdb; pdb.set_trace()        
 
     
     
+    a1,b1,c1 = read_alpha('s3x3x3_23.Fawzi_b.bini.txt', numpy.float)
+    for recursion in range(1,4):
+        print(recursion)
+        D = Scalar(0)*C
+        D = bini(D,c1,A,a1,B,b1,False,recursion=recursion)
+        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        #import pdb; pdb.set_trace()        
