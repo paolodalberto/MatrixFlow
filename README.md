@@ -82,3 +82,6 @@ I am trying to add graphical tools for the presentation of the data dependecy: f
 but it is not very clear yet. 
 
 The introduction of the case Graph/lu.py (the LU factorization) shows how the linear algebra computation could return multiple "matrices" such as P, L, U ... 
+
+Like to play with recursion and error analysis ? try to run the Graph/graph.py 
+![Figure_3](https://user-images.githubusercontent.com/15663156/207728838-83a30a03-6f99-4efc-82f8-62830596437c.png)
