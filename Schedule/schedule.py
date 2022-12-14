@@ -1,7 +1,7 @@
 
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, Algorithm, read_alpha
 from  Graph.graph import Graph, Operation, Data, algorithm_mult_example, \
-    bini_mult_example, prev_def, all_prev_instruction_indexes
+    bini_mult_example, prev_def, all_prev_instruction_indexes,bini
 from  Hw.hw import Memory, PE, AbstractHW
 import numpy
 import math
@@ -206,9 +206,9 @@ if __name__ == "__main__":
 
     import time
     import gc
-    X = 4
+    X = 3
     
-    Y = 9
+    Y = 16*27
 
     A = Matrix(
         numpy.matrix(
@@ -235,6 +235,8 @@ if __name__ == "__main__":
     C = alpha*A*B
     end = time.time()
     print(end - start)
+
+
     #print(C.value())
     #import pdb; pdb.set_trace()    
 
@@ -253,6 +255,15 @@ if __name__ == "__main__":
     #import pdb; pdb.set_trace()    
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
+
+    import pdb; pdb.set_trace()        
+    for recursion in range(1,5):
+        print(recursion)
+        D = Scalar(0)*C
+        D = bini(D,c,A,a,B,b,recursion=recursion)
+        G1.heatmap_diff(Matrix(numpy.abs(C.value()-D.value())))
+        import pdb; pdb.set_trace()        
+    
     
     
     ### We take the tensor a, b, and C, for the only porpose to split
@@ -275,7 +286,7 @@ if __name__ == "__main__":
     D = Matrix(C.value()*0)
     
     G2 = bini_mult_example(D,c, A,a,B,b)#,recursion = 2)
-    G2.data_dependency()
+    #G2.data_dependency()
     import pdb; pdb.set_trace()    
     G1.single_output(D)
     G2.compare_graph(G1,D)
@@ -307,10 +318,17 @@ if __name__ == "__main__":
     D = Matrix(C.value()*0)
     
     G3 = bini_mult_example(D,c1, A,a1,B,b1,False)
-    G3.data_dependency()
+    #G3.data_dependency()
     G3.compare_graph(G1,D)
     G3.heatmap_diff(D)
     import pdb; pdb.set_trace()    
     #import pdb; pdb.set_trace()    
+    import pdb; pdb.set_trace()        
+    for recursion in range(1,5):
+        print(recursion)
+        D = Scalar(0)*C
+        D = bini(D,c1,A,a1,B,b1,False,recursion=recursion)
+        G1.heatmap_diff(Matrix(numpy.abs(C.value()-D.value())))
+        import pdb; pdb.set_trace()        
 
     

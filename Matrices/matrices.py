@@ -185,6 +185,14 @@ class PartitionMatrix:
                     return False
         return cover
 
+
+    def flatten(self):
+        r = []
+        for i in self.l:
+            for j in i:
+                r.append(j)
+        return r
+    
 ###
 ## A vector 1D
 ###

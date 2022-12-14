@@ -164,8 +164,9 @@ class Operation:
     ## 
     ### 
     
+
     def AdditionBini(
-            As : list(), ## this is a data partition already
+            As : list(),       ## this is a list of Matrices
             I  : numpy.ndarray
     ):
         #print(I)
@@ -174,6 +175,8 @@ class Operation:
         #for i in range(I.shape[0]): #numpy.argsort(-I):
         for i in numpy.argsort(-I):
             if I[i] ==0: continue
+            elif (I[i] == 1  or I[i] == 1.0 ) :
+                T = As[i]
             elif (I[i] == 1 or I[i] == -1 or I[i] == 1.0 or I[i] == -1.0) and O:
                 T = As[i]
 
@@ -186,12 +189,13 @@ class Operation:
                     
             if O is None: O = T
             else:
-                O = Operation("a", "-" if I[i] == -1 else "+" ,
+                O = Operation("a", "-" if I[i] == -1 or I[i] ==-1.0 else "+" ,
                               O ,
                               T
                 ) 
         return O
 
+    
             
 
 class Function(Operation):
@@ -230,6 +234,134 @@ class Function(Operation):
         return self.left
 
 
+
+def bini(
+        C : Matrix, CT : numpy.ndarray,
+        A : Matrix, AT : numpy.ndarray,
+        B : Matrix, BT : numpy.ndarray, deepmindformat = True,
+        recursion : int = 1
+):
+    if recursion == 0:
+        C = A*B
+        return C
+
+    subblocks = int(math.sqrt(CT.shape[0]))
+    products  = CT.shape[1]
+    
+    ## disjoint partition of input output
+    CP = PartitionMatrix(
+        C,
+        tuple (
+            [int(math.ceil(i/subblocks)) for i in C.value().shape]
+        )
+    )
+    
+    ## disjoint partition of B and A
+    BP = PartitionMatrix(
+        B,
+        tuple (
+            [int(math.ceil(i/subblocks)) for i in C.value().shape]
+        )
+    )
+    AP = PartitionMatrix(
+        A,
+        tuple (
+            [int(math.ceil(i/subblocks)) for i in C.value().shape]
+        )
+    )
+
+    ## shapes
+    Cs = CP.value()
+    Row = len(Cs)    # of the output partition
+    Col = len(Cs[0]) # as well 
+    K = len(BP.value())
+
+
+    ###
+    ## data disjoint partition for computation. This is the
+    ## declaration of the basic operands the rest will be defined by
+    ## the computation ... compute. 
+    ###
+
+    # linear description instead of 2d matrix  
+    AD = AP.flatten()
+    BD = BP.flatten()
+
+    ## deepmind format need a transposition of the C to make it work
+    if deepmindformat:
+        CD = CP.transpose().flatten() 
+    else:
+        CD = CP.flatten() 
+
+    def _AdditionBini_(
+            As : list(),       ## this is a list of Matrices
+            I  : numpy.ndarray
+    ):
+        T = Scalar(0)*As[0]
+        for i in range(len(I)):
+            
+            if I[i] ==0: continue
+            T = T + Scalar(I[i])*As[i]
+        return T
+
+        
+    Ps = []
+    for c in range(AT.shape[1]):
+        Ps.append(Matrix(CD[0].value()*0))
+
+    ## A,B,C partitions and Partial products
+    decls = [AD , BD, CD, Ps ] 
+    
+    ###
+    ## Computation as a sequence of assignment statements
+    ## and binary operations. 
+    ###
+    V = []
+
+    
+    recursion -=1
+    for c in range(AT.shape[1]):
+        
+        AA = _AdditionBini_(AD,AT[:,c])
+        BB = _AdditionBini_(BD,BT[:,c])
+        
+        Right = bini(
+            Ps[c],CT,
+            AA,AT,
+            BB,BT,
+            deepmindformat, recursion
+        ) 
+        Ps[c].set_value(Right.value())
+                
+    #import pdb; pdb.set_trace()
+    for c in range(CT.shape[0]):
+        T = _AdditionBini_(Ps,CT[c,:])  # Sum p_iP_i
+        CD[c].set_value(T.value())
+
+    def _single_output_(
+            C : Matrix,
+            Cs : list
+    ):
+        
+        for o in Cs:
+            Mat  = o.value()
+            m = o.min
+            M = o.max
+            C.value()[m[0]:M[0],m[1]:M[1]] = Mat
+            
+
+        return C
+    #import pdb; pdb.set_trace()
+    #T = _single_output_(C,CD)
+    return _single_output_(C,CD)
+
+
+    
+
+
+
+
+    
 
 ###
 ## every leaf of the operation tree os a Data node: Matrix, Vector,
