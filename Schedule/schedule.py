@@ -206,14 +206,14 @@ if __name__ == "__main__":
 
     import time
     import gc
-    X = 3
+    X = 4
     
     Y = 16*27
 
     A = Matrix(
         numpy.matrix(
             [
-                [ 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
+                [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
             ]
         )
     )
@@ -221,7 +221,7 @@ if __name__ == "__main__":
     B = Matrix(
         numpy.matrix(
             [
-                [ 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
+                [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
             ]
         )
     )
