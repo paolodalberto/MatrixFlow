@@ -208,7 +208,7 @@ if __name__ == "__main__":
     import gc
     X = 4
     
-    Y = 90
+    Y = 9
 
     A = Matrix(
         numpy.matrix(
@@ -274,7 +274,7 @@ if __name__ == "__main__":
     ##
     D = Matrix(C.value()*0)
     
-    G2 = bini_mult_example(D,c, A,a,B,b)
+    G2 = bini_mult_example(D,c, A,a,B,b)#,recursion = 2)
     G2.data_dependency()
     import pdb; pdb.set_trace()    
     G1.single_output(D)

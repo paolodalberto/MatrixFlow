@@ -87,7 +87,14 @@ class Operation:
             L = sum([ t.space() for t in self.left])
         else:
             L = 0 if self.left is None else self.left.space()
-        R = 0 if self.right is None else self.right.space()
+
+        R = 0 if self.right is None else (
+            self.right.space() if not type(self.right) is list else (
+                sum([r.space() for r in self.right()])
+            )
+        )
+            
+            
         try:
             if L>0 and type(self.left) is Operation:
                 A = max(A,L)
@@ -352,11 +359,17 @@ def all_prev_instruction_indexes(
 ## A Computation is a sequence of assignments and Partition/D definitions)
 ##
 ###
-class Graph:
+class Graph(Function):
     def __init__( self, name : str,
                   V : list = [] , ## this is an ordered list
-                  D : list = None
+                  D : list = None,
+                  O : Matrix = None,
+                  I : list  = None
+                  
     ):
+        Function.__init__(self,name, None, D)
+        self.temp_result = O
+        self.right = I
         self.name = name
         self.V = V
         #self.E = E
@@ -369,6 +382,9 @@ class Graph:
 
         self.visgraph = graphviz.Digraph()
 
+
+    def space(self):
+        return sum([i.space() for i in self.right])   
 
 
     def compare_graph(self,B, C:Matrix):
@@ -388,6 +404,7 @@ class Graph:
         #ax = sns.heatmap( C.value() , linewidth = 0.5 , cmap = 'coolwarm' )
         plt.title( "2-D Heat Map" )
         plt.show()
+        
 
     def single_output(self,C : Matrix):
         
@@ -502,12 +519,16 @@ class Graph:
         
         end = time.time()
         print("compute", end - start)
-            
+        
+        if self.temp_result:
+            self.single_output(self.temp_result)
+            return self.temp_result 
+        return None
+        
     ## given a statement we return the right hand side operands 
-    def dependantOperands(self, op : Operation):
+    def dependantOperands(self):
         r = []
-        if op.operation != '=' : return None
-        r += op.right.dependantOperands()
+        r += self.right
         return r
 
     ###
@@ -682,7 +703,7 @@ def algorithm_mult_example(
     ###
     ## create a graph
     ###
-    G1 = Graph("C = alpha*A*B", V,decls)
+    G1 = Graph("C = alpha*A*B", V,decls,C)
     #print(G1)
 
     ###
@@ -745,8 +766,10 @@ array([[ 0,  0,  0,  1,  0,  1,  0],
 def bini_mult_example(
         C : Matrix, CT : numpy.ndarray,
         A : Matrix, AT : numpy.ndarray,
-        B : Matrix, BT : numpy.ndarray, deepmindformat = True
+        B : Matrix, BT : numpy.ndarray, deepmindformat = True,
+        recursion : int = 1
 ):
+
 
     
     subblocks = int(math.sqrt(CT.shape[0]))
@@ -830,24 +853,62 @@ def bini_mult_example(
     ###
     V = []
 
-    for c in range(AT.shape[1]):
-        O = Operation(
-            'ta', '=',
-            Ps[c], # temp product 
-            Operation(
-                'tp_%d' % c, '*',
-                Operation.AdditionBini(AD,AT[:,c]), # Sum a_iA_i
-                Operation.AdditionBini(BD,BT[:,c])  # Sum a_iA_i
-            )
-        )
-        V.append(O)
-        try:
-            O.compute()
-        except Exception as e:
-            print(e)
-            print(O)
-            import pdb; pdb.set_trace() 
+    if recursion == 1:
         
+        for c in range(AT.shape[1]):
+            O = Operation(
+                'ta', '=',
+                Ps[c], # temp product 
+                Operation(
+                    'tp_%d' % c, '*',
+                    Operation.AdditionBini(AD,AT[:,c]), # Sum a_iA_i
+                    Operation.AdditionBini(BD,BT[:,c])  # Sum a_iA_i
+                )
+            )
+            V.append(O)
+            try:
+                O.compute()
+            except Exception as e:
+                print(e)
+                print(O)
+                import pdb; pdb.set_trace() 
+
+    else:
+        recursion -=1
+        for c in range(AT.shape[1]):
+            import pdb; pdb.set_trace()
+            AA = Data('aa',Matrix(AD[0].left.value()))
+            O0 = Operation('ta', '=',AA, Operation.AdditionBini(AD,AT[:,c]))
+            
+            BB = Data('bb',Matrix(BD[0].left.value()))
+            O1 = Operation('tb', '=',BB, Operation.AdditionBini(BD,BT[:,c]))
+            # Sum a_iA_i
+
+            O0.compute()
+            O1.compute()
+            Right = bini_mult_example(
+                Ps[c].left,CT,
+                AA.left,AT,
+                BB.left,BT,
+                deepmindformat, recursion
+            ) 
+            
+            O = Operation(
+                'ta', '=',
+                Ps[c], # temp product 
+                Right
+            )
+            V.append(O0)
+            V.append(O1)
+            V.append(O)
+            try:
+                O.compute()
+            except Exception as e:
+                print(e)
+                print(O)
+                import pdb; pdb.set_trace() 
+        
+                
     #import pdb; pdb.set_trace()
     for c in range(CT.shape[0]):
         O = Operation(
@@ -862,7 +923,7 @@ def bini_mult_example(
     ## create a graph
     ###
     #import pdb; pdb.set_trace()
-    G1 = Graph("C = Fast A*B", V,decls)
+    G1 = Graph("C = Fast A*B", V,decls,C, [A,B] )
     #print(G1)
 
     ###
