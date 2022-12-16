@@ -1071,31 +1071,213 @@ def bini_mult_example(
 
     return G1
 
+def bini_matrices(
+        CT : numpy.ndarray,
+        AT : numpy.ndarray,
+        BT : numpy.ndarray,
+        recursion : int = 1
+):
 
+    if recursion <= 0 :
+        return CT, AT, BT
+
+    import math
+    
+    recursion -= 1
+        
+    
+    ## row, col, product 
+    s = list(AT.shape)
+    #import pdb; pdb.set_trace()
+    AT=AT.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+    BT=BT.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+    CT=CT.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+    s = list(AT.shape)
+    
+    NAT = numpy.zeros(s[0]**4*s[2]**2,dtype = AT.dtype).reshape(( s[0]**2,s[1]**2, s[2]**2))
+    NBT = numpy.zeros(s[0]**4*s[2]**2,dtype = BT.dtype).reshape(( s[0]**2,s[1]**2, s[2]**2))
+    NCT = numpy.zeros(s[0]**4*s[2]**2,dtype = CT.dtype).reshape(( s[0]**2,s[1]**2, s[2]**2))
+
+
+    
+    ## these are the macro addition of the super blocks.
+    ## A1-A2, A10-A20 .... A13
+
+    #import pdb; pdb.set_trace()
+    for i in range(s[0]): ## row
+        for ii in range(s[1]): ## col 
+            for j in range(s[2]): ## prod
+                NAT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] = AT[i,ii,j] 
+                
+    #import pdb; pdb.set_trace()
+    for i in range(s[0]): ## row
+        for ii in range(s[1]): ## col 
+            for j in range(s[2]): ## prod
+                NAT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] *= AT
+
+    #import pdb; pdb.set_trace()
+    for i in range(s[0]): ## row
+        for ii in range(s[1]): ## col 
+            for j in range(s[2]): ## prod
+                NBT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] = BT[i,ii,j] 
+                
+    #import pdb; pdb.set_trace()
+    for i in range(s[0]): ## row
+        for ii in range(s[1]): ## col 
+            for j in range(s[2]): ## prod
+                NBT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] *= BT
+                
+
+    #import pdb; pdb.set_trace()
+    for i in range(s[0]): ## row
+        for ii in range(s[1]): ## col 
+            for j in range(s[2]): ## prod
+                NCT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] = CT[i,ii,j] 
+                
+    #import pdb; pdb.set_trace()
+    for i in range(s[0]): ## row
+        for ii in range(s[1]): ## col 
+            for j in range(s[2]): ## prod
+                NCT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] *= CT
+
+
+                
+    #import pdb; pdb.set_trace()
+    NAT=NAT.reshape(s[0]**4,s[2]**2)
+    NBT=NBT.reshape(s[0]**4,s[2]**2)
+    NCT=NCT.reshape(s[0]**4,s[2]**2)
+    return bini_matrices(NCT,NAT,NBT,recursion)
+
+
+def bini_matrices_2(
+        ## say this is the starting algorithm 
+        CT : numpy.ndarray,
+        AT : numpy.ndarray,
+        BT : numpy.ndarray,
+        ## this is the way to upscale the algorithm
+        ct1 : numpy.ndarray,
+        at1 : numpy.ndarray,
+        bt1 : numpy.ndarray,
+        recursion : int = 1
+):
+
+    if recursion <= 0 :
+        return CT, AT, BT
+
+    import math
+    
+    recursion -= 1
+        
+    
+    ## row, col, product 
+    s = list(at1.shape)
+    #import pdb; pdb.set_trace()
+    at=at1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+    bt=bt1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+    ct=ct1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+
+    sa = list(at.shape)
+    sb = list(AT.shape)
+    
+    NAT = numpy.zeros((sb[0]*sa[0])**2*(sa[2]*sb)**2,dtype = AT.dtype).reshape(( (sa[0]*sb[0])**2,(sa[1]*sb[1])**2,( sa[2]*sb[2])**2))
+    NBT = numpy.zeros((sb[0]*sa[0])**2*(sa[2]*sb)**2,dtype = AT.dtype).reshape(( (sa[0]*sb[0])**2,(sa[1]*sb[1])**2,( sa[2]*sb[2])**2))
+    NCT = numpy.zeros((sb[0]*sa[0])**2*(sa[2]*sb)**2,dtype = AT.dtype).reshape(( (sa[0]*sb[0])**2,(sa[1]*sb[1])**2,( sa[2]*sb[2])**2))
+
+
+    
+    ## these are the macro addition of the super blocks.
+    ## A1-A2, A10-A20 .... A13
+
+    #import pdb; pdb.set_trace()
+    for i in range(sa[0]): ## row
+        for ii in range(sa[1]): ## col 
+            for j in range(sa[2]): ## prod
+                NAT[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*sb[2]:(j+1)*sb[2]] = at[i,ii,j] 
+                
+    #import pdb; pdb.set_trace()
+    for i in range(sb[0]): ## row
+        for ii in range(sb[1]): ## col 
+            for j in range(sb[2]): ## prod
+                NAT[i*sa[0]:(i+1)*sa[0],ii*sa[1]:(ii+1)*sa[1],j*sa[2]:(j+1)*sa[2]] *= at
+
+
+    #import pdb; pdb.set_trace()
+    for i in range(sa[0]): ## row
+        for ii in range(sa[1]): ## col 
+            for j in range(sa[2]): ## prod
+                NBT[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*sb[2]:(j+1)*sb[2]] = bt[i,ii,j] 
+                
+    #import pdb; pdb.set_trace()
+    for i in range(sb[0]): ## row
+        for ii in range(sb[1]): ## col 
+            for j in range(sb[2]): ## prod
+                NBT[i*sa[0]:(i+1)*sa[0],ii*sa[1]:(ii+1)*sa[1],j*sa[2]:(j+1)*sa[2]] *= bt
+    #import pdb; pdb.set_trace()
+    for i in range(sa[0]): ## row
+        for ii in range(sa[1]): ## col 
+            for j in range(sa[2]): ## prod
+                NCT[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*sb[2]:(j+1)*sb[2]] = ct[i,ii,j] 
+                
+    #import pdb; pdb.set_trace()
+    for i in range(sb[0]): ## row
+        for ii in range(sb[1]): ## col 
+            for j in range(sb[2]): ## prod
+                NCT[i*sa[0]:(i+1)*sa[0],ii*sa[1]:(ii+1)*sa[1],j*sa[2]:(j+1)*sa[2]] *= ct
+
+
+
+                
+    #import pdb; pdb.set_trace()
+    NAT=NAT.reshape((sa[0]*sb[0])**4,(sa[2]*sb[2])**2)
+    NBT=NBT.reshape((sa[0]*sb[0])**4,(sa[2]*sb[2])**2)
+    NCT=NCT.reshape((sa[0]*sb[0])**4,(sa[2]*sb[2])**2)
+    return bini_matrices(NCT,NAT,NBT,ct,bt,atrecursion)
+
+    
+    
 
 if __name__ == "__main__":
 
     
     X = 2
-    
+    #Y = 16*27
     Y = 16*27
 
-    A = Matrix(
-        numpy.matrix(
-            [
-                [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
-            ]
+    
+    if True:
+        A = Matrix(
+            numpy.matrix(
+                [
+                    [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
         )
-    )
 
-    B = Matrix(
-        numpy.matrix(
-            [
-                [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
-            ]
+        B = Matrix(
+            numpy.matrix(
+                [
+                    [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
         )
-    )
+    else:
+        A = Matrix(
+            numpy.matrix(
+                [
+                    [ (1+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
+        )
 
+        B = Matrix(
+            numpy.matrix(
+                [
+                    [ (2+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
+        )
+        
+    
     alpha = Scalar(1)
     alphai = Data('alpha', alpha)
 
@@ -1113,22 +1295,35 @@ if __name__ == "__main__":
     #import pdb; pdb.set_trace()    
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
+    at,bt,ct = fact['%d,%d,%d' % (2,2,2)]
 
+
+    for recursion in range(0,2):
+        print(recursion)
+        c1,a1,b1 = bini_matrices(c,a,b, recursion)
+        D = Scalar(0)*C
+        D = bini(D,c1,A,a1,B,b1,recursion=1)
+        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        #import pdb; pdb.set_trace()        
     
-    
-    for recursion in range(1,4):
+
+        
+    for recursion in range(1,3):
         print(recursion)
         D = Scalar(0)*C
         D = bini(D,c,A,a,B,b,recursion=recursion)
         Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
         #import pdb; pdb.set_trace()        
 
-    
-    
-    a1,b1,c1 = read_alpha('s3x3x3_23.Fawzi_b.bini.txt', numpy.float)
-    for recursion in range(1,4):
-        print(recursion)
-        D = Scalar(0)*C
-        D = bini(D,c1,A,a1,B,b1,False,recursion=recursion)
-        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
-        #import pdb; pdb.set_trace()        
+
+    if False:
+
+
+        
+        a1,b1,c1 = read_alpha('s3x3x3_23.Fawzi_b.bini.txt', numpy.float)
+        for recursion in range(1,4):
+            print(recursion)
+            D = Scalar(0)*C
+            D = bini(D,c1,A,a1,B,b1,False,recursion=recursion)
+            Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+            #import pdb; pdb.set_trace()        
