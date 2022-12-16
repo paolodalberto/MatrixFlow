@@ -1244,9 +1244,9 @@ def bini_matrices_2(
 if __name__ == "__main__":
 
     import sys 
-    X = 3
+    X = 4
     #Y = 16*27
-    Y = 2*2*2*9
+    Y = 16*9
 
     
     if True:
@@ -1300,10 +1300,10 @@ if __name__ == "__main__":
     #import pdb; pdb.set_trace()    
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
-    at,bt,ct = fact['%d,%d,%d' % (2,2,2)]
+    at,bt,ct = fact['%d,%d,%d' % (3,3,3)]
 
 
-    R = 2
+    R = 1
 
     print(a.shape)
     D = Scalar(0)*C
