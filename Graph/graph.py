@@ -1086,35 +1086,49 @@ def bini_matrices(
     recursion -= 1
         
     
-    ## row, col, product 
+    ## row *M+ col, product this is the current shape 
     s = list(AT.shape)
+    
+    ## row, col, product so the layout of the original matrix is
+    ## "logical"
     #import pdb; pdb.set_trace()
     AT=AT.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
     BT=BT.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
     CT=CT.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
     s = list(AT.shape)
-    
+
+    ## creating space for the new Gamma, Beta, and Alpha
     NAT = numpy.zeros(s[0]**4*s[2]**2,dtype = AT.dtype).reshape(( s[0]**2,s[1]**2, s[2]**2))
     NBT = numpy.zeros(s[0]**4*s[2]**2,dtype = BT.dtype).reshape(( s[0]**2,s[1]**2, s[2]**2))
     NCT = numpy.zeros(s[0]**4*s[2]**2,dtype = CT.dtype).reshape(( s[0]**2,s[1]**2, s[2]**2))
 
-
+    ## these are the macro addition of the super blocks, which becomes
+    ## the addition of the smaller blocks
+    ## That is, A1-A2 -> A10-A20, A11-A21,
+    ##                   A12-A22, A13-A23
+    ## This is why I change the layout above and the code is simpler
+    ## This is done for every product
     
-    ## these are the macro addition of the super blocks.
-    ## A1-A2, A10-A20 .... A13
-
     #import pdb; pdb.set_trace()
     for i in range(s[0]): ## row
         for ii in range(s[1]): ## col 
             for j in range(s[2]): ## prod
-                NAT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] = AT[i,ii,j] 
-                
+                NAT[i*s[0]:(i+1)*s[0],
+                    ii*s[1]:(ii+1)*s[1],
+                    j*s[2]:(j+1)*s[2]] = AT[i,ii,j] 
+
+    ## Every sub-block, for example, A10-A20 will be summed using the
+    ## coefficients of the algorithm: this is  obtained by
+    ## multiplying the coefficients above by the algorithm AT coefficient.
+
     #import pdb; pdb.set_trace()
     for i in range(s[0]): ## row
         for ii in range(s[1]): ## col 
             for j in range(s[2]): ## prod
                 NAT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] *= AT
 
+    ## Doing the same thing on NBT
+                
     #import pdb; pdb.set_trace()
     for i in range(s[0]): ## row
         for ii in range(s[1]): ## col 
@@ -1128,6 +1142,8 @@ def bini_matrices(
                 NBT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] *= BT
                 
 
+    ## Doing the same thing on NCT
+                
     #import pdb; pdb.set_trace()
     for i in range(s[0]): ## row
         for ii in range(s[1]): ## col 
@@ -1141,19 +1157,23 @@ def bini_matrices(
                 NCT[i*s[0]:(i+1)*s[0],ii*s[1]:(ii+1)*s[1],j*s[2]:(j+1)*s[2]] *= CT
 
 
-                
+    ## now taking NA00, NA01
+    ##            NA02, NA03
+    ## -->        NA00, NA01, NA02. NA03 as the original  
     #import pdb; pdb.set_trace()
     NAT=NAT.reshape(s[0]**4,s[2]**2)
     NBT=NBT.reshape(s[0]**4,s[2]**2)
     NCT=NCT.reshape(s[0]**4,s[2]**2)
+
+    ## let us do it again ?
     return bini_matrices(NCT,NAT,NBT,recursion)
 
 
 def bini_matrices_2(
         ## say this is the starting algorithm 
-        CT : numpy.ndarray,
-        AT : numpy.ndarray,
-        BT : numpy.ndarray,
+        CT1 : numpy.ndarray,
+        AT1 : numpy.ndarray,
+        BT1 : numpy.ndarray,
         ## this is the way to upscale the algorithm
         ct1 : numpy.ndarray,
         at1 : numpy.ndarray,
@@ -1162,7 +1182,7 @@ def bini_matrices_2(
 ):
 
     if recursion <= 0 :
-        return CT, AT, BT
+        return CT1, AT1, BT1
 
     import math
     
@@ -1171,17 +1191,24 @@ def bini_matrices_2(
     
     ## row, col, product 
     s = list(at1.shape)
-    #import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
     at=at1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
     bt=bt1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
     ct=ct1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
 
     sa = list(at.shape)
+
+    s = list(AT1.shape)
+    AT=AT1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+    BT=BT1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+    CT=CT1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
+
+
     sb = list(AT.shape)
     
-    NAT = numpy.zeros((sb[0]*sa[0])**2*(sa[2]*sb)**2,dtype = AT.dtype).reshape(( (sa[0]*sb[0])**2,(sa[1]*sb[1])**2,( sa[2]*sb[2])**2))
-    NBT = numpy.zeros((sb[0]*sa[0])**2*(sa[2]*sb)**2,dtype = AT.dtype).reshape(( (sa[0]*sb[0])**2,(sa[1]*sb[1])**2,( sa[2]*sb[2])**2))
-    NCT = numpy.zeros((sb[0]*sa[0])**2*(sa[2]*sb)**2,dtype = AT.dtype).reshape(( (sa[0]*sb[0])**2,(sa[1]*sb[1])**2,( sa[2]*sb[2])**2))
+    NAT = numpy.zeros((sb[0]*sa[0])*(sb[1]*sa[1])*(sa[2]*sb[2]),dtype = AT.dtype).reshape(( (sa[0]*sb[0]),(sa[1]*sb[1]),( sa[2]*sb[2])))
+    NBT = numpy.zeros((sb[0]*sa[0])*(sb[1]*sa[1])*(sa[2]*sb[2]),dtype = AT.dtype).reshape(( (sa[0]*sb[0]),(sa[1]*sb[1]),( sa[2]*sb[2])))
+    NCT = numpy.zeros((sb[0]*sa[0])*(sb[1]*sa[1])*(sa[2]*sb[2]),dtype = AT.dtype).reshape(( (sa[0]*sb[0]),(sa[1]*sb[1]),( sa[2]*sb[2])))
 
 
     
@@ -1189,10 +1216,23 @@ def bini_matrices_2(
     ## A1-A2, A10-A20 .... A13
 
     #import pdb; pdb.set_trace()
+    for i in range(sb[0]): ## row
+        for ii in range(sb[1]): ## col 
+            for j in range(sb[2]): ## prod
+                NAT[i*sa[0]:(i+1)*sa[0],ii*sa[1]:(ii+1)*sa[1],j*sa[2]:(j+1)*sa[2]] = AT1[i,ii,j] 
+
+    #import pdb; pdb.set_trace()
+    for i in range(sa[0]): ## row
+        for ii in range(sa[1]): ## col 
+            for j in range(sa[2]): ## prod
+                NAT[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*sb[2]:(j+1)*sb[2]] = AT1 
+
+    #import pdb; pdb.set_trace()
     for i in range(sa[0]): ## row
         for ii in range(sa[1]): ## col 
             for j in range(sa[2]): ## prod
                 NAT[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*sb[2]:(j+1)*sb[2]] = at[i,ii,j] 
+
                 
     #import pdb; pdb.set_trace()
     for i in range(sb[0]): ## row
@@ -1228,10 +1268,10 @@ def bini_matrices_2(
 
                 
     #import pdb; pdb.set_trace()
-    NAT=NAT.reshape((sa[0]*sb[0])**4,(sa[2]*sb[2])**2)
-    NBT=NBT.reshape((sa[0]*sb[0])**4,(sa[2]*sb[2])**2)
-    NCT=NCT.reshape((sa[0]*sb[0])**4,(sa[2]*sb[2])**2)
-    return bini_matrices(NCT,NAT,NBT,ct,bt,atrecursion)
+    NAT=NAT.reshape((sa[0]*sb[0])*(sa[1]*sb[1]),(sa[2]*sb[2]))
+    NBT=NBT.reshape((sa[0]*sb[0])*(sa[1]*sb[1]),(sa[2]*sb[2]))
+    NCT=NCT.reshape((sa[0]*sb[0])*(sa[1]*sb[1]),(sa[2]*sb[2]))
+    return bini_matrices_2(NCT,NAT,NBT,ct1,bt1,at1,recursion)
 
     
     
@@ -1239,9 +1279,9 @@ def bini_matrices_2(
 if __name__ == "__main__":
 
     
-    X = 2
+    X = 3
     #Y = 16*27
-    Y = 16*27
+    Y = 2 #16*27
 
     
     if True:
@@ -1298,7 +1338,19 @@ if __name__ == "__main__":
     at,bt,ct = fact['%d,%d,%d' % (2,2,2)]
 
 
-    for recursion in range(0,2):
+    R = 2
+
+    for recursion in range(0,R):
+        print(recursion)
+        c1,a1,b1 = bini_matrices_2(c,a,b,ct,at,bt, recursion)
+        D = Scalar(0)*C
+        D = bini(D,c1,A,a1,B,b1,recursion=1)
+        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        #import pdb; pdb.set_trace()        
+
+
+    sys.exit(0)
+    for recursion in range(0,R):
         print(recursion)
         c1,a1,b1 = bini_matrices(c,a,b, recursion)
         D = Scalar(0)*C
@@ -1308,7 +1360,7 @@ if __name__ == "__main__":
     
 
         
-    for recursion in range(1,3):
+    for recursion in range(1,R):
         print(recursion)
         D = Scalar(0)*C
         D = bini(D,c,A,a,B,b,recursion=recursion)

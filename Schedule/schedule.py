@@ -35,8 +35,6 @@ class Schedule:
         
         if hw is None: hw = self.hw
         
-
-
         Is = graph.inputs()
         Os = graph.outputs()
 
