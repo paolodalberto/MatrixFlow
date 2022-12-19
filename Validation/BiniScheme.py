@@ -234,7 +234,7 @@ class BiniScheme(object):
         return errors == 0
 
 
-    def validate(
+    def validate_ndarray(
             a :numpy.ndarray,
             b :numpy.ndarray,
             c :numpy.ndarray,
