@@ -9,13 +9,13 @@ NaN = 99999  # not a number
 
 # =====================================================================
 #
-#  BiniScheme class
+#  BiniScheme class (if you use deepmind "transpose_matrix_c = True
 #
 class BiniScheme(object):
     """ This class implements operations around Bini form to
         represent a matrix multiplication algorithm """
 
-    def __init__(self, transpose_matrix_c):
+    def __init__(self, transpose_matrix_c : bool = False):
         self.alpha = []  # 2D matrix
         self.beta = []  # 2D matrix
         self.gamma = []  # 2D matrix
@@ -231,6 +231,17 @@ class BiniScheme(object):
             o(f"{self.signature()} algorithm is OK! No errors found!")
         else:
             o(f"*** {self.signature()} algorithm is not OK! *** Errors found: {pretty_num(errors)}")
+        return errors == 0
+
+
+    def validate(
+            a :numpy.ndarray,
+            b :numpy.ndarray,
+            c :numpy.ndarray,
+
+    ):
+        
+        
         return errors == 0
 
     def w(self, s: str = ""):

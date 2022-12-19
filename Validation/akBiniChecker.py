@@ -26,13 +26,6 @@ python akBiniChecker.py <input_file> [<input_file_2>]
 
 '''
 
-# ======================================================================
-#
-#  Global variables
-#
-
-#  change this, if the Gamma matrix is transposed
-transpose_matrix_c = False
 
 
 # ======================================================================
