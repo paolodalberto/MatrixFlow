@@ -10,9 +10,9 @@ from  Validation.BiniScheme import  BiniScheme
 
 ###
 ## if we build a Abstract Syntax Tree os a sequence of matrix
-## operations we have basically binary operatora such as +,* and
-## =. The assignment is the only one that has no intermediary valur to
-## store because the left will store the result of the right.
+## operations we have basically binary operator such as +,* and =. The
+## assignment is the only one that has no intermediary value to store
+## because the left will store the result of the right.
 ### 
         
 class Operation:
@@ -529,10 +529,10 @@ class Graph(Function):
         C.set_value( numpy.absolute(T.value()-Z.value()))
         return C
 
-    def heatmap_diff(self, C: Matrix):
+    def heatmap_diff(self, C: Matrix, mul =1.0 ):
 
-        print(numpy.max(C.value()))
-        cax = plt.imshow( C.value(), cmap = 'gray' ,interpolation = 'nearest' )
+        print("Maximum Error", numpy.max(C.value()))
+        cax = plt.imshow( C.value()*mul, cmap = 'gray' ,interpolation = 'nearest' )
         plt.colorbar(cax)
         #ax = sns.heatmap( C.value() , linewidth = 0.5 , cmap = 'coolwarm' )
         plt.title( "2-D Heat Map" )
@@ -1180,21 +1180,22 @@ def bini_matrices_2(
         at1 : numpy.ndarray,
         bt1 : numpy.ndarray,
         validate : bool = False
-):
+) -> list : # New C, A, B
 
     import math
-    
+    ## I never notices that I need the dimsions 
     def backward_dimensions(C : int, A : int , B: int):
-        ## p*q = A dims       C/r *q = A -> q = r*A/C      q = (A/C)*sqrt(C*B/A)
-        ## q*r = B dims                     r*rA/C = B  -> r = sqrt(C*B/A)
-        ## p*r = C dims  -> p = C/r                        p = C*sqrt(A/C*B)
+        ## p*q = A dims         C/r *q = A -> q = r*A/C      q = (A/C)*sqrt(C*B/A)
+        ## q*r = B dims                       r*rA/C = B  -> r = sqrt(C*B/A)
+        ## p*r = C dims  -> p = C/r                          p = C*sqrt(A/C*B)
 
         r = int(math.sqrt(C*B/A))
         p = C//r
         q = r*A//C
-        
+        ## C dims, A dims, B dims
         return (p,r),(p,q), (q,r)
 
+    ## from list to dimensions
     def backward_dimensions_L(L : list):
         M = [l.shape[0] for l in L]
         return backward_dimensions(*M)
