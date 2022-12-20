@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import graphviz
 import time
 import seaborn as sns
+from  Validation.BiniScheme import  BiniScheme
 
 ###
 ## if we build a Abstract Syntax Tree os a sequence of matrix
@@ -1171,72 +1172,90 @@ def bini_matrices(
 
 def bini_matrices_2(
         ## say this is the starting algorithm 
-        CT1 : numpy.ndarray,
-        AT1 : numpy.ndarray,
+        CT1 : numpy.ndarray, 
+        AT1 : numpy.ndarray, 
         BT1 : numpy.ndarray,
         ## this is the way to upscale the algorithm
         ct1 : numpy.ndarray,
         at1 : numpy.ndarray,
         bt1 : numpy.ndarray,
+        validate : bool = False
 ):
 
     import math
     
-    ## row, col, product 
-    s = list(at1.shape)
-    #import pdb; pdb.set_trace()
+    def backward_dimensions(C : int, A : int , B: int):
+        ## p*q = A dims       C/r *q = A -> q = r*A/C      q = (A/C)*sqrt(C*B/A)
+        ## q*r = B dims                     r*rA/C = B  -> r = sqrt(C*B/A)
+        ## p*r = C dims  -> p = C/r                        p = C*sqrt(A/C*B)
 
+        r = int(math.sqrt(C*B/A))
+        p = C//r
+        q = r*A//C
+        
+        return (p,r),(p,q), (q,r)
+
+    def backward_dimensions_L(L : list):
+        M = [l.shape[0] for l in L]
+        return backward_dimensions(*M)
     
-    at=at1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
-    bt=bt1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
-    ct=ct1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
-    l = [at,bt,ct] 
-    sa = list(at.shape)
-
-    s = list(AT1.shape)
-    AT=AT1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
-    BT=BT1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
-    CT=CT1.reshape(int(math.sqrt(s[0])),int(math.sqrt(s[0])),s[1])
-    L = [AT,BT,CT]
-
-    sb = list(AT.shape)
     
-    NAT = numpy.zeros((sb[0]*sa[0])*(sb[1]*sa[1])*(sa[2]*sb[2]),dtype = AT.dtype).reshape(( (sa[0]*sb[0]),(sa[1]*sb[1]),( sa[2]*sb[2])))
-    NBT = numpy.zeros((sb[0]*sa[0])*(sb[1]*sa[1])*(sa[2]*sb[2]),dtype = AT.dtype).reshape(( (sa[0]*sb[0]),(sa[1]*sb[1]),( sa[2]*sb[2])))
-    NCT = numpy.zeros((sb[0]*sa[0])*(sb[1]*sa[1])*(sa[2]*sb[2]),dtype = AT.dtype).reshape(( (sa[0]*sb[0]),(sa[1]*sb[1]),( sa[2]*sb[2])))
-    R = [NAT,NBT, NCT]
-
+    L = [CT1, AT1, BT1]
+    l = [ct1, at1, bt1]
     
+    
+    ## products 
+    SP = AT1.shape[1]
+    sp = at1.shape[1] 
 
+    ## get the dimensions of the original products 
+    st = backward_dimensions_L(l)
+    ST = backward_dimensions_L(L)
+
+    ## reshape ALG 1
+    for i  in range(len(st)):
+        s = st[i] ## row x col
+        l[i] = l[i].reshape(s[0],s[1],sp)
+
+    ## reshape ALG 2
+    for i  in range(len(ST)):
+        s = ST[i]
+        L[i] = L[i].reshape(s[0],s[1],SP)
+
+    ## shape product of products
+    R = []
+    for i  in range(len(st)):
+        sa = st[i] ##  row x col
+        sb = ST[i] ## row x col
+        R.append(numpy.zeros((sb[0]*sa[0])*(sb[1]*sa[1])*(sp*SP),dtype = AT1.dtype).reshape(( (sa[0]*sb[0]),(sa[1]*sb[1]),( sp*SP))))
+
+    ## Now the product of product is so simple 
     for i in range(len(R)):
-        a = l[i]
-        A = L[i]
+        a = l[i];  sa = list(a.shape)
+        A = L[i];  sb = list(A.shape)
         r = R[i]
-        
-        #import pdb; pdb.set_trace()
+                
         for i in range(sa[0]): ## row
             for ii in range(sa[1]): ## col 
-                for j in range(sa[2]): ## prod
-                    r[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*sb[2]:(j+1)*sb[2]] = a[i,ii,j] 
+                for j in range(sp): ## prod
+                    r[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*SP:(j+1)*SP] = a[i,ii,j]*A 
 
-                
-        #import pdb; pdb.set_trace()
-        for i in range(sa[0]): ## row
-            for ii in range(sa[1]): ## col 
-                for j in range(sa[2]): ## prod
-                    r[i*sb[0]:(i+1)*sb[0],ii*sb[1]:(ii+1)*sb[1],j*sb[2]:(j+1)*sb[2]] *= A
-        #import pdb; pdb.set_trace()
+
+    if validate :
+        try:
+            bs = BiniScheme(True)
+            bs.read_ndarray(R[1], R[2], R[0])
+            bs.validate()
+        except Exception as e :
+            print(e)
         
 
+    for i  in range(len(st)):
+        sa = st[i] ##  row x col
+        sb = ST[i] ## row x col
+        R[i] = R[i].reshape((sa[0]*sb[0])*(sa[1]*sb[1]),(sp*SP))
 
-
-
-                
-    #import pdb; pdb.set_trace()
-    NAT=NAT.reshape((sa[0]*sb[0])*(sa[1]*sb[1]),(sa[2]*sb[2]))
-    NBT=NBT.reshape((sa[0]*sb[0])*(sa[1]*sb[1]),(sa[2]*sb[2]))
-    NCT=NCT.reshape((sa[0]*sb[0])*(sa[1]*sb[1]),(sa[2]*sb[2]))
-    return NCT,NAT,NBT
+    return R
 
     
     
@@ -1244,9 +1263,9 @@ def bini_matrices_2(
 if __name__ == "__main__":
 
     import sys 
-    X = 4
+    X = 2
     #Y = 16*27
-    Y = 16*9
+    Y = 16*27
 
     
     if True:
@@ -1303,7 +1322,7 @@ if __name__ == "__main__":
     at,bt,ct = fact['%d,%d,%d' % (3,3,3)]
 
 
-    R = 1
+    R = 2
 
     print(a.shape)
     D = Scalar(0)*C

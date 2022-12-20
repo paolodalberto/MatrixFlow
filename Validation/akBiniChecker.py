@@ -56,7 +56,7 @@ def get_arguments(argv):
 
 
 def read_and_validate(input_file_name):
-    bs = BiniScheme(transpose_matrix_c)
+    bs = BiniScheme()
     bs.read(input_file_name)
     res = bs.validate()
     check(res, f"Algorithm {bs.signature()} found to be invalid!")
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     if input_file2_name != "":
         bs2 = read_and_validate(input_file2_name)
 
-        bsc = BiniScheme(transpose_matrix_c)
+        bsc = BiniScheme()
         bsc.combine(bs1, bs2)
         res = bsc.validate()
         check(res, "Combined Bini scheme found to be invalid!")

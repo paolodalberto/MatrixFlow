@@ -1,10 +1,12 @@
-from util import *
-
+from Validation.util import *
+import numpy 
 # =====================================================================
 #
 #  Globals
 #
 NaN = 99999  # not a number
+
+
 
 
 # =====================================================================
@@ -104,6 +106,8 @@ class BiniScheme(object):
         matrix_cols = [self.r_a_cols, self.r_b_cols, self.r_b_cols]
         matrices = [self.alpha, self.beta, self.gamma]
 
+        #import pdb; pdb.set_trace()
+        
         #  loop through the line matrix-by-matrix
         for matrix_order_idx in range(len(matrices)):
             lit_idx = 0
@@ -127,6 +131,50 @@ class BiniScheme(object):
                     cell[product] = lit
                     lit_idx += 1
 
+    def read_ndarray(self,
+                     alpha : numpy.ndarray, 
+                     beta  : numpy.ndarray, 
+                     gamma : numpy.ndarray, 
+    ):
+
+        
+        
+                     
+        self.no_of_products = gamma.shape[2]
+        self.create_ranges(alpha.shape[0], alpha.shape[1], beta.shape[1])
+        self.create_matrices()
+
+        matrix_rows = [self.r_a_rows, self.r_a_cols, self.r_a_rows]
+        matrix_cols = [self.r_a_cols, self.r_b_cols, self.r_b_cols]
+        matrices    = [self.alpha, self.beta, self.gamma]
+
+        
+        L = [alpha, beta,gamma] 
+        
+        #  loop through the line matrix-by-matrix
+        for m_idx in range(len(matrices)):
+                        
+            mat = matrices[m_idx]
+            rows = matrix_rows[m_idx]
+            cols = matrix_cols[m_idx]
+            transpose = (m_idx == 2) and self.transpose_matrix_c
+                        
+            for row in rows:
+                for col in cols:
+                    for p in range(L[m_idx].shape[2]):
+                        
+                        lit = L[m_idx][row][col][p]
+                        if lit < 0:
+                            # once we encounter a negative literal,
+                            # it can no longer be a mod 2 algorithm
+                            self.mod2_mode = False
+                        cell = mat[col][row] if transpose else mat[row][col]
+                        check(cell[p] == NaN, "Duplicate literal?")
+                        cell[p] = lit
+
+            
+        
+        
     def read(self, input_file_name: str):
         """ Read Bini form matrix multiplication algorithm into internal matrices """
         matrix_order = []  # determines which matrix comes first in the Bini file
