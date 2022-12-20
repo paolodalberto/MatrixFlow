@@ -25,7 +25,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     
-    
+    if args.N is None: args.N = 2
+    if args.M is None: args.M = 2
     
     import sys 
     X = args.M 
