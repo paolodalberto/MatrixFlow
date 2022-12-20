@@ -1,75 +1,112 @@
+from functools import cached_property
 from Validation.util import *
-import numpy 
+import numpy
+
 # =====================================================================
 #
 #  Globals
 #
-NaN = 99999  # not a number
-
-
+NaN = 9999999  # not a number
+Debug = False
 
 
 # =====================================================================
 #
-#  BiniScheme class (if you use deepmind "transpose_matrix_c = True
+#  BiniScheme class
+#
+#  Axel.Kemper 'at' gmail.com  20-Dec-2022
 #
 class BiniScheme(object):
-    """ This class implements operations around Bini form to
+    """ This class implements operations around Bini forms to
         represent a matrix multiplication algorithm """
 
-    def __init__(self, transpose_matrix_c : bool = False):
-        self.alpha = []  # 2D matrix
-        self.beta = []  # 2D matrix
-        self.gamma = []  # 2D matrix
-        self.a_rows = 0  # number of alpha rows
-        self.a_cols = 0  # number of alpha columns
-        self.b_cols = 0  # number of beta columns
-        self.r_a_rows = []  # range of row numbers
-        self.r_a_cols = []  # range of col numbers
-        self.r_b_cols = []  # range of col numbers
-        self.no_of_products = 0
-        self.r_products = []  # range of product numbers (0 .. )
-        self.transpose_matrix_c = transpose_matrix_c
-        self.mod2_mode = True
+    def __init__(self, transpose_matrix_c: bool = False):
+        """ To keep the number of member variables low,
+            functools @cached_property member functions are used instead
+            see: https://docs.python.org/3/library/functools.html """
+        self.alpha = None
+        """ 3D array  [row][col][product] """
+
+        self.beta = None
+        """ 3D array  [row][col][product] """
+
+        self.gamma = None  # 3D array
+        """ 3D array  [row][col][product] """
+
+        self.transpose_matrix_c: bool = transpose_matrix_c
+        """ Iff True, matrix Gamma is expected in transposed form """
+
+        self.mod2_mode: bool = True
+        """ Automatically set to False, if negative literals are found """
+
         self.output_file = None
-        self.output_line_count = 0
+        """  text output file cf. write() """
+
+        self.output_line_count: int = 0
+        """  counter for text lines output to file via write() """
+
+    @staticmethod
+    def array_cols(arr: list):
+        return len(arr[0])
+
+    @staticmethod
+    def array_rows(arr: list):
+        return len(arr)
+
+    @cached_property
+    def a_cols(self):
+        return self.array_cols(self.alpha)
+
+    @cached_property
+    def a_rows(self):
+        return self.array_rows(self.alpha)
 
     def auto_file_name(self):
         """ Return default file name for this Bini scheme"""
-        return f"s{self.signature()}.bini.txt"
+        return f"s{self.signature}.bini.txt"
+
+    @cached_property
+    def b_cols(self):
+        return self.array_cols(self.beta)
+
+    @cached_property
+    def b_rows(self):
+        return self.array_rows(self.beta)
+
+    @cached_property
+    def c_cols(self):
+        return self.array_cols(self.gamma)
+
+    @cached_property
+    def c_rows(self):
+        return self.array_rows(self.gamma)
 
     def combine(self, bsx: 'BiniScheme', bsy: 'BiniScheme'):
         """ make BiniScheme a combination of two other schemes """
+        o()
+        if bsx.signature == bsy.signature:
+            o(f"Combining {bsx.signature} with itself to one Bini scheme")
+        else:
+            o(f"Combining {bsx.signature} and {bsy.signature} to one Bini scheme")
         check(bsx.transpose_matrix_c == bsy.transpose_matrix_c, "Incompatible transpose mode!")
         check(self.transpose_matrix_c == bsy.transpose_matrix_c, "Incompatible transpose mode!")
-        a_rows = len(bsx.r_a_rows) * len(bsy.r_a_rows)
-        a_cols = len(bsx.r_a_cols) * len(bsy.r_a_cols)
-        b_cols = len(bsx.r_b_cols) * len(bsy.r_b_cols)
-        self.no_of_products = bsx.no_of_products * bsy.no_of_products
-        self.create_ranges(a_rows, a_cols, b_cols)
-        self.create_matrices()
+        check(bsx.mod2_mode == bsy.mod2_mode, "Incompatible mod 2 mode!")
+        a_rows = bsx.a_rows * bsy.a_rows
+        a_cols = bsx.a_cols * bsy.a_cols
+        b_cols = bsx.b_cols * bsy.b_cols
+        no_of_products = bsx.no_of_products * bsy.no_of_products
+        self.create_matrices(a_rows, a_cols, b_cols, no_of_products)
         self.set_combined_matrix(self.alpha, bsx.alpha, bsx.r_products, bsy.alpha, bsy.r_products)
         self.set_combined_matrix(self.beta, bsx.beta, bsx.r_products, bsy.beta, bsy.r_products)
         self.set_combined_matrix(self.gamma, bsx.gamma, bsx.r_products, bsy.gamma, bsy.r_products)
+        o(f"Resulting {self.signature} Bini scheme created")
 
-    def create_matrices(self):
+    def create_matrices(self, a_rows, a_cols, b_cols, no_of_products):
         """ Create set of three Bini matrices as 3D arrays """
         check(not self.alpha, "Multiple Bini lines?")
-        self.alpha = [[[NaN for _ in self.r_products] for _ in self.r_a_cols] for _ in self.r_a_rows]
-        self.beta = [[[NaN for _ in self.r_products] for _ in self.r_b_cols] for _ in self.r_a_cols]
-        self.gamma = [[[NaN for _ in self.r_products] for _ in self.r_b_cols] for _ in self.r_a_rows]
-
-    def create_ranges(self, a_rows: int, a_cols: int, b_cols: int):
-        """ Ranges a practical for loops """
-        self.a_rows = a_rows
-        self.a_cols = a_cols
-        self.b_cols = b_cols
-        self.r_a_rows = range(a_rows)
-        self.r_a_cols = range(a_cols)
-        self.r_b_cols = range(b_cols)
-        check(1 <= self.no_of_products <= a_rows * a_cols * b_cols,
-              f"Inconsistent number of products '{self.no_of_products}'")
-        self.r_products = range(self.no_of_products)
+        self.alpha = self.literal_array(a_rows, a_cols, no_of_products)
+        self.beta = self.literal_array(a_cols, b_cols, no_of_products)
+        self.gamma = self.literal_array(a_rows, b_cols, no_of_products)
 
     @staticmethod
     def determine_matrix_order(line: str, matrix_order: list):
@@ -85,29 +122,26 @@ class BiniScheme(object):
 
         return order
 
-    def extract_dimensions(self, line: str):
+    @staticmethod
+    def extract_dimensions(line: str):
         """ Translate Bini line into matrix dimensions and number of products """
         p = line.split(" ")
         check(len(p) == 5, f"Inconsistent line '{line}'")
         a_rows = int(p[1])
         a_cols = int(p[2])
         b_cols = int(p[3])
-        self.no_of_products = int(p[4])
-        self.create_ranges(a_rows, a_cols, b_cols)
+        no_of_products = int(p[4])
+        return a_rows, a_cols, b_cols, no_of_products
 
     def fill_matrices(self, line: str, matrix_order: list):
-        """Extract literals from line and insert them into matrices"""
+        """ Extract literals from line and insert them into matrices """
         p = line.split(";")
         check(len(p) == 4, f"Inconsistent product line. Fields: {len(p)}, expected: 4")
         product = int(p[0]) - 1
         check(0 <= product < self.no_of_products,
               f"Inconsistent product number {p[0]} outside [1 .. {self.no_of_products}]")
-        matrix_rows = [self.r_a_rows, self.r_a_cols, self.r_a_rows]
-        matrix_cols = [self.r_a_cols, self.r_b_cols, self.r_b_cols]
         matrices = [self.alpha, self.beta, self.gamma]
 
-        #import pdb; pdb.set_trace()
-        
         #  loop through the line matrix-by-matrix
         for matrix_order_idx in range(len(matrices)):
             lit_idx = 0
@@ -115,8 +149,9 @@ class BiniScheme(object):
 
             m_idx = matrix_order[matrix_order_idx]
             mat = matrices[m_idx]
-            rows = matrix_rows[m_idx]
-            cols = matrix_cols[m_idx]
+            rows = self.r_array_rows(mat)
+            cols = self.r_array_cols(mat)
+
             transpose = (m_idx == 2) and self.transpose_matrix_c
 
             for row in rows:
@@ -131,18 +166,63 @@ class BiniScheme(object):
                     cell[product] = lit
                     lit_idx += 1
 
+    @staticmethod
+    def literal_array(rows: int, cols: int, products: int):
+        """ Create a 3D array rows x cols x products initiated to NaN """
+        check((products > rows) or (products > cols), "Inconsistent products")
+        # set all cells to NaN (not-a-number) to allow for error checking
+        arr = [[[NaN for _ in range(products)] for _ in range(cols)] for _ in range(rows)]
+        return arr
+
+    @cached_property
+    def no_of_products(self):
+        """ Return number of products """
+        return len(self.alpha[0][0])
+
+    def r_array_cols(self, arr):
+        return range(self.array_cols(arr))
+
+    def r_array_rows(self, arr):
+        return range(self.array_rows(arr))
+
+    @cached_property
+    def r_a_cols(self):
+        return range(self.a_cols)
+
+    @cached_property
+    def r_a_rows(self):
+        return range(self.a_rows)
+
+    @cached_property
+    def r_b_cols(self):
+        return range(self.b_cols)
+
+    @cached_property
+    def r_b_rows(self):
+        return range(self.b_rows)
+
+    @cached_property
+    def r_c_cols(self):
+        return range(self.c_cols)
+
+    @cached_property
+    def r_c_rows(self):
+        return range(self.c_rows)
+
+    @cached_property
+    def r_products(self):
+        """ Return range of product numbers """
+        return range(self.no_of_products)
+
+
+
     def read_ndarray(self,
                      alpha : numpy.ndarray, 
                      beta  : numpy.ndarray, 
                      gamma : numpy.ndarray, 
     ):
-
-        
-        
                      
-        self.no_of_products = gamma.shape[2]
-        self.create_ranges(alpha.shape[0], alpha.shape[1], beta.shape[1])
-        self.create_matrices()
+        self.create_matrices(alpha.shape[0], alpha.shape[1], beta.shape[1], gamma.shape[2])
 
         matrix_rows = [self.r_a_rows, self.r_a_cols, self.r_a_rows]
         matrix_cols = [self.r_a_cols, self.r_b_cols, self.r_b_cols]
@@ -172,12 +252,9 @@ class BiniScheme(object):
                         check(cell[p] == NaN, "Duplicate literal?")
                         cell[p] = lit
 
-            
-        
-        
     def read(self, input_file_name: str):
         """ Read Bini form matrix multiplication algorithm into internal matrices """
-        matrix_order = []  # determines which matrix comes first in the Bini file
+        matrix_order = None  # list determines which matrix comes first in the Bini file
         no_of_lines = 0
 
         o(f"Reading input file '{input_file_name}'")
@@ -193,8 +270,8 @@ class BiniScheme(object):
                     #  ignore empty lines and comments
                     pass
                 elif line.startswith("Bini "):
-                    self.extract_dimensions(line)
-                    self.create_matrices()
+                    a_rows, a_cols, b_cols, no_of_products = self.extract_dimensions(line)
+                    self.create_matrices(a_rows, a_cols, b_cols, no_of_products)
                 elif line.startswith("product"):
                     matrix_order = self.determine_matrix_order(line, matrix_order)
                 else:
@@ -203,21 +280,21 @@ class BiniScheme(object):
 
         o(f"Lines read: {pretty_num(no_of_lines)}")
 
-    def set_combined_matrix(self, m: list, x: list, x_products: list, y: list, y_products: list):
+    def set_combined_matrix(self, m: list, x: list, x_products: range, y: list, y_products: range):
         """" Fill matrix m of literals by combining matrices x and y from smaller BiniSchemes """
-        x_rows = range(len(x))
-        x_cols = range(len(x[0]))
-        y_no_of_rows = len(y)
-        y_no_of_cols = len(y[0])
-        y_rows = range(y_no_of_rows)
-        y_cols = range(y_no_of_cols)
+        r_x_rows = self.r_array_rows(x)
+        r_x_cols = self.r_array_cols(x)
+        y_no_of_rows = self.array_rows(y)
+        y_no_of_cols = self.array_cols(y)
+        r_y_rows = self.r_array_rows(y)
+        r_y_cols = self.r_array_cols(y)
         y_no_of_products = len(y_products)
 
-        for x_row in x_rows:
-            for x_col in x_cols:
+        for x_row in r_x_rows:
+            for x_col in r_x_cols:
                 for x_product in x_products:
-                    for y_row in y_rows:
-                        for y_col in y_cols:
+                    for y_row in r_y_rows:
+                        for y_col in r_y_cols:
                             row = x_row * y_no_of_rows + y_row
                             col = x_col * y_no_of_cols + y_col
                             for y_product in y_products:
@@ -227,38 +304,49 @@ class BiniScheme(object):
                                     self.mod2_mode = False
                                 m[row][col][product] = lit
 
+    @property
     def signature(self):
-        return f"{len(self.r_a_rows)}x{len(self.r_a_cols)}x{len(self.r_b_cols)}_{self.no_of_products}"
+        return f"{self.a_rows}x{self.a_cols}x{self.b_cols}_{self.no_of_products}"
 
     def validate(self):
-        """ Check if Brent's equations are properly fulfilled. Return True iff OK, Fase otherwise """
+        """ Check if Brent's equations are properly fulfilled. Return True iff OK, False otherwise """
         errors = 0
         equations = 0
         o()
 
         mode = " mod 2" if self.mod2_mode else ""
-        o(f"Validating Brent's equations{mode} for {self.signature()}")
-        no_of_eqations = (len(self.r_a_rows) * len(self.r_a_cols) * len(self.r_b_cols)) ** 2
+        o(f"Validating Brent's equations{mode} for {self.signature}")
+        no_of_equations = (self.a_rows * self.a_cols * self.b_cols) ** 2
         #  show progress every 1% of the validation time
-        delta_percent = 0.01 * no_of_eqations
+        delta_percent = 0.01 * no_of_equations
         next_show = delta_percent
 
-        for ra in self.r_a_rows:
-            for ca in self.r_a_cols:
-                for rb in self.r_a_cols:
-                    for cb in self.r_b_cols:
-                        for rc in self.r_a_rows:
-                            for cc in self.r_b_cols:
+        #  To speed up the following deeply nested loop,
+        #  1D intermediate arrays are used to reduce costly 3D access
+        for a_row in self.r_a_rows:
+            for a_col in self.r_a_cols:
+                arr_ak = [self.alpha[a_row][a_col][k] for k in self.r_products]
+                for b_row in self.r_b_rows:
+                    for b_col in self.r_b_cols:
+                        arr_bk = [self.beta[b_row][b_col][k] for k in self.r_products]
+                        for c_row in self.r_c_rows:
+                            for c_col in self.r_c_cols:
                                 eq_sum = 0
-                                for k in self.r_products:
-                                    a = self.alpha[ra][ca][k]
-                                    b = self.beta[rb][cb][k]
-                                    c = self.gamma[rc][cc][k]
-                                    check(a != NaN, "Inconsistent alpha cell")
-                                    check(b != NaN, "Inconsistent beta cell")
-                                    check(c != NaN, "Inconsistent gamma cell")
+                                arr_c = self.gamma[c_row][c_col]
+                                for product in self.r_products:
+                                    # a = self.alpha[a_row][a_col][product]
+                                    a = arr_ak[product]
+                                    # b = self.beta[b_row][b_col][product]
+                                    b = arr_bk[product]
+                                    # c = self.gamma[c_row][c_col][product]
+                                    c = arr_c[product]
+                                    if Debug:
+                                        check(a != NaN, "Inconsistent alpha cell")
+                                        check(b != NaN, "Inconsistent beta cell")
+                                        check(c != NaN, "Inconsistent gamma cell")
                                     eq_sum += a * b * c
-                                odd = (ra == rc) and (rb == ca) and (cb == cc)
+                                #  odd is True iff the product of the three Kronecker deltas is True
+                                odd = (a_row == c_row) and (b_row == a_col) and (b_col == c_col)
                                 if self.mod2_mode:
                                     eq_sum = eq_sum % 2
                                 if odd != (eq_sum == 1):
@@ -274,22 +362,11 @@ class BiniScheme(object):
                                     next_show += delta_percent
         o()
         o(f"Equations: {pretty_num(equations)}")
-        check(equations == no_of_eqations, "Inconsistent number of equations")
+        check(equations == no_of_equations, "Inconsistent number of equations")
         if errors == 0:
-            o(f"{self.signature()} algorithm is OK! No errors found!")
+            o(f"{self.signature} algorithm is OK! No errors found!")
         else:
-            o(f"*** {self.signature()} algorithm is not OK! *** Errors found: {pretty_num(errors)}")
-        return errors == 0
-
-
-    def validate_ndarray(
-            a :numpy.ndarray,
-            b :numpy.ndarray,
-            c :numpy.ndarray,
-
-    ):
-        
-        
+            o(f"*** {self.signature} algorithm is not OK! *** Errors found: {pretty_num(errors)}")
         return errors == 0
 
     def w(self, s: str = ""):
@@ -303,7 +380,7 @@ class BiniScheme(object):
         self.w("#")
         self.w(f"# File '{output_file_name}'")
         self.w("#")
-        self.w(f"# Matrix multiplication algorithm {self.signature()} in Bini format")
+        self.w(f"# Matrix multiplication algorithm {self.signature} in Bini format")
         self.w("#")
         self.w(f"# Created:  {date_stamp()}")
         self.w("#")
@@ -318,22 +395,15 @@ class BiniScheme(object):
         product_width = len(str(self.no_of_products))
         for product in self.r_products:
             s = " " + str(product + 1).rjust(product_width)
-            s += " ;"
-            for row in self.r_a_rows:
-                for col in self.r_b_cols:
-                    s += str(self.gamma[row][col][product]).rjust(3)
-            s += " ;"
-            for row in self.r_a_rows:
-                for col in self.r_a_cols:
-                    s += str(self.alpha[row][col][product]).rjust(3)
-            s += " ;"
-            for row in self.r_a_cols:
-                for col in self.r_b_cols:
-                    s += str(self.beta[row][col][product]).rjust(3)
+            for mat in [self.gamma, self.alpha, self.beta]:
+                s += " ;"
+                for row in self.r_array_rows(mat):
+                    for col in self.r_array_cols(mat):
+                        s += str(mat[row][col][product]).rjust(3)
             self.w(s)
 
     def write(self, output_file_name: str = ""):
-        """ Store current Bini schema as file. Use default file name, unless name is present """
+        """ Store current Bini scheme as file. Use default file name, unless name is present """
         if not output_file_name:
             output_file_name = self.auto_file_name()
         o()

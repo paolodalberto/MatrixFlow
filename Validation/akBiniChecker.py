@@ -26,6 +26,13 @@ python akBiniChecker.py <input_file> [<input_file_2>]
 
 '''
 
+# ======================================================================
+#
+#  Global variables
+#
+
+#  change this, if the Gamma matrix is transposed
+transpose_matrix_c = False
 
 
 # ======================================================================
@@ -56,10 +63,10 @@ def get_arguments(argv):
 
 
 def read_and_validate(input_file_name):
-    bs = BiniScheme()
+    bs = BiniScheme(transpose_matrix_c)
     bs.read(input_file_name)
-    res = bs.validate()
-    check(res, f"Algorithm {bs.signature()} found to be invalid!")
+    valid = bs.validate()
+    check(valid, f"Algorithm {bs.signature} found to be invalid!")
     return bs
 
 
@@ -77,11 +84,11 @@ if __name__ == '__main__':
     if input_file2_name != "":
         bs2 = read_and_validate(input_file2_name)
 
-        bsc = BiniScheme()
-        bsc.combine(bs1, bs2)
-        res = bsc.validate()
-        check(res, "Combined Bini scheme found to be invalid!")
-        bsc.write()
+        bs_combined = BiniScheme(transpose_matrix_c)
+        bs_combined.combine(bs1, bs2)
+        valid = bs_combined.validate()
+        check(valid, "Combined Bini scheme found to be invalid!")
+        bs_combined.write()
 
     finish(0)
 
