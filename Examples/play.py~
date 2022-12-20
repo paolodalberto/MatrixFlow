@@ -1,0 +1,66 @@
+import numpy
+import math
+from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, read_alpha
+import networkx as nx
+import matplotlib.pyplot as plt
+import graphviz
+import time
+import seaborn as sns
+from  Validation.BiniScheme import  BiniScheme
+import sys
+import argparse
+
+if __name__ == "__main__":
+
+
+    print(" Fast Matrix Multiplication MxK * KxN -> MxN ")  
+    print(" Introduce --M --K --N")
+    print(" We show case the rest")
+        
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-m","--M", help="Rows of A", type=int, default=2)
+    parser.add_argument("-k","--K", help="Rows of B and columns of A", type=int, default=2)
+    parser.add_argument("-n","--N", help="Columns of B", type=int, default=2)
+    parser.add_argument("-e", "--error", help="pretty display error", type =bool, default =None)
+    
+    args = parser.parse_args()
+
+    
+    import sys 
+    X = 2
+    #Y = 16*27
+    Y = 16*27
+
+    
+    if True:
+        A = Matrix(
+            numpy.matrix(
+                [
+                    [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
+        )
+
+        B = Matrix(
+            numpy.matrix(
+                [
+                    [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
+        )
+    else:
+        A = Matrix(
+            numpy.matrix(
+                [
+                    [ (1+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
+        )
+
+        B = Matrix(
+            numpy.matrix(
+                [
+                    [ (2+i) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
+        )
