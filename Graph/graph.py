@@ -116,6 +116,9 @@ class Operation:
         R =  self.right.compute()
         if self.operation == '+':
             self.temp_result = L + R
+        if self.operation == '+=':
+            self.temp_result = L + R
+            self.left.temp_result.set_value(self.temp_result.value())
         elif self.operation == '-':
             self.temp_result = L - R
         elif self.operation == '*':
@@ -639,7 +642,14 @@ class Graph(Function):
     ## We execute each statement in the V list in order
     def compute(self, verbose = False):
         start = time.time()
-
+        for ds in self.declarations:
+            if type(ds) is list:
+                for d in ds:
+                    if d.outputs:
+                        d.left.set_value(d.left.value()*0)
+            elif ds.outputs:
+                ds.left.set_value(ds.left.value()*0)
+        
         for i in self.V:
             #if verbose: print(i)
             A = i.compute()
@@ -657,7 +667,19 @@ class Graph(Function):
             self.single_output(self.temp_result)
             return self.temp_result 
         return None
+
+    def short_temp(self):
+
+        dep = self.dep
         
+        VV = []
+        for i in V:
+            
+            
+
+        
+
+    
     ## given a statement we return the right hand side operands 
     def dependantOperands(self):
         r = []
@@ -684,7 +706,7 @@ class Graph(Function):
             V = self.V
         t = None
         for i in V:
-            if i.operation == '=':
+            if i.operation in  ['=', '+=']:
                 if type(i.left) is list:
                     u = [] 
                     for left in i.left:
@@ -1045,7 +1067,7 @@ def bini_mult_example(
     #import pdb; pdb.set_trace()
     for c in range(CT.shape[0]):
         O = Operation(
-            'ta', '=',
+            'ta', '+=',
             CD[c], # lhs 
             Operation.AdditionBini(Ps,CT[c,:])  # Sum p_iP_i
         )
