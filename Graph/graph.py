@@ -668,12 +668,93 @@ class Graph(Function):
             return self.temp_result 
         return None
 
-    def short_temp(self):
+    def create_addequal(left : Data,right: Operation):
+        return   Operation('ta', '+=',left,  right)
 
-        dep = self.dep
+
+    ## this is a binary tree, where we remove a leaf the result
+    ## operation will be a leaf and thus the operation above has to be
+    ## modified.
+    
+    def rm(m : Operation): ## ?
+
+        ##  + 
+        ## l  m 
+        ups = m.next()[0]
+
+        ## rd = delete
+        ## rk = keep
+        if  ups.left == m:
+            rd = ups.left
+            rk = ups.right
+        else:
+            rk = ups.left
+            rd = ups.right
+            
+        # the ups is the right child of upps
+        ##      + 
+        ##   ll   +
+        ##       l m
+        upps = ups.next()[0]
+
+
+        rd.result = None
+        ups.result = None 
         
+        
+        upps.right = rk
+        rk.result = upps
+        del ups
+        
+        
+
+        
+    def find_(m : Data, inst : Operation):
+        if m == inst.left or m==inst.right:
+            op = inst
+        else:
+            op = find_(m,inst.left)
+            if op is None:
+                op = find_(m,inst.right)
+        return op
+    
+                
+                
+            
+            
+            
+            
+            
+    
+    def remove_m_from_inst(inst : Operation,m : Data):
+
+        
+
+        O = Operation(
+            'ta', '+=',
+            left, # lhs 
+            right  # Sum p_iP_i
+        )
+        return O
+    
+            
+
+    
+    def short_temp(self):
+        self.data_dependency()
+        dep = self.dep
+        lhs = dep['uses']
+        rhs = dep['defs']
+        
+        insts = range(len(self.V))
+        import pdb; pdb.set_trace()
         VV = []
-        for i in V:
+        for i in insts:
+            VV.append(self.V[i])
+            for j in self.adj[i,:]:
+                it = V[j]
+                
+            
             
             
 
