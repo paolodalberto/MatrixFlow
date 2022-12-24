@@ -15,4 +15,4 @@ and combine them into a "multiplied" Bini scheme. The resulting
 scheme is written to a text file `s<p>x<q>x<n>_<k>.bini.txt`
 It is allowed to combine a scheme with itself.
 
-Axel.Kemper@gmail.com  18-Dec-2022
+Axel.Kemper at gmail.com  18-Dec-2022
