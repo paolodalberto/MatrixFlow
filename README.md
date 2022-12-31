@@ -5,7 +5,7 @@ think there is a need for new tools that we tried to build and use in
 previous packages such as FastMMW. Once the tensor encodings are
 spelled out, the algorithm is a sequence of scalar-by-matrix,
 matrix-matrix addition and multiplication. We want to use these
-algorithms are spring board for a framework for the computation of
+algorithms as a spring board for a framework for the computation of
 matrix operations.
 
 The advances of frameworks for convolution networks such as TensorFlow
