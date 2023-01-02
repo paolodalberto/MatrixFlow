@@ -199,6 +199,34 @@ class Operation:
                 ) 
         return O
 
+    def AssignAdditionBini( #As[i] = As[i] + I[i]*P
+            As : list(),        ## this is a list of Matrices
+            I  : numpy.ndarray, ## factors
+            P  #: Operation 
+    ):
+        #print(I)
+        #print(I.shape)
+        Os = []
+        #for i in range(I.shape[0]): #numpy.argsort(-I):
+        for i in numpy.argsort(-I):
+            if I[i] ==0: continue
+            elif (I[i] == 1 or I[i] == 1.0 ): 
+                T = Operation("a", "+" , As[i] , P)
+            elif (I[i] == -1  or I[i] == -1.0):
+                T = Operation("a", "-" , As[i] , P)
+            else:
+                T = Operation(
+                    "a", "+", As[i],
+                    Operation(
+                        "p", "*",
+                        Data('i',Scalar(I[i])) ,
+                        P
+                    )
+                )
+            O = Operation("a", "=",  As[i] , T)
+            Os.append(O)
+        return Os
+
     
             
 
@@ -510,6 +538,11 @@ class Graph(Function):
         self.V = V
         #self.E = E
 
+        self.alpha = None 
+        self.beta  = None
+        self.gamma = None
+        
+        
         self._inputs_  = None
         self._outputs_ = None 
         self.dep     = None
@@ -518,7 +551,17 @@ class Graph(Function):
 
         self.visgraph = graphviz.Digraph()
 
+    def set_bini_matrices(self,
+                          ct = numpy.ndarray,
+                          at = numpy.ndarray,
+                          bt = numpy.ndarray):
+        
 
+        self.alpha = at 
+        self.beta  = bt
+        self.gamma = ct
+
+        
     def space(self):
         return sum([i.space() for i in self.right])   
 
@@ -591,8 +634,8 @@ class Graph(Function):
         for i in O:
             if i.outputs:
                 OO.append(i)
-            else:
-                print("TEMP?", i)
+            #else:
+            #    print("TEMP?", i)
         if len(OO) != len(O):
             O = OO
         
@@ -674,13 +717,14 @@ class Graph(Function):
 
     ## this is a binary tree, where we remove a leaf the result
     ## operation will be a leaf and thus the operation above has to be
-    ## modified.
+    ## modified. We assume there is no leaf repetition (this is fair
+    ## in our computations)
     
-    def rm(m : Operation): ## ?
+    def rm(m : Data, f =  Operation): ## ?
 
         ##  + 
         ## l  m 
-        ups = m.next()[0]
+        ups = f.next()[0]
 
         ## rd = delete
         ## rk = keep
@@ -697,16 +741,12 @@ class Graph(Function):
         ##       l m
         upps = ups.next()[0]
 
-
         rd.result = None
         ups.result = None 
-        
-        
+
         upps.right = rk
         rk.result = upps
         del ups
-        
-        
 
         
     def find_(m : Data, inst : Operation):
@@ -718,12 +758,6 @@ class Graph(Function):
                 op = find_(m,inst.right)
         return op
     
-                
-                
-            
-            
-            
-            
             
     
     def remove_m_from_inst(inst : Operation,m : Data):
@@ -1008,6 +1042,7 @@ def bini_mult_example(
 
 
     
+    
     subblocks = int(math.sqrt(CT.shape[0]))
     products  = CT.shape[1]
     
@@ -1162,6 +1197,140 @@ def bini_mult_example(
     G1 = Graph("C = Fast A*B", V,decls,C, [A,B] )
     #print(G1)
 
+    G1.set_bini_matrices(CT,AT,BT)
+    
+    ###
+    ## Compute the graph for validation. Yep we can and we should run
+    ## the graph
+    ###
+    print("Compute")
+    G1.compute()
+
+    ## we create a stmt-by-stm data dependency
+    print("Dependency")
+    G1.dependency()
+
+    return G1
+
+
+def bini_mult_example_three_temp(
+        C : Matrix, CT : numpy.ndarray,
+        A : Matrix, AT : numpy.ndarray,
+        B : Matrix, BT : numpy.ndarray, deepmindformat = True,
+):
+
+    subblocks = int(math.sqrt(CT.shape[0]))
+    products  = CT.shape[1]
+    
+    ## disjoint partition of input output
+    CP = PartitionMatrix(
+        C,
+        tuple (
+            [int(math.ceil(i/subblocks)) for i in C.value().shape]
+        )
+    )
+        
+
+
+    ## disjoint partition of B and A
+    BP = PartitionMatrix(
+        B,
+        tuple (
+            [int(math.ceil(i/subblocks)) for i in C.value().shape]
+        )
+    )
+    AP = PartitionMatrix(
+        A,
+        tuple (
+            [int(math.ceil(i/subblocks)) for i in C.value().shape]
+        )
+    )
+
+    ## shapes
+    Cs = CP.value()
+    Row = len(Cs)    # of the output partition
+    Col = len(Cs[0]) # as well 
+    K = len(BP.value())
+
+
+    ###
+    ## data disjoint partition for computation. This is the
+    ## declaration of the basic operands the rest will be defined by
+    ## the computation ... compute. 
+    ###
+
+    # linear description instead of 2d matrix  
+    AD = Data.data_factory_flat(Data.data_factory('a', AP)) 
+    for i in AD: i.inputs = True
+    BD = Data.data_factory_flat(Data.data_factory('b', BP))
+    for i in BD: i.inputs = True
+
+
+    ## deepmind format need a transposition of the C to make it work
+
+    CD = Data.data_factory_flat(
+        Data.data_factory('c', CP) if not deepmindformat else  Data.data_factory_transpose('c', CP)
+    )
+
+    ## WARNING: There is a problem in transforming a computation into
+    ## a DAG, the output is anbiguous unless we give a hint an
+    ## assignment within this computation will be used outside of
+    ## it. Think a temporary is defined and assigned within the
+    ## computation but I cannot say if it is used outside and thus it
+    ## is an output. Only who write the algorithms really knows.
+
+    for i in CD: i.outputs = True
+    
+    #for i in CD: print(i)
+
+    ## we create a declaration of one  temporary products
+    Ps = []
+    for i in range(1):
+        Ps.append(Data("p_%d" % i, Matrix(CP.value()[0][0].value()*0)))
+    
+
+    ## A,B,C partitions and Partial products
+    decls = [AD , BD, CD, Ps ] 
+    
+    ###
+    ## Computation as a sequence of assignment statements
+    ## and binary operations. 
+    ###
+    V = []
+
+        
+    for c in range(AT.shape[1]):
+        O = Operation(
+            'ta', '=',
+            Ps[0], # temp product 
+            Operation(
+                'tp_%d' % c, '*',
+                Operation.AdditionBini(AD,AT[:,c]), # Sum a_iA_i
+                Operation.AdditionBini(BD,BT[:,c])  # Sum a_iA_i
+            )
+        )
+        V.append(O)
+        try:
+            O.compute()
+        except Exception as e:
+            print(e)
+            print(O)
+            import pdb; pdb.set_trace() 
+
+        # we distribute the product 
+        Os = Operation.AssignAdditionBini(
+            CD,CT[:,c],Ps[0]
+        )
+        V.extend(Os)
+    ###
+    ## create a graph
+    ###
+    #import pdb; pdb.set_trace()
+    G1 = Graph("C = Fast A*B", V,decls,C, [A,B] )
+    #print(G1)
+
+    G1.set_bini_matrices(CT,AT,BT)
+    
     ###
     ## Compute the graph for validation. Yep we can and we should run
     ## the graph
@@ -1362,7 +1531,40 @@ def bini_matrices_2(
     return R
 
     
-    
+def gen_matrix(X : int , Y : int, random = None):
+
+    if random is None :
+        ## this is an integer matrix
+
+        A = Matrix(
+            numpy.matrix(
+                [
+                    [ (1+i+j+i*j) for i in range(X*Y)] for j in range(X*Y)
+                ]
+            )
+        )
+        
+    elif random =='up':
+        A = Matrix(
+            numpy.matrix(
+                numpy.random.uniform(0,1,(X*Y,X*Y))
+            )
+        )
+    elif random =='down':
+        A = Matrix(
+            numpy.matrix(
+                numpy.random.uniform(-1,0,(X*Y,X*Y))
+            )
+        )
+    elif random =='middle':
+        A = Matrix(
+            numpy.matrix(
+                numpy.random.uniform(-1,1,(X*Y,X*Y))
+            )
+        )
+    return A
+
+
 
 if __name__ == "__main__":
 
@@ -1370,40 +1572,10 @@ if __name__ == "__main__":
     X = 2
     #Y = 16*27
     Y = 16*27
-
     
-    if True:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
-                ]
-            )
-        )
-
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
-                ]
-            )
-        )
-    else:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ (1+i) for i in range(X*Y)] for j in range(X*Y)
-                ]
-            )
-        )
-
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ (2+i) for i in range(X*Y)] for j in range(X*Y)
-                ]
-            )
-        )
+    Random = middle
+    A = gen_matrix(X,Y,Random)
+    B = gen_matrix(X,Y,Random)
         
     
     alpha = Scalar(1)

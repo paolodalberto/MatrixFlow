@@ -1,7 +1,7 @@
 import numpy
 import math
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, read_alpha
-from Graph.graph import Graph, bini, bini_matrices_2
+from Graph.graph import Graph, bini, bini_matrices_2, gen_matrix
 import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-m","--M", help="Factor of A", type=int, default=2)
     parser.add_argument("-n","--N", help="Factor of A", type=int, default=2)
-    parser.add_argument("-e", "--error", help="pretty display error", type =bool, default =None)
+    parser.add_argument("-e", "--error", help="pretty display error", type =str, default =None)
     args = parser.parse_args()
 
     
@@ -32,39 +32,12 @@ if __name__ == "__main__":
     X = args.M 
     Y = args.N
 
-    T = X*Y*10
-    if args.error:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
+    T = X*Y*5
 
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
-    else:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ (1+i) for i in range(X*Y)] for j in range(T)
-                ]
-            )
-        )
 
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ (2+i) for i in range(X*Y)] for j in range(T)
-                ]
-            )
-        )
+    A = gen_matrix(T,T,args.error)
+    B = gen_matrix(T,T,args.error)
+
 
 
     ####

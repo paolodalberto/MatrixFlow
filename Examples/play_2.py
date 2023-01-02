@@ -1,7 +1,7 @@
 import numpy
 import math
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, read_alpha
-from Graph.graph import Graph, bini, bini_matrices_2,bini_mult_example
+from Graph.graph import Graph, bini, bini_matrices_2,bini_mult_example, gen_matrix,algorithm_mult_example
 import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-m","--M", help="Factor of A", type=int, default=2)
     parser.add_argument("-n","--N", help="Factor of A", type=int, default=2)
-    parser.add_argument("-e", "--error", help="pretty display error", type =bool, default =None)
+    parser.add_argument("-e", "--error", help="pretty display error", type =str, default =None)
     args = parser.parse_args()
 
     
@@ -33,39 +33,9 @@ if __name__ == "__main__":
     X = args.M 
     Y = args.N
 
-    T = X*Y*10
-    if args.error:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
-
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
-    else:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ (1+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
-
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ (2+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
+    T = X*Y*5
+    A = gen_matrix(T,T,args.error)
+    B = gen_matrix(T,T,args.error)
 
 
     ####
@@ -79,6 +49,13 @@ if __name__ == "__main__":
     end = time.time()
     print("time",end - start)
 
+    ## C_ij = sum_k A_ik B_kj
+    D = Scalar(0)*C
+    G1 = algorithm_mult_example(D, 1,A,B,X)
+    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    del G1; gc.collect()
+
+    
     ## Bilinear using the deepmind format C^t = A*B
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]

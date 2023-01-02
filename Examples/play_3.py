@@ -1,7 +1,7 @@
 import numpy
 import math
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, read_alpha
-from Graph.graph import Graph, bini, bini_matrices_2,bini_mult_example
+from Graph.graph import Graph, bini, bini_matrices_2,bini_mult_example, gen_matrix,bini_mult_example_three_temp
 import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-m","--M", help="Factor of A", type=int, default=2)
     parser.add_argument("-n","--N", help="Factor of A", type=int, default=2)
-    parser.add_argument("-e", "--error", help="pretty display error", type =bool, default =None)
+    parser.add_argument("-e", "--error", help="pretty display error", type =str, default =None)
     args = parser.parse_args()
 
     
@@ -34,38 +34,9 @@ if __name__ == "__main__":
     Y = args.N
 
     T = X*Y*10
-    if args.error:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
 
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
-    else:
-        A = Matrix(
-            numpy.matrix(
-                [
-                    [ (1+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
-
-        B = Matrix(
-            numpy.matrix(
-                [
-                    [ (2+i) for i in range(T)] for j in range(T)
-                ]
-            )
-        )
+    A = gen_matrix(T,T,args.error)
+    B = gen_matrix(T,T,args.error)
 
 
     ####
@@ -92,13 +63,27 @@ if __name__ == "__main__":
 
     
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
-    G3.compute()
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    #G3.compute()
+    #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     ## reduce temporary space
-    G3.short_temp()
+    #G3.short_temp()
+    #import pdb; pdb.set_trace()
+
+    del G3; gc.collect()
+
+    ## factor X 
+    print(a.shape)
+    D = Scalar(0)*C
+    ## compute and dependency .... 
+    G3 = bini_mult_example_three_temp(D,c, A,a,B,b,1)
+
+    
+    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    #G3.compute()
+    #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     
 
     del G3; gc.collect()
-    
+   
 
     
