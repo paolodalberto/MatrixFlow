@@ -189,8 +189,9 @@ class Operation:
             else:
                 T = Operation(
                     "p", "*",
-                    Data('i',Scalar(I[i])) ,
-                    As[i]
+                    As[i],
+                    Data('i',Scalar(I[i])) 
+                    
                 )
                     
             if O is None: O = T
@@ -221,8 +222,9 @@ class Operation:
                     "a", "+", As[i],
                     Operation(
                         "p", "*",
-                        Data('i',Scalar(I[i])) ,
-                        P
+                        P,
+                        Data('i',Scalar(I[i])) 
+                        
                     )
                 )
             O = Operation("a", "=",  As[i] , T)
@@ -548,6 +550,14 @@ class Graph(Function):
         self.V = V
         #self.E = E
 
+        
+        self.CDP = list()
+        self.ADP = list()
+        self.BDP = list()
+
+
+
+        
         self.alpha = None 
         self.beta  = None
         self.gamma = None
@@ -561,6 +571,12 @@ class Graph(Function):
 
         self.visgraph = graphviz.Digraph()
 
+    def compile_graph(self):
+
+        E = compile(str(self),'test','exec')
+
+        return E
+        
     def set_bini_matrices(self,
                           ct = numpy.ndarray,
                           at = numpy.ndarray,
@@ -919,18 +935,26 @@ def algorithm_mult_example(
         C : Matrix,
         alpha : Scalar,                   
         A : Matrix, B : Matrix,
-        sub = None
+        sub = None,
+        comp = True
+
+        
 ):
     if sub:
         c = C.value().shape
         cc = [math.ceil(c[0]/sub), math.ceil(c[1]/sub)]
         sub = cc
+
+
     ## disjoint partition of input output
     CP = PartitionMatrix(C,sub)
-    
     BP = PartitionMatrix(B,sub)
     AP = PartitionMatrix(A,sub)
 
+    CDP = CP.flatten()
+    ADP = AP.flatten()
+    BDP = BP.flatten()
+    
     ## shapes
     Cs = CP.value()
     Row = len(Cs)    # of the output partition
@@ -944,23 +968,15 @@ def algorithm_mult_example(
     ## the computation ... compute. 
     ###
     alphai = Data('alpha', alpha)
-    AD = Data.data_factory('a', AP)
-    for j in AD:
-        for i in j:
-            i.inputs = True
-    BD = Data.data_factory('b', BP)
-    for j in BD:
-        for i in j:
-            i.inputs = True
-    CD = Data.data_factory('c', CP)
-    for j in CD:
-        for i in j:
-            i.outputs = True
-    ## 
-    decls = [alphai,
-             Data.data_factory_flat(AD) ,
-             Data.data_factory_flat(BD),
-             Data.data_factory_flat(CD) ] 
+    AD = Data.data_factory_flat(Data.data_factory('ADP', AP)) 
+    for i in AD: i.inputs = True
+    BD = Data.data_factory_flat(Data.data_factory('BDP', BP))
+    for i in BD: i.inputs = True
+    
+    CD = Data.data_factory_flat(Data.data_factory('CDP', CP)) 
+    for i in CD: i.outputs = True
+
+    decls = [alphai,      AD ,        BD,          CD ] 
     
     ###
     ## Computation as a sequence of assignment statements
@@ -969,13 +985,13 @@ def algorithm_mult_example(
     V = []
     for i in range(Row):
         for j in range(Col):
-            T = Operation("p0", "*", AD[i][0] ,BD[0][j])
+            T = Operation("p0", "*", AD[i*Col] ,BD[j])
             for k in range(1,K):
-                T1 = Operation("p%d"%k, "*", AD[i][k],BD[k][j])
+                T1 = Operation("p%d"%k, "*", AD[i*Col+k],BD[k*Col+j])
                 T = Operation('c','+',T,T1)
             V.append(
                 Operation("s0", '=',
-                          CD[i][j],
+                          CD[i*Col+j],
                           T
                 )
             )
@@ -984,8 +1000,19 @@ def algorithm_mult_example(
     ## create a graph
     ###
     G1 = Graph("C = alpha*A*B", V,decls,C)
-    #print(G1)
 
+    if comp:
+        #import pdb; pdb.set_trace()
+        start = time.time()
+        E = G1.compile_graph()
+        end = time.time()
+        print("Compile", end-start)
+        
+        start = time.time()
+        exec(E)
+        end = time.time()
+        print("compute_time", end-start)
+    
     ###
     ## Compute the graph for validation. Yep we can and we should run
     ## the graph
@@ -1047,7 +1074,8 @@ def bini_mult_example(
         C : Matrix, CT : numpy.ndarray,
         A : Matrix, AT : numpy.ndarray,
         B : Matrix, BT : numpy.ndarray, deepmindformat = True,
-        recursion : int = 1
+        recursion : int = 1,
+        comp = True
 ):
 
 
@@ -1080,6 +1108,12 @@ def bini_mult_example(
         )
     )
 
+
+    CDP = CP.flatten()
+    ADP = AP.flatten()
+    BDP = BP.flatten()
+
+
     ## shapes
     Cs = CP.value()
     Row = len(Cs)    # of the output partition
@@ -1094,16 +1128,16 @@ def bini_mult_example(
     ###
 
     # linear description instead of 2d matrix  
-    AD = Data.data_factory_flat(Data.data_factory('a', AP)) 
+    AD = Data.data_factory_flat(Data.data_factory('ADP', AP)) 
     for i in AD: i.inputs = True
-    BD = Data.data_factory_flat(Data.data_factory('b', BP))
+    BD = Data.data_factory_flat(Data.data_factory('BDP', BP))
     for i in BD: i.inputs = True
 
 
     ## deepmind format need a transposition of the C to make it work
 
     CD = Data.data_factory_flat(
-        Data.data_factory('c', CP) if not deepmindformat else  Data.data_factory_transpose('c', CP)
+        Data.data_factory('CDP', CP) if not deepmindformat else  Data.data_factory_transpose('CDP', CP)
     )
 
     ## WARNING: There is a problem in transforming a computation into
@@ -1120,10 +1154,11 @@ def bini_mult_example(
     ## we create a declaration of the temporary products and we
     ## provide their maximum size ... in practce each product could be
     ## of different size
+    Pss = [] 
     Ps = []
     for i in range(products):
-        Ps.append(Data("p[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
-    
+        Ps.append(Data("Pss[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
+        Pss.append(Scalar(0)*CDP[0])
 
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
@@ -1208,6 +1243,19 @@ def bini_mult_example(
     #print(G1)
 
     G1.set_bini_matrices(CT,AT,BT)
+
+    if comp:
+        #import pdb; pdb.set_trace()
+        start = time.time()
+        E = G1.compile_graph()
+        end = time.time()
+        print("Compile", end-start)
+        
+        start = time.time()
+        exec(E)
+        end = time.time()
+        print("compute_time", end-start)
+
     
     ###
     ## Compute the graph for validation. Yep we can and we should run
@@ -1256,6 +1304,10 @@ def bini_mult_example_three_temp(
         )
     )
 
+    CDP = CP.flatten()
+    ADP = AP.flatten()
+    BDP = BP.flatten()
+
     ## shapes
     Cs = CP.value()
     Row = len(Cs)    # of the output partition
@@ -1270,16 +1322,16 @@ def bini_mult_example_three_temp(
     ###
 
     # linear description instead of 2d matrix  
-    AD = Data.data_factory_flat(Data.data_factory('a', AP)) 
+    AD = Data.data_factory_flat(Data.data_factory('ADP', AP)) 
     for i in AD: i.inputs = True
-    BD = Data.data_factory_flat(Data.data_factory('b', BP))
+    BD = Data.data_factory_flat(Data.data_factory('BDP', BP))
     for i in BD: i.inputs = True
 
 
     ## deepmind format need a transposition of the C to make it work
 
     CD = Data.data_factory_flat(
-        Data.data_factory('c', CP) if not deepmindformat else  Data.data_factory_transpose('c', CP)
+        Data.data_factory('CDP', CP) if not deepmindformat else  Data.data_factory_transpose('CDP', CP)
     )
 
     ## WARNING: There is a problem in transforming a computation into
@@ -1294,10 +1346,11 @@ def bini_mult_example_three_temp(
     #for i in CD: print(i)
 
     ## we create a declaration of one  temporary products
+    Pss = []
     Ps = []
     for i in range(1):
-        Ps.append(Data("p[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
-    
+        Ps.append(Data("Pss[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
+        Pss.append(Scalar(0)*CDP[0])
 
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
@@ -1341,6 +1394,17 @@ def bini_mult_example_three_temp(
 
     G1.set_bini_matrices(CT,AT,BT)
     
+    if comp:
+        #import pdb; pdb.set_trace()
+        start = time.time()
+        E = G1.compile_graph()
+        end = time.time()
+        print("Compile", end-start)
+        
+        start = time.time()
+        exec(E)
+        end = time.time()
+        print("compute_time", end-start)
     ###
     ## Compute the graph for validation. Yep we can and we should run
     ## the graph

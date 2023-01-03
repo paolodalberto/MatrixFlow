@@ -56,7 +56,10 @@ class Matrix:
 
         if type(A) is Scalar:
             ## B = alpha A
-            return Matrix(numpy.matmul(self.value(), A.value()))
+            return Matrix(self.value()*A.value())
+        elif type(A) in [int,float]:
+            ## B = alpha A
+            return Matrix(A*self.value())
         elif type(A) is Matrix :
             ## SELF  * A (multiplication)
             L = self.value()
