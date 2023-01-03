@@ -73,7 +73,9 @@ class Operation:
     def __str__(self):
         L = "" if self.left is None else str(self.left)
         R = "" if self.right is None else str(self.right)
-        tmp = self.name+"("+L  +" "+self.operation+" "+ R+")"
+        if self.operation in  ['*', '/']:
+            return "("+L +")" +" "+self.operation+" "+ "("+ R+")"
+        tmp = L  +" "+self.operation+" "+ R
         
         return tmp
 
@@ -416,6 +418,12 @@ class Data(Operation):
         self.temps  = False
         self.outputs= False
         
+    def __str__(self):
+
+        if type(self.left) == Scalar:
+            return str(self.left)
+        return self.name
+        
     def count(self,
               operation : str = '*',
               operands_type = [Matrix, Matrix]):
@@ -441,7 +449,8 @@ class Data(Operation):
         for i in range(Ashape[0]):
             R = [] 
             for j in range(Ashape[1]):
-                L = Data('%s_%d,%d' %(name, i,j), A.value()[i][j])
+                L = Data('%s[%d]' %(name, len(AD)*Ashape[1] + len(R)),
+                         A.value()[i][j])
                 R.append(L)
             AD.append(R)
         return AD
@@ -451,7 +460,8 @@ class Data(Operation):
         for i in range(Ashape[0]):
             R = [] 
             for j in range(Ashape[1]):
-                L = Data('%s_%d,%d' %(name, j,i), A.value()[j][i])
+                L = Data('%s[%d]' %(name, len(AD)*Ashape[1] + len(R)),
+                         A.value()[j][i])
                 R.append(L)
             AD.append(R)
         return AD
@@ -1112,7 +1122,7 @@ def bini_mult_example(
     ## of different size
     Ps = []
     for i in range(products):
-        Ps.append(Data("p_%d" % i, Matrix(CP.value()[0][0].value()*0)))
+        Ps.append(Data("p[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
     
 
     ## A,B,C partitions and Partial products
@@ -1286,7 +1296,7 @@ def bini_mult_example_three_temp(
     ## we create a declaration of one  temporary products
     Ps = []
     for i in range(1):
-        Ps.append(Data("p_%d" % i, Matrix(CP.value()[0][0].value()*0)))
+        Ps.append(Data("p[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
     
 
     ## A,B,C partitions and Partial products
@@ -1642,7 +1652,8 @@ if __name__ == "__main__":
         c1,a1,b1 = bini_matrices(c,a,b, recursion)
         D = Scalar(0)*C
         D = bini(D,c1,A,a1,B,b1,recursion=1)
-        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        Graph.heatmap_
+        diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
         #import pdb; pdb.set_trace()        
     
 

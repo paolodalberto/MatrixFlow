@@ -49,10 +49,13 @@ if __name__ == "__main__":
     end = time.time()
     print("time",end - start)
 
+    
     ## C_ij = sum_k A_ik B_kj
     D = Scalar(0)*C
     G1 = algorithm_mult_example(D, 1,A,B,X)
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+
+    import pdb; pdb.set_trace()
     del G1; gc.collect()
 
     
