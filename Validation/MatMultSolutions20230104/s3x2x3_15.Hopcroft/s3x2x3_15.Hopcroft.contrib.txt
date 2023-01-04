@@ -1,0 +1,112 @@
+# Product contributions file 's3x2x3_15.Hopcroft.contrib.txt'
+# Created: 04-Jan-2023 14:38
+
+Product P01: 1 odd, 5 even triples
+ F:+--+  G:+---+  D:+---+
+   |+-|    |+  |    |+ -|
+   |  |    |   |    |-  |
+   |  |    +---+    |   |
+   +--+             +---+
+
+Product P02: 1 odd, 5 even triples
+ F:+--+  G:+---+  D:+---+
+   | +|    |+  |    |+- |
+   |  |    |+  |    |   |
+   |  |    +---+    |-  |
+   +--+             +---+
+
+Product P03: 1 odd, 2 even triples
+ F:+--+  G:+---+  D:+---+
+   |  |    | + |    | - |
+   |+ |    |   |    | +-|
+   |  |    +---+    |   |
+   +--+             +---+
+
+Product P04: 1 odd, 2 even triples
+ F:+--+  G:+---+  D:+---+
+   |  |    |   |    |   |
+   | +|    | + |    |-+ |
+   |  |    +---+    | - |
+   +--+             +---+
+
+Product P05: 1 odd, 5 even triples
+ F:+--+  G:+---+  D:+---+
+   |  |    |  +|    |  -|
+   |  |    |  +|    |   |
+   |+ |    +---+    | -+|
+   +--+             +---+
+
+Product P06: 1 odd, 5 even triples
+ F:+--+  G:+---+  D:+---+
+   |  |    |   |    |   |
+   |  |    |  +|    |  -|
+   |-+|    +---+    |- +|
+   +--+             +---+
+
+Product P07: 1 odd, 7 even triples
+ F:+--+  G:+---+  D:+---+
+   |+ |    |++ |    | + |
+   |+ |    |++ |    |   |
+   |  |    +---+    |   |
+   +--+             +---+
+
+Product P08: 2 odd, 16 even triples
+ F:+--+  G:+---+  D:+---+
+   |+-|    |+  |    | - |
+   |+ |    |++ |    |+  |
+   |  |    +---+    |   |
+   +--+             +---+
+
+Product P09: 1 odd, 7 even triples
+ F:+--+  G:+---+  D:+---+
+   |+-|    |   |    |   |
+   |+-|    |++ |    |-  |
+   |  |    +---+    |   |
+   +--+             +---+
+
+Product P10: 1 odd, 7 even triples
+ F:+--+  G:+---+  D:+---+
+   |  |    | ++|    |   |
+   | +|    | ++|    |   |
+   | +|    +---+    | + |
+   +--+             +---+
+
+Product P11: 2 odd, 16 even triples
+ F:+--+  G:+---+  D:+---+
+   |  |    | ++|    |   |
+   | +|    |  +|    |  +|
+   |-+|    +---+    | - |
+   +--+             +---+
+
+Product P12: 1 odd, 7 even triples
+ F:+--+  G:+---+  D:+---+
+   |  |    | ++|    |   |
+   |-+|    |   |    |  -|
+   |-+|    +---+    |   |
+   +--+             +---+
+
+Product P13: 2 odd, 6 even triples
+ F:+--+  G:+---+  D:+---+
+   | +|    |+  |    |  -|
+   |  |    |  -|    |   |
+   |+ |    +---+    |+  |
+   +--+             +---+
+
+Product P14: 1 odd, 3 even triples
+ F:+--+  G:+---+  D:+---+
+   | -|    |   |    |   |
+   |  |    |+ +|    |   |
+   | -|    +---+    |-  |
+   +--+             +---+
+
+Product P15: 1 odd, 3 even triples
+ F:+--+  G:+---+  D:+---+
+   |+ |    |+ +|    |  +|
+   |  |    |   |    |   |
+   |+ |    +---+    |   |
+   +--+             +---+
+
+
+#
+# End of product contributions file 's3x2x3_15.Hopcroft.contrib.txt'
+#

@@ -1,0 +1,55 @@
+# Product contributions file 's2x2x2_08.Classic.contrib.txt'
+# Created: 04-Jan-2023 14:38
+
+Product P1: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   |+ |    |+ |    |+ |
+   |  |    |  |    |  |
+   +--+    +--+    +--+
+
+Product P2: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   | +|    |  |    |+ |
+   |  |    |+ |    |  |
+   +--+    +--+    +--+
+
+Product P3: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   |+ |    | +|    | +|
+   |  |    |  |    |  |
+   +--+    +--+    +--+
+
+Product P4: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   | +|    |  |    | +|
+   |  |    | +|    |  |
+   +--+    +--+    +--+
+
+Product P5: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   |  |    |+ |    |  |
+   |+ |    |  |    |+ |
+   +--+    +--+    +--+
+
+Product P6: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   |  |    |  |    |  |
+   | +|    |+ |    |+ |
+   +--+    +--+    +--+
+
+Product P7: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   |  |    | +|    |  |
+   |+ |    |  |    | +|
+   +--+    +--+    +--+
+
+Product P8: 1 odd, 0 even triples
+ F:+--+  G:+--+  D:+--+
+   |  |    |  |    |  |
+   | -|    | -|    | +|
+   +--+    +--+    +--+
+
+
+#
+# End of product contributions file 's2x2x2_08.Classic.contrib.txt'
+#

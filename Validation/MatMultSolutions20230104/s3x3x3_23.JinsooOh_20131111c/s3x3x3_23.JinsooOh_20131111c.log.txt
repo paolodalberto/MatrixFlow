@@ -1,0 +1,44 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Fatal error:
+Yacas-format solution file 's3x3x3_23.JinsooOh_20131111c.txt' not found
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Fatal error:
+Yacas-format solution file 's3x3x3_23.JinsooOh_20131111c.txt' not found
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Fatal error:
+Yacas-format solution file 's3x3x3_23.JinsooOh_20131111c.txt' not found
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Fatal error:
+Yacas-format solution file 's3x3x3_23.JinsooOh_20131111c.txt' not found
+
+ciao!
+

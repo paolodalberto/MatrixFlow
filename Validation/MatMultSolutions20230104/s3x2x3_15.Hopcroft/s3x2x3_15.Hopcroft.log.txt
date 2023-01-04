@@ -1,0 +1,115 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x3_15.Hopcroft.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's3x2x3_15.Hopcroft.Brent.txt'
+
+Brent equations written to 's3x2x3_15.Hopcroft.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 15 sums. One for every product.
+11 sums registered. 4 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 15 sums. One for every product.
+11 sums registered. 4 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 9 sums of products. One fo every 3x3 C matrix element. 
+9 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 17
+Sums:               11
+Subexpressions:     25
+Replacements found for simplification: 3 * 2 = 8
+Resulting count of operations: 12
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 17
+Sums:               11
+Subexpressions:     24
+Replacements found for simplification: 3 * 2 = 8
+Resulting count of operations: 12
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 21
+Sums:                9
+Subexpressions:     69
+No replacements found for simplification
+
+Writing simplified Yacas script file 's3x2x3_15.Hopcroft.simplified.txt'
+
+Algorithm  written to file 's3x2x3_15.Hopcroft.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x3_15.Hopcroft.txt'
+Writing Bini-format solution file 's3x2x3_15.Hopcroft.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's3x2x3_15.Hopcroft.Brent.txt'
+
+Brent equations written to 's3x2x3_15.Hopcroft.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x3_15.Hopcroft.txt'
+Writing Yacas script file 's3x2x3_15.Hopcroft.yacas.txt'
+
+Algorithm  written to file 's3x2x3_15.Hopcroft.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's3x2x3_15.Hopcroft.Brent.txt'
+
+Brent equations written to 's3x2x3_15.Hopcroft.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x3_15.Hopcroft.txt'
+Writing Brent equations
+Writing Brent equations file 's3x2x3_15.Hopcroft.Brent.txt'
+
+Brent equations written to 's3x2x3_15.Hopcroft.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's3x2x3_15.Hopcroft.contrib.txt'
+
+ciao!
+

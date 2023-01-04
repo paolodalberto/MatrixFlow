@@ -1,0 +1,117 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3.23_Fawzi_b.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's3x3x3.23_Fawzi_b.Brent.txt'
+
+Brent equations written to 's3x3x3.23_Fawzi_b.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 23 sums. One for every product.
+Duplicate sum: '- a13 - a33'
+17 sums registered. 6 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 23 sums. One for every product.
+13 sums registered. 10 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 9 sums of products. One fo every 3x3 C matrix element. 
+9 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 30
+Sums:               17
+Subexpressions:     53
+Replacements found for simplification: 3 * 3 = 10
+Resulting count of operations: 21
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 35
+Sums:               13
+Subexpressions:     99
+Replacements found for simplification: 4 * 3 = 14
+Resulting count of operations: 20
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 39
+Sums:                9
+Subexpressions:    744
+Replacements found for simplification: 3 * 2 = 6
+Resulting count of operations: 32
+
+Writing simplified Yacas script file 's3x3x3.23_Fawzi_b.simplified.txt'
+
+Algorithm  written to file 's3x3x3.23_Fawzi_b.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3.23_Fawzi_b.txt'
+Writing Bini-format solution file 's3x3x3.23_Fawzi_b.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3.23_Fawzi_b.Brent.txt'
+
+Brent equations written to 's3x3x3.23_Fawzi_b.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3.23_Fawzi_b.txt'
+Writing Yacas script file 's3x3x3.23_Fawzi_b.yacas.txt'
+
+Algorithm  written to file 's3x3x3.23_Fawzi_b.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's3x3x3.23_Fawzi_b.Brent.txt'
+
+Brent equations written to 's3x3x3.23_Fawzi_b.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3.23_Fawzi_b.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3.23_Fawzi_b.Brent.txt'
+
+Brent equations written to 's3x3x3.23_Fawzi_b.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's3x3x3.23_Fawzi_b.contrib.txt'
+
+ciao!
+

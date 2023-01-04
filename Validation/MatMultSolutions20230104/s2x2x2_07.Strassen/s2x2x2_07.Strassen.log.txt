@@ -1,0 +1,113 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x2x2_07.Strassen.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's2x2x2_07.Strassen.Brent.txt'
+
+Brent equations written to 's2x2x2_07.Strassen.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 7 sums. One for every product.
+5 sums registered. 2 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 7 sums. One for every product.
+5 sums registered. 2 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 4 sums of products. One fo every 2x2 C matrix element. 
+4 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 5
+Sums:                5
+Subexpressions:      5
+No replacements found for simplification
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 5
+Sums:                5
+Subexpressions:      5
+No replacements found for simplification
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 8
+Sums:                4
+Subexpressions:     24
+No replacements found for simplification
+
+Writing simplified Yacas script file 's2x2x2_07.Strassen.simplified.txt'
+
+Algorithm  written to file 's2x2x2_07.Strassen.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x2x2_07.Strassen.txt'
+Writing Bini-format solution file 's2x2x2_07.Strassen.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's2x2x2_07.Strassen.Brent.txt'
+
+Brent equations written to 's2x2x2_07.Strassen.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x2x2_07.Strassen.txt'
+Writing Yacas script file 's2x2x2_07.Strassen.yacas.txt'
+
+Algorithm  written to file 's2x2x2_07.Strassen.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's2x2x2_07.Strassen.Brent.txt'
+
+Brent equations written to 's2x2x2_07.Strassen.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x2x2_07.Strassen.txt'
+Writing Brent equations
+Writing Brent equations file 's2x2x2_07.Strassen.Brent.txt'
+
+Brent equations written to 's2x2x2_07.Strassen.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's2x2x2_07.Strassen.contrib.txt'
+
+ciao!
+

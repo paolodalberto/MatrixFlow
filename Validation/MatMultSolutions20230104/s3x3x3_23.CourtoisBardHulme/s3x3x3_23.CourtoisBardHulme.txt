@@ -1,0 +1,61 @@
+#
+# Yacas script s3x3x3_23.CourtoisBardHulme.txt created 04-Feb-2017 22:11:33
+#
+# Matrix multiplication method for 3x3x3_23
+# 3x3 solution of Courtois, Bard and Hulme
+#
+# Intermediate products: 23
+#
+P01 := a23 * (- b12 + b13 - b32 + b33);
+P02 := (- a11 + a13 + a31 + a32) * (b21 + b22);
+P03 := (a13 + a23 - a33) * (b31 + b32 - b33);
+P04 := (- a11 + a13) * (- b21 - b22 + b31);
+P05 := (a11 - a13 + a33) * b31;
+P06 := (- a21 + a23 + a31) * (b12 - b13);
+P07 := (- a31 - a32) * b22;
+P08 := a31 * (b11 - b21);
+P09 := (- a21 - a22 + a23) * b33;
+P10 := (a11 + a21 - a31) * (b11 + b12 + b33);
+P11 := (- a12 - a22 + a32) * (- b22 + b23);
+P12 := a33 * b32;
+P13 := a22 * (b13 - b23);
+P14 := (a21 + a22) * (b13 + b33);
+P15 := a11 * (- b11 + b21 - b31);
+P16 := a31 * (b12 - b22);
+P17 := a12 * (- b22 + b23 - b33);
+P18 := (- a11 + a12 + a13 + a22 + a31) * (b21 + b22 + b33);
+P19 := (- a11 + a22 + a31) * (b13 + b21 + b33);
+P20 := (- a12 + a21 + a22 - a23 - a33) * (- b33);
+P21 := (- a22 - a31) * (b13 - b22);
+P22 := (- a11 - a12 + a31 + a32) * b21;
+P23 := (a11 + a23) * (b12 - b13 - b31);
+c11 :=       + P02       + P04             + P07                                           - P15                                     - P22;
+c12 := + P01 - P02 + P03       + P05       - P07       + P09             + P12                               + P18 - P19 - P20 - P21 + P22 + P23;
+c13 :=       - P02                         - P07                                                       + P17 + P18 - P19       - P21 + P22;
+c21 :=                               + P06       + P08       + P10                   - P14 + P15                   + P19                   - P23;
+c22 := - P01                         - P06             + P09                         + P14       + P16                         + P21;
+c23 :=                                                 + P09                   - P13 + P14;
+c31 :=       + P02       + P04 + P05       + P07 + P08;
+c32 :=                                     - P07                         + P12                   + P16;
+c33 :=                                     - P07       - P09       + P11       - P13                   + P17             + P20 - P21;
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33));
+
+# Statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2, 4]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x3x3_23 solution file s3x3x3_23.CourtoisBardHulme.txt
+#

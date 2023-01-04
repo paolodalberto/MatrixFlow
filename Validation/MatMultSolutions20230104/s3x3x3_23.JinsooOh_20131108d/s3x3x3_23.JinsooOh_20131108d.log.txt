@@ -1,0 +1,116 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.JinsooOh_20131108d.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+
+Brent equations written to 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 23 sums. One for every product.
+15 sums registered. 8 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 23 sums. One for every product.
+20 sums registered. 3 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 9 sums of products. One fo every 3x3 C matrix element. 
+9 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 28
+Sums:               15
+Subexpressions:     65
+Replacements found for simplification: 4 * 2 = 10
+Resulting count of operations: 20
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 37
+Sums:               20
+Subexpressions:     99
+Replacements found for simplification: 4 * 3 = 13
+Resulting count of operations: 25
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 45
+Sums:                9
+Subexpressions:    919
+Replacements found for simplification: 5 * 2 = 11
+Resulting count of operations: 34
+
+Writing simplified Yacas script file 's3x3x3_23.JinsooOh_20131108d.simplified.txt'
+
+Algorithm  written to file 's3x3x3_23.JinsooOh_20131108d.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.JinsooOh_20131108d.txt'
+Writing Bini-format solution file 's3x3x3_23.JinsooOh_20131108d.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+
+Brent equations written to 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.JinsooOh_20131108d.txt'
+Writing Yacas script file 's3x3x3_23.JinsooOh_20131108d.yacas.txt'
+
+Algorithm  written to file 's3x3x3_23.JinsooOh_20131108d.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+
+Brent equations written to 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.JinsooOh_20131108d.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+
+Brent equations written to 's3x3x3_23.JinsooOh_20131108d.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's3x3x3_23.JinsooOh_20131108d.contrib.txt'
+
+ciao!
+

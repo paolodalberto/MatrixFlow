@@ -1,0 +1,93 @@
+
+#
+# Simplified Yacas script 's2x3x4_22.simplified.txt' created 04-Jan-2023 14:38:24
+#
+# Matrix multiplication method for 2x3x4_22
+#
+# Operation count was reduced by 11 add/subtract operations:
+#
+#         original  now
+# a terms:   12  =>   9
+# b terms:   24  =>  16
+# c terms:   24  =>  24
+# ---------------------------
+# total:     60  =>  49
+#
+
+#
+# Intermediate products: 22
+#
+
+#
+# Auxiliary variables:
+#
+F1 := - a12 - a21;
+F2 := a22 - a23;
+
+G1 := b11 + b31;
+G2 := b22 + b32;
+G3 := b13 + b33;
+G4 := b24 + b34;
+
+#
+# Product terms:
+#
+P01 := (a11 + a12 - a13) * (- b11);
+P02 := (- a12 - a21) * (G1 + G2);
+P03 := (- a11 - a21) * b12;
+P04 := (a12 + a21 - a23) * (b21 + b31 + G2);
+P05 := (- a13) * (- G1);
+P06 := (- a12 + a13 - a21) * (- b32 - G1);
+P07 := a23 * (- G2);
+P08 := (- a21) * (b12 + b22);
+P09 := (- a21 + a22 - a23) * (- b22);
+P10 := a12 * (b11 - b21);
+P11 := (a21 + a22 - a23) * (- b21);
+P12 := (a11 + a12 - a13) * (- b13);
+P13 := (- a12 - a21) * (G3 + G4);
+P14 := (- a11 - a21) * b14;
+P15 := (a12 + a21 - a23) * (b23 + b33 + G4);
+P16 := (- a13) * (- G3);
+P17 := (- a12 + a13 - a21) * (- b34 - G3);
+P18 := a23 * (- G4);
+P19 := (- a21) * (b14 + b24);
+P20 := (- a21 + a22 - a23) * (- b24);
+P21 := a12 * (b13 - b23);
+P22 := (a21 + a22 - a23) * (- b23);
+
+#
+# Target matrix sums of products:
+#
+c11 := - P01 + P05 - P10;
+c12 := - P02 - P03 - P05 - P06 + P08;
+c13 := - P12 + P16 - P21;
+c14 := - P13 - P14 - P16 - P17 + P19;
+c21 := - P02 - P04 + P07 - P10 - P11;
+c22 := - P07 - P08 - P09;
+c23 := - P13 - P15 + P18 - P21 - P22;
+c24 := - P18 - P19 - P20;
+
+
+#
+# Algorithm validated via prime element calculation.
+#
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c14 - (a11*b14 + a12*b24 + a13*b34));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c24 - (a21*b14 + a22*b24 + a23*b34));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 2x3x4_22 solution file 's2x3x4_22.simplified.txt'
+#

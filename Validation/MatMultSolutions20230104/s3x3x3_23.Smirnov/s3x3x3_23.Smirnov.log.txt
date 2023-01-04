@@ -1,0 +1,116 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.Smirnov.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.Smirnov.Brent.txt'
+
+Brent equations written to 's3x3x3_23.Smirnov.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 23 sums. One for every product.
+20 sums registered. 3 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 23 sums. One for every product.
+14 sums registered. 9 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 9 sums of products. One fo every 3x3 C matrix element. 
+9 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 26
+Sums:               20
+Subexpressions:     38
+Replacements found for simplification: 2 * 3 = 6
+Resulting count of operations: 22
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 22
+Sums:               14
+Subexpressions:     40
+Replacements found for simplification: 2 * 2 = 5
+Resulting count of operations: 19
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 36
+Sums:                9
+Subexpressions:    344
+Replacements found for simplification: 3 * 2 = 7
+Resulting count of operations: 32
+
+Writing simplified Yacas script file 's3x3x3_23.Smirnov.simplified.txt'
+
+Algorithm  written to file 's3x3x3_23.Smirnov.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.Smirnov.txt'
+Writing Bini-format solution file 's3x3x3_23.Smirnov.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.Smirnov.Brent.txt'
+
+Brent equations written to 's3x3x3_23.Smirnov.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.Smirnov.txt'
+Writing Yacas script file 's3x3x3_23.Smirnov.yacas.txt'
+
+Algorithm  written to file 's3x3x3_23.Smirnov.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.Smirnov.Brent.txt'
+
+Brent equations written to 's3x3x3_23.Smirnov.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.Smirnov.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.Smirnov.Brent.txt'
+
+Brent equations written to 's3x3x3_23.Smirnov.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's3x3x3_23.Smirnov.contrib.txt'
+
+ciao!
+

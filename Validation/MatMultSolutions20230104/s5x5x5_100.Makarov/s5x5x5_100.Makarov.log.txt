@@ -1,0 +1,119 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_100.Makarov.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's5x5x5_100.Makarov.Brent.txt'
+
+Brent equations written to 's5x5x5_100.Makarov.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 100 sums. One for every product.
+Duplicate sum: 'a14 - a24'
+Duplicate sum: 'a21 + a22'
+Duplicate sum: 'a43 + a44'
+76 sums registered. 24 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 100 sums. One for every product.
+78 sums registered. 22 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 25 sums of products. One fo every 5x5 C matrix element. 
+25 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 194
+Sums:               76
+Subexpressions:   3857
+Replacements found for simplification: 20 * 3 = 68
+Resulting count of operations: 123
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 203
+Sums:               78
+Subexpressions:   4878
+Replacements found for simplification: 21 * 4 = 88
+Resulting count of operations: 124
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 262
+Sums:               25
+Subexpressions: 490998
+Replacements found for simplification: 20 * 2 = 49
+Resulting count of operations: 189
+
+Writing simplified Yacas script file 's5x5x5_100.Makarov.simplified.txt'
+
+Algorithm  written to file 's5x5x5_100.Makarov.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_100.Makarov.txt'
+Writing Bini-format solution file 's5x5x5_100.Makarov.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's5x5x5_100.Makarov.Brent.txt'
+
+Brent equations written to 's5x5x5_100.Makarov.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_100.Makarov.txt'
+Writing Yacas script file 's5x5x5_100.Makarov.yacas.txt'
+
+Algorithm  written to file 's5x5x5_100.Makarov.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's5x5x5_100.Makarov.Brent.txt'
+
+Brent equations written to 's5x5x5_100.Makarov.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_100.Makarov.txt'
+Writing Brent equations
+Writing Brent equations file 's5x5x5_100.Makarov.Brent.txt'
+
+Brent equations written to 's5x5x5_100.Makarov.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's5x5x5_100.Makarov.contrib.txt'
+
+ciao!
+

@@ -1,0 +1,78 @@
+
+#
+# Simplified Yacas script 's2x2x3_11.pyz3.simplified.txt' created 04-Jan-2023 14:38:23
+#
+# Matrix multiplication method for 2x2x3_11
+#
+# Operation count was reduced by 5 add/subtract operations:
+#
+#         original  now
+# a terms:   13  =>  10
+# b terms:    7  =>   7
+# c terms:   13  =>  11
+# ---------------------------
+# total:     33  =>  28
+#
+
+#
+# Intermediate products: 11
+#
+
+#
+# Auxiliary variables:
+#
+F1 := a11 + a22;
+
+
+#
+# Product terms:
+#
+P01 := (- a12 - a21 + F1) * (- b21);
+P02 := (a21 + F1) * (- b13 - b23);
+P03 := (a11 - a21) * (b11 + b21);
+P04 := (- a22) * (b12 + b22);
+P05 := (- a12) * (b21 + b22);
+P06 := (- a21 + a22) * (- b12);
+P07 := (- a21 - a22) * (- b13);
+P08 := (- a22) * (- b13 + b23);
+P09 := (a21 - F1) * (- b12 + b21);
+P10 := (- a11) * (b11 + b12);
+P11 := (a12 - a21 - F1) * (- b23);
+
+#
+# Auxiliary variables for sums of products:
+#
+T1 := - P06 - P09;
+
+#
+# Target matrix sums of products:
+#
+c11 := P01 - P10 + T1;
+c12 := - P01 - P05 - T1;
+c13 := - P02 - P07 - P11;
+c21 := - P03 - P10 + T1;
+c22 := - P04 + P06;
+c23 := P07 - P08;
+
+
+#
+# Algorithm validated via prime element calculation.
+#
+
+Simplify(c11 - (a11*b11 + a12*b21));
+Simplify(c12 - (a11*b12 + a12*b22));
+Simplify(c13 - (a11*b13 + a12*b23));
+Simplify(c21 - (a21*b11 + a22*b21));
+Simplify(c22 - (a21*b12 + a22*b22));
+Simplify(c23 - (a21*b13 + a22*b23));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 2x2x3_11 solution file 's2x2x3_11.pyz3.simplified.txt'
+#

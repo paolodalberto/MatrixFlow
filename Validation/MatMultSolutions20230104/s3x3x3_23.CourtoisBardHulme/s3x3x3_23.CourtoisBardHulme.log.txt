@@ -1,0 +1,116 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.CourtoisBardHulme.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+
+Brent equations written to 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 23 sums. One for every product.
+16 sums registered. 7 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 23 sums. One for every product.
+17 sums registered. 6 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 9 sums of products. One fo every 3x3 C matrix element. 
+9 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 33
+Sums:               16
+Subexpressions:     91
+Replacements found for simplification: 4 * 3 = 12
+Resulting count of operations: 25
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 27
+Sums:               17
+Subexpressions:     45
+Replacements found for simplification: 5 * 2 = 12
+Resulting count of operations: 20
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 47
+Sums:                9
+Subexpressions:   8588
+Replacements found for simplification: 4 * 2 = 8
+Resulting count of operations: 38
+
+Writing simplified Yacas script file 's3x3x3_23.CourtoisBardHulme.simplified.txt'
+
+Algorithm  written to file 's3x3x3_23.CourtoisBardHulme.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.CourtoisBardHulme.txt'
+Writing Bini-format solution file 's3x3x3_23.CourtoisBardHulme.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+
+Brent equations written to 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.CourtoisBardHulme.txt'
+Writing Yacas script file 's3x3x3_23.CourtoisBardHulme.yacas.txt'
+
+Algorithm  written to file 's3x3x3_23.CourtoisBardHulme.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+
+Brent equations written to 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x3x3_23.CourtoisBardHulme.txt'
+Writing Brent equations
+Writing Brent equations file 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+
+Brent equations written to 's3x3x3_23.CourtoisBardHulme.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's3x3x3_23.CourtoisBardHulme.contrib.txt'
+
+ciao!
+

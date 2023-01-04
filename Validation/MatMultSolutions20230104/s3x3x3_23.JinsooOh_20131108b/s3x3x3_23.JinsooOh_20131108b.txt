@@ -1,0 +1,60 @@
+#
+# Yacas script 3x3x3_23_JinsooOh_20131108b.txt created 30-Oct-2017 19:54:14
+#
+# Matrix multiplication method for 3x3x3_23
+#
+# Intermediate products: 23
+#
+P01 := (a11 + a12 + a21 + a22) * (- b11 + b13);
+P02 := (- a12 - a22) * (- b11 + b13 + b21 - b23 + b31 - b33);
+P03 := (a11 + a12 + a31 + a32) * b12;
+P04 := (a21 + a23 + a31 + a33) * b31;
+P05 := (a21 + a31 + a33) * (- b13 + b31);
+P06 := (- a31 + a32) * b12;
+P07 := (a12 + a32) * (b12 - b22);
+P08 := (a11 + a13) * (- b13);
+P09 := (- a21 - a31) * (- b11 - b12 + b31);
+P10 := (a21 + a32) * (b12 - b21);
+P11 := (a32 - a33) * (- b13 + b32 + b33);
+P12 := a13 * (b13 - b23 - b33);
+P13 := (- a13 + a23) * (- b32);
+P14 := (- a32) * (- b12 + b13 - b22 - b23 - b32 - b33);
+P15 := (- a21 + a22) * (- b21);
+P16 := (- a22 - a32) * (b21 + b22);
+P17 := (a12 - a13 + a22) * (- b23 + b31 - b33);
+P18 := (a12 - a13) * (- b23);
+P19 := (a12 - a13 + a22 - a23) * (- b31 + b33);
+P20 := (a13 + a32) * (b13 - b23 - b32 - b33);
+P21 := (a13 + a33) * b32;
+P22 := (a31 + a33) * (- b13);
+P23 := (- a21) * (b11 - b13 + b21);
+c11 := - P01 - P02                               - P08                   - P12             + P15       - P17                               + P23;
+c12 :=             + P03             + P06 - P07                         + P12       - P14                               - P20;
+c13 :=                                           - P08                   - P12                               - P18;
+c21 :=                   + P04 - P05                                                       - P15                                     + P22 - P23;
+c22 :=                                                       + P10       + P12 - P13 - P14 + P15 - P16                   - P20;
+c23 :=                   + P04 - P05                                                                   - P17 + P18 - P19             + P22;
+c31 :=                         + P05 + P06             + P09 - P10                                                                   - P22 + P23;
+c32 :=                               - P06                               - P12       + P14                               + P20 + P21;
+c33 :=                                                             - P11 + P12                                           - P20 - P21 - P22;
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33));
+
+# Statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2, 4]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x3x3_23 solution file 3x3x3_23_JinsooOh_20131108b.txt
+#

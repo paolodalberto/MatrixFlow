@@ -1,0 +1,19 @@
+#
+#  2x2 classic solution 
+#
+#  Product p8 is written with two negative signs
+#  to indicate that this is not a mod 2 solution.
+
+p1 := a11 * b11;
+p2 := a12 * b21;
+p3 := a11 * b12;
+p4 := a12 * b22;
+p5 := a21 * b11;
+p6 := a22 * b21;
+p7 := a21 * b12;
+p8 := (-a22) * (-b22);
+
+c11 := p1 + p2;
+c12 := p3 + p4;
+c21 := p5 + p6;
+c22 := p7 + p8;

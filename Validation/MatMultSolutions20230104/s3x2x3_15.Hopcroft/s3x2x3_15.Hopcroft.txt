@@ -1,0 +1,52 @@
+#
+# Yacas script 3x2x3.Hopcroft.unified.txt created 13-Nov-2017 09:38:23
+#
+# Matrix multiplication method for 3x2x3_15
+#
+# Intermediate products: 15
+#
+P01 := (a11 - a12) * b11;
+P02 := a12 * (b11 + b21);
+P03 := a21 * b12;
+P04 := a22 * b22;
+P05 := a31 * (b13 + b23);
+P06 := (- a31 + a32) * b23;
+P07 := (a11 + a21) * (b11 + b12 + b21 + b22);
+P08 := (a11 - a12 + a21) * (b11 + b21 + b22);
+P09 := (a11 - a12 + a21 - a22) * (b21 + b22);
+P10 := (a22 + a32) * (b12 + b13 + b22 + b23);
+P11 := (a22 - a31 + a32) * (b12 + b13 + b23);
+P12 := (- a21 + a22 - a31 + a32) * (b12 + b13);
+P13 := (a12 + a31) * (b11 - b23);
+P14 := (- a12 - a32) * (b21 + b23);
+P15 := (a11 + a31) * (b11 + b13);
+c11 := + P01 + P02;
+c12 :=       - P02 - P03                   + P07 - P08;
+c13 := - P01                   - P05                                           - P13       + P15;
+c21 := - P01             - P04                   + P08 - P09;
+c22 :=             + P03 + P04;
+c23 :=             - P03             - P06                         + P11 - P12;
+c31 :=       - P02                   - P06                                     + P13 - P14;
+c32 :=                   - P04 - P05                         + P10 - P11;
+c33 :=                         + P05 + P06;
+
+Simplify(c11 - (a11*b11 + a12*b21));
+Simplify(c12 - (a11*b12 + a12*b22));
+Simplify(c13 - (a11*b13 + a12*b23));
+Simplify(c21 - (a21*b11 + a22*b21));
+Simplify(c22 - (a21*b12 + a22*b22));
+Simplify(c23 - (a21*b13 + a22*b23));
+Simplify(c31 - (a31*b11 + a32*b21));
+Simplify(c32 - (a31*b12 + a32*b22));
+Simplify(c33 - (a31*b13 + a32*b23));
+
+# Statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x2x3_15 solution file 3x2x3.Hopcroft.unified.txt
+#

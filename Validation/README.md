@@ -16,3 +16,14 @@ scheme is written to a text file `s<p>x<q>x<n>_<k>.bini.txt`
 It is allowed to combine a scheme with itself.
 
 Axel.Kemper at gmail.com  18-Dec-2022
+
+
+```sh
+## play and create new algorithms and validate them 
+
+python3 akBiniChecker.py MatMultSolutions20230104/s2x2x2_07.Strassen/s2x2x2_07.Strassen.Bini.txt MatMultSolutions20230104/s3x3x3_23.JinsooOh_20131111a/s3x3x3_23.JinsooOh_20131111a.Bini.txt 
+python3 akBiniChecker.py MatMultSolutions20230104/s3x3x3_23.JinsooOh_20131111a/s3x3x3_23.JinsooOh_20131111a.Bini.txt MultSolutions20230104/s3x3x3_23.JinsooOh_20131111a/s3x3x3_23.JinsooOh_20131111a.Bini.txt 
+python3 akBiniChecker.py MatMultSolutions20230104/s3x3x3_23.JinsooOh_20131111a/s3x3x3_23.JinsooOh_20131111a.Bini.txt MatMultSolutions20230104/s3x3x3_23.JinsooOh_20131111a/s3x3x3_23.JinsooOh_20131111a.Bini.txt 
+python3 akBiniChecker.py MatMultSolutions20230104/s2x2x2_07.Strassen/s2x2x2_07.Strassen.Bini.txt MatMultSolutions20230104/s5x5x5_99.Sedoglavic/s5x5x5_99.Sedoglavic.Bini.txt 
+python3 akBiniChecker.py MatMultSolutions20230104/s2x2x2_07.Strassen/s2x2x2_07.Strassen.Bini.txt s6x6x6_161.bini.txt
+ ```

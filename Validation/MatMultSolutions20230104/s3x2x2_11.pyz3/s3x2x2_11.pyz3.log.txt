@@ -1,0 +1,116 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x2_11.pyz3.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's3x2x2_11.pyz3.Brent.txt'
+
+Brent equations written to 's3x2x2_11.pyz3.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 11 sums. One for every product.
+9 sums registered. 2 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 11 sums. One for every product.
+7 sums registered. 4 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 6 sums of products. One fo every 3x2 C matrix element. 
+6 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 17
+Sums:                9
+Subexpressions:     48
+Replacements found for simplification: 3 * 3 = 9
+Resulting count of operations: 11
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 8
+Sums:                7
+Subexpressions:      8
+Replacements found for simplification: 1 * 3 = 3
+Resulting count of operations: 6
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 18
+Sums:                6
+Subexpressions:     75
+Replacements found for simplification: 1 * 2 = 2
+Resulting count of operations: 15
+
+Writing simplified Yacas script file 's3x2x2_11.pyz3.simplified.txt'
+
+Algorithm  written to file 's3x2x2_11.pyz3.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x2_11.pyz3.txt'
+Writing Bini-format solution file 's3x2x2_11.pyz3.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's3x2x2_11.pyz3.Brent.txt'
+
+Brent equations written to 's3x2x2_11.pyz3.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x2_11.pyz3.txt'
+Writing Yacas script file 's3x2x2_11.pyz3.yacas.txt'
+
+Algorithm  written to file 's3x2x2_11.pyz3.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's3x2x2_11.pyz3.Brent.txt'
+
+Brent equations written to 's3x2x2_11.pyz3.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's3x2x2_11.pyz3.txt'
+Writing Brent equations
+Writing Brent equations file 's3x2x2_11.pyz3.Brent.txt'
+
+Brent equations written to 's3x2x2_11.pyz3.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's3x2x2_11.pyz3.contrib.txt'
+
+ciao!
+

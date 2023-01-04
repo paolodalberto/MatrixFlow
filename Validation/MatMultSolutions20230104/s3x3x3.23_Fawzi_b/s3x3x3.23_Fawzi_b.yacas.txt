@@ -1,0 +1,61 @@
+#
+# Yacas script 's3x3x3.23_Fawzi_b.yacas.txt' created 04-Jan-2023 14:38:27
+#
+# Matrix multiplication method for 3x3x3_23
+#
+# Intermediate products: 23
+#
+P01 := (a11 + a21) * (- b12 - b22 - b32);
+P02 := (a11 - a12 + a21) * (- b12 + b13 - b22 - b32);
+P03 := (a11 - a13 + a21 - a23) * (- b32);
+P04 := (- a12 + a13) * (- b32);
+P05 := (- a12 + a13 + a33) * (- b12 + b13 - b22 + b23 - b32);
+P06 := (a11 - a12 + a21 - a22) * b22;
+P07 := (- a12 + a13 - a31 + a33) * (- b12 + b13 + b21);
+P08 := (a11 - a12) * (- b12 + b13);
+P09 := (a11 + a31) * (b11 + b12 - b13);
+P10 := (- a13 - a33) * (- b12 + b13 - b22 + b23 - b32 + b33);
+P11 := (- a12 + a13 - a32 + a33) * (b21 + b22 - b23);
+P12 := (- a13 - a33) * (- b12 + b13 + b21 + b31);
+P13 := a31 * (b11 + b21 - b31);
+P14 := (- a22 + a31 - a32) * (b11 + b13 + b21 - b31);
+P15 := (a21 - a22 + a31 - a32) * (b11 + b13 - b31);
+P16 := a33 * b33;
+P17 := (a21 + a23) * b31;
+P18 := a22 * b23;
+P19 := (a31 + a33) * b31;
+P20 := a21 * (- b13);
+P21 := (- a22 - a32) * (b11 + b13 + b21 + b23 - b31);
+P22 := a23 * b33;
+P23 := (a31 - a32) * b21;
+
+c11 := - P07 + P08 + P09             - P12 - P13                               - P19;
+c12 := - P01 + P02       - P04                   - P08                                                                   + P20;
+c13 := - P01 + P02             - P05                         - P10                               - P16                   + P20;
+c21 := - P14 + P15       + P17             + P20             + P23;
+c22 := - P02 + P03 + P04       - P06       + P08                                                                   - P20;
+c23 := P18       - P20       + P22;
+c31 := P13                               + P19                   - P23;
+c32 := P04 - P05       + P07                   - P11       - P13 + P14                   - P18             - P21       + P23;
+c33 := - P13 + P14       + P16       - P18             - P21;
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1, 3]
+# in even equations [0, 2, 4]
+# in kernel columns [1, 2, 4]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x3x3_23 solution file 's3x3x3.23_Fawzi_b.yacas.txt'
+#

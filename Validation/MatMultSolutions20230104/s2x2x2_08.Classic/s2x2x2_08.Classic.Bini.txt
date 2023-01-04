@@ -1,0 +1,20 @@
+#
+# File 's2x2x2_08.Classic.Bini.txt'
+#
+# Solution for the 2x2x2_8 matrix multiplication problem in Bini matrix format
+#
+# Created: 04-Jan-2023 14:38:23
+#
+Bini 2 2 2 8
+
+product Gamma         Alpha         Beta
+  1 ;   1  0  0  0 ;  1  0  0  0 ;  1  0  0  0
+  2 ;   1  0  0  0 ;  0  1  0  0 ;  0  0  1  0
+  3 ;   0  1  0  0 ;  1  0  0  0 ;  0  1  0  0
+  4 ;   0  1  0  0 ;  0  1  0  0 ;  0  0  0  1
+  5 ;   0  0  1  0 ;  0  0  1  0 ;  1  0  0  0
+  6 ;   0  0  1  0 ;  0  0  0  1 ;  0  0  1  0
+  7 ;   0  0  0  1 ;  0  0  1  0 ;  0  1  0  0
+  8 ;   0  0  0  1 ;  0  0  0 -1 ;  0  0  0 -1
+
+#

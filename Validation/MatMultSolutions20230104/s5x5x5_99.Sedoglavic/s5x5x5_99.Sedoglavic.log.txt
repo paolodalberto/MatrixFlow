@@ -1,0 +1,118 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_99.Sedoglavic.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's5x5x5_99.Sedoglavic.Brent.txt'
+
+Brent equations written to 's5x5x5_99.Sedoglavic.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 99 sums. One for every product.
+Duplicate sum: 'a43 + a44'
+Duplicate sum: 'a21 + a22'
+74 sums registered. 25 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 99 sums. One for every product.
+78 sums registered. 21 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 25 sums of products. One fo every 5x5 C matrix element. 
+25 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 192
+Sums:               74
+Subexpressions:   3874
+Replacements found for simplification: 18 * 3 = 63
+Resulting count of operations: 124
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 212
+Sums:               78
+Subexpressions:   5127
+Replacements found for simplification: 25 * 4 = 110
+Resulting count of operations: 124
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 270
+Sums:               25
+Subexpressions: 571674
+Replacements found for simplification: 22 * 2 = 57
+Resulting count of operations: 187
+
+Writing simplified Yacas script file 's5x5x5_99.Sedoglavic.simplified.txt'
+
+Algorithm  written to file 's5x5x5_99.Sedoglavic.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_99.Sedoglavic.txt'
+Writing Bini-format solution file 's5x5x5_99.Sedoglavic.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's5x5x5_99.Sedoglavic.Brent.txt'
+
+Brent equations written to 's5x5x5_99.Sedoglavic.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_99.Sedoglavic.txt'
+Writing Yacas script file 's5x5x5_99.Sedoglavic.yacas.txt'
+
+Algorithm  written to file 's5x5x5_99.Sedoglavic.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's5x5x5_99.Sedoglavic.Brent.txt'
+
+Brent equations written to 's5x5x5_99.Sedoglavic.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's5x5x5_99.Sedoglavic.txt'
+Writing Brent equations
+Writing Brent equations file 's5x5x5_99.Sedoglavic.Brent.txt'
+
+Brent equations written to 's5x5x5_99.Sedoglavic.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's5x5x5_99.Sedoglavic.contrib.txt'
+
+ciao!
+

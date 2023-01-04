@@ -1,0 +1,56 @@
+#
+# Yacas script s3x3x3_23.txt created 01 16 2015 21:16:23
+#
+# Matrix multiplication method for 3x3x3_23
+#
+# Intermediate products: 23
+#
+P01 := (a33 ) * (- b11 - b21 + b31);
+P02 := (a22 + a33 ) * (- b21 + b32);
+P03 := (a11 + a12 + a31 + a32 ) * (b23);
+P04 := (- a11 + a21 ) * (b12 + b13);
+P05 := (- a31 - a32 ) * (- b12);
+P06 := (a22 + a23 ) * (b32);
+P07 := (- a21 - a33 ) * (b11);
+P08 := (a31 + a33 ) * (b11);
+P09 := (a22 ) * (- b12 + b22 - b32);
+P10 := (a22 - a32 ) * (b12 + b21 - b22);
+P11 := (- a32 - a33 ) * (b21);
+P12 := (- a13 + a22 + a23 ) * (b22 + b23 - b32);
+P13 := (a13 + a33 ) * (b31 + b33);
+P14 := (a11 + a31 ) * (b11 + b13 - b23);
+P15 := (- a11 + a33 ) * (b11 + b33);
+P16 := (- a13 + a23 ) * (- b22 - b23 + b32 + b33);
+P17 := (- a12 - a13 + a22 + a23 ) * (- b22 - b23);
+P18 := (- a23 + a33 ) * (- b31 + b32);
+P19 := (- a11 - a31 - a32 ) * (- b12 - b23);
+P20 := (- a11 - a13 ) * (b33);
+P21 := (a11 ) * (- b12 - b13 + b33);
+P22 := (- a21 - a22 ) * (b12);
+P23 := (- a12 + a33 ) * (b21);
+
+c11 :=  - P01 + P13 - P15 + P20 - P23;
+c12 :=  - P03 - P05 + P06 + P12 + P17 + P19;
+c13 := P03 + P05 - P19 - P20 - P21;
+c21 := P01 - P02 + P06 - P07 + P18;
+c22 := P06 + P09 - P22;
+c23 := P04 - P09 + P12 + P16 - P20 - P21 + P22;
+c31 := P01 + P08 - P11;
+c32 := P02 + P05 + P09 + P10 - P11;
+c33 :=  - P05 - P08 + P14 + P15 + P19 + P21;
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33));
+
+# Algorithm properly fulfills all Brent's Equations
+
+#
+# End of 3x3x3_23 solution file s3x3x3_23.txt
+#

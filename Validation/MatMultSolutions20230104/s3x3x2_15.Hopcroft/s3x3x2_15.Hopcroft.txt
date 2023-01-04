@@ -1,0 +1,56 @@
+#
+#  Yacas script s3x3x2_15.Hopcroft.txt created 14 Jul 2016 00:09:12
+#
+#  Hopcroft solution
+#
+#  Fast matrix multiplication method for 3x3x2 matrix products.
+#
+#  intermediate products: 15
+#
+#  literal 0 from mod2: 221
+#  literal 1 from mod2: 94
+#  literal +1 from rev: 65
+#  literal -1 from rev: 29
+
+P01 := (a11-a13-a21) * (b11);
+P02 := (a11-a12-a31) * (b11+b12);
+P03 := (-a12+a22-a23) * (b21);
+P04 := (-a21+a22-a32) * (b22);
+P05 := (-a13-a32+a33) * (b31+b32);
+P06 := (-a23-a31+a33) * (b32);
+P07 := (a12) * (b11+b12+b21+b22);
+P08 := (-a12+a21) * (b11+b12+b22);
+P09 := (-a21) * (b12+b22);
+P10 := (a32) * (b21+b22+b31+b32);
+P11 := (a23-a32) * (b21+b31+b32);
+P12 := (-a23) * (b21+b31);
+P13 := (-a13+a31) * (b11-b32);
+P14 := (-a31) * (b12+b32);
+P15 := (a13) * (b11+b31);
+
+c11 := P01+P07+P08+P09+P15;
+c12 := -P01+P02-P08-P09+P13-P14;
+c21 := P03+P07+P08+P09-P12;
+c22 := P04-P09+P10+P11+P12;
+c31 := P05-P06-P11-P12+P13+P15;
+c32 := P06+P10+P11+P12-P14;
+
+Simplify(c11 - (a11*b11+a12*b21+a13*b31));
+Simplify(c12 - (a11*b12+a12*b22+a13*b32));
+Simplify(c21 - (a21*b11+a22*b21+a23*b31));
+Simplify(c22 - (a21*b12+a22*b22+a23*b32));
+Simplify(c31 - (a31*b11+a32*b21+a33*b31));
+Simplify(c32 - (a31*b12+a32*b22+a33*b32));
+
+#  Yacas detects no errors. OK!
+
+#  Rank of 15x15 matrix H'*H is 15
+
+#  No linear dependencies between intermediate products found
+
+#  add operations: 39
+#  sub operations: 19
+
+#
+#  end of 3x3x2 solution s3x3x2_15.Hopcroft.txt
+#

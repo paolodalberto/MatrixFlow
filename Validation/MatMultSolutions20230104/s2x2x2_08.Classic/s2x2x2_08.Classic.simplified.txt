@@ -1,0 +1,60 @@
+
+#
+# Simplified Yacas script 's2x2x2_08.Classic.simplified.txt' created 04-Jan-2023 14:38:23
+#
+# Matrix multiplication method for 2x2x2_8
+#
+# Operation count could not be reduced
+#
+#         original  now
+# a terms:    0  =>   0
+# b terms:    0  =>   0
+# c terms:    4  =>   4
+# ---------------------------
+# total:      4  =>   4
+#
+
+#
+# Intermediate products: 8
+#
+
+#
+# Product terms:
+#
+P1 := a11 * b11;
+P2 := a12 * b21;
+P3 := a11 * b12;
+P4 := a12 * b22;
+P5 := a21 * b11;
+P6 := a22 * b21;
+P7 := a21 * b12;
+P8 := (- a22) * (- b22);
+
+#
+# Target matrix sums of products:
+#
+c11 := P1 + P2;
+c12 := P3 + P4;
+c21 := P5 + P6;
+c22 := P7 + P8;
+
+
+#
+# Algorithm validated via prime element calculation.
+#
+
+Simplify(c11 - (a11*b11 + a12*b21));
+Simplify(c12 - (a11*b12 + a12*b22));
+Simplify(c21 - (a21*b11 + a22*b21));
+Simplify(c22 - (a21*b12 + a22*b22));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0]
+# in kernel columns [1]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 2x2x2_8 solution file 's2x2x2_08.Classic.simplified.txt'
+#

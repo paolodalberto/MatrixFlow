@@ -1,0 +1,39 @@
+#
+# Yacas script 's2x3x2_11.pyz3.yacas.txt' created 04-Jan-2023 14:38:24
+#
+# Matrix multiplication method for 2x3x2_11
+#
+# Intermediate products: 11
+#
+P01 := (- a11 + a12 - a13 + a21 - a22 + a23) * (- b11 + b12);
+P02 := (- a21 + a22 - a23) * (- b11 + b21 + b31);
+P03 := (a22 - a23) * (- b11 + b31);
+P04 := (- a21 - a23) * (- b21 - b31);
+P05 := (- a13 + a22) * (b12 - b21 + b22 - b31);
+P06 := (- a11 - a13) * (- b12);
+P07 := (- a13 - a21 + a22 - a23) * (b12 - b21 - b31);
+P08 := (a13 + a23) * (b12 - b32);
+P09 := (- a12 - a13) * (- b22);
+P10 := (- a12 + a13) * (- b11 + b12 - b21);
+P11 := (- a13) * (b12 + b22 - b32);
+
+c11 := P01 + P02                   + P06 + P07             + P10;
+c12 := P06             + P09       + P11;
+c21 := P02 - P03 + P04;
+c22 := P04 + P05       - P07 - P08             - P11;
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1, 3]
+# in even equations [0, 2, 4]
+# in kernel columns [1, 2, 3]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 2x3x2_11 solution file 's2x3x2_11.pyz3.yacas.txt'
+#

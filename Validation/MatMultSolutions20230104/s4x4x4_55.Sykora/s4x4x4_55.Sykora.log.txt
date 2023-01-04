@@ -1,0 +1,48 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's4x4x4_55.Sykora.txt'
+Fatal error:
+Unexpected line: 'n := 4;'
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's4x4x4_55.Sykora.txt'
+Fatal error:
+Unexpected line: 'n := 4;'
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's4x4x4_55.Sykora.txt'
+Fatal error:
+Unexpected line: 'n := 4;'
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's4x4x4_55.Sykora.txt'
+Fatal error:
+Unexpected line: 'n := 4;'
+
+ciao!
+

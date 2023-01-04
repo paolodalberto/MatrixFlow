@@ -1,0 +1,25 @@
+#
+# 2x2x2 solution
+#
+#  Strassen's 2x2 algorithm
+#
+#  Axel Kemper  28.12.2012 18:59:19
+#
+
+P1 := (a11 + a22) * (b11 + b22);
+P2 := (a21 + a22) * (b11);
+P3 := (a11) * (b12 - b22);
+P4 := (a22) * (- b11 + b21);
+P5 := (a11 + a12) * (b22);
+P6 := (- a11 + a21) * (b11 + b12);
+P7 := (a12 - a22) * (b21 + b22);
+
+c11 := P1 + P4 - P5 + P7;
+c12 := P3 + P5;
+c21 := P2 + P4;
+c22 := P1 - P2 + P3 + P6;
+
+Simplify(c11 - (a11 * b11 + a12 * b21));
+Simplify(c12 - (a11 * b12 + a12 * b22));
+Simplify(c21 - (a21 * b11 + a22 * b21));
+Simplify(c22 - (a21 * b12 + a22 * b22));

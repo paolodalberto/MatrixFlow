@@ -1,0 +1,61 @@
+#
+# Yacas script 's3x3x3_23.Sykora.yacas.txt' created 04-Jan-2023 14:38:33
+#
+# Matrix multiplication method for 3x3x3_23
+#
+# Intermediate products: 23
+#
+P01 := a11 * b12;
+P02 := a12 * b22;
+P03 := a13 * b32;
+P04 := (- a11 + a21 + a23) * (- b11 + b12 + b31);
+P05 := (- a12 + a22 + a23) * (b22 - b23 + b33);
+P06 := (- a12 + a32 + a33) * (- b21 + b22 + b31);
+P07 := (- a11 + a31 + a33) * (b12 - b13 + b33);
+P08 := (a21 + a23) * (b11 - b12);
+P09 := (a22 + a23) * (- b22 + b23);
+P10 := (a32 + a33) * (b21 - b22);
+P11 := (a31 + a33) * (- b12 + b13);
+P12 := (a11 - a21) * (- b11 + b31);
+P13 := (a12 - a22) * (- b23 + b33);
+P14 := (a12 - a32) * (- b21 + b31);
+P15 := (a11 - a31) * (- b13 + b33);
+P16 := a22 * b21;
+P17 := a21 * b13;
+P18 := a31 * b11;
+P19 := a32 * b23;
+P20 := (a11 + a12 + a13 - a21 - a23 - a32 - a33) * b31;
+P21 := (a11 + a12 + a13 - a22 - a23 - a31 - a33) * b33;
+P22 := a23 * (b11 - b12 - b22 + b23 - b31 + b32 - b33);
+P23 := a33 * (- b12 + b13 + b21 - b22 - b31 + b32 - b33);
+
+c11 := P01 + P02       + P04       + P06       + P08       + P10                                                       + P20;
+c12 := P01 + P02 + P03;
+c13 := P01 + P02             + P05       + P07       + P09       + P11                                                       + P21;
+c21 := P01             + P04                   + P08                   + P12                   + P16;
+c22 := P01 + P02       + P04 + P05                                     + P12 + P13                                                 + P22;
+c23 := P02             + P05                   + P09                   + P13                   + P17;
+c31 := P02                   + P06                   + P10                   + P14                   + P18;
+c32 := P01 + P02                   + P06 + P07                                     + P14 + P15                                           + P23;
+c33 := P01                               + P07                   + P11                   + P15                   + P19;
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1, 3]
+# in even equations [0, 2]
+# in kernel columns [1, 4]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x3x3_23 solution file 's3x3x3_23.Sykora.yacas.txt'
+#

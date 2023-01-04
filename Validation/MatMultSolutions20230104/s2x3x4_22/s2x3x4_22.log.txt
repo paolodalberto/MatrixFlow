@@ -1,0 +1,122 @@
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x3x4_22.txt'
+No Yacas script created
+Writing Brent equations
+Writing Brent equations file 's2x3x4_22.Brent.txt'
+
+Brent equations written to 's2x3x4_22.Brent.txt'
+verified OK!
+
+Creating Common Subexpression Eliminator fCSE
+Registering 22 sums. One for every product.
+Duplicate sum: 'a11 + a12 - a13'
+Duplicate sum: '- a12 - a21'
+Duplicate sum: '- a11 - a21'
+Duplicate sum: 'a12 + a21 - a23'
+Duplicate sum: '- a12 + a13 - a21'
+Duplicate sum: '- a21 + a22 - a23'
+Duplicate sum: 'a21 + a22 - a23'
+7 sums registered. 15 sums have one operand only.
+
+Creating Common Subexpression Eliminator gCSE
+Registering 22 sums. One for every product.
+14 sums registered. 8 sums have one operand only.
+
+Creating Common Subexpression Eliminator dCSE
+Registering 8 sums of products. One fo every 2x4 C matrix element. 
+8 sums of products registered. 0 SOPs have one operand only.
+
+
+Simplify (a) sums
+=================
+Simplify started: opcount 12
+Sums:                7
+Subexpressions:     19
+Replacements found for simplification: 2 * 2 = 5
+Resulting count of operations: 9
+
+
+Simplify (b) sums
+=================
+Simplify started: opcount 24
+Sums:               14
+Subexpressions:     50
+Replacements found for simplification: 4 * 3 = 12
+Resulting count of operations: 16
+
+
+Simplify sums of products
+=========================
+Simplify started: opcount 24
+Sums:                8
+Subexpressions:    120
+No replacements found for simplification
+
+Writing simplified Yacas script file 's2x3x4_22.simplified.txt'
+
+Algorithm  written to file 's2x3x4_22.simplified.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x3x4_22.txt'
+Writing Bini-format solution file 's2x3x4_22.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's2x3x4_22.Brent.txt'
+
+Brent equations written to 's2x3x4_22.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x3x4_22.txt'
+Writing Yacas script file 's2x3x4_22.yacas.txt'
+
+Algorithm  written to file 's2x3x4_22.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's2x3x4_22.Brent.txt'
+
+Brent equations written to 's2x3x4_22.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's2x3x4_22.txt'
+Writing Brent equations
+Writing Brent equations file 's2x3x4_22.Brent.txt'
+
+Brent equations written to 's2x3x4_22.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's2x3x4_22.contrib.txt'
+
+ciao!
+

@@ -1,0 +1,85 @@
+
+#
+# Simplified Yacas script 's3x3x2_15.Hopcroft.simplified.txt' created 04-Jan-2023 14:38:26
+#
+# Matrix multiplication method for 3x3x2_15
+#
+# Operation count was reduced by 9 add/subtract operations:
+#
+#         original  now
+# a terms:   15  =>  15
+# b terms:   17  =>  12
+# c terms:   26  =>  22
+# ---------------------------
+# total:     58  =>  49
+#
+
+#
+# Intermediate products: 15
+#
+
+#
+# Auxiliary variables:
+#
+
+G1 := b11 + b12;
+G2 := b31 + b32;
+G3 := b21 + b22;
+
+#
+# Product terms:
+#
+P01 := (a11 - a13 - a21) * b11;
+P02 := (a11 - a12 - a31) * G1;
+P03 := (- a12 + a22 - a23) * b21;
+P04 := (- a21 + a22 - a32) * b22;
+P05 := (- a13 - a32 + a33) * G2;
+P06 := (- a23 - a31 + a33) * b32;
+P07 := a12 * (G1 + G3);
+P08 := (- a12 + a21) * (b22 + G1);
+P09 := (- a21) * (b12 + b22);
+P10 := a32 * (G2 + G3);
+P11 := (a23 - a32) * (b21 + G2);
+P12 := (- a23) * (b21 + b31);
+P13 := (- a13 + a31) * (b11 - b32);
+P14 := (- a31) * (b12 + b32);
+P15 := a13 * (b11 + b31);
+
+#
+# Auxiliary variables for sums of products:
+#
+T1 := P08 + P09;
+T2 := P11 + P12;
+
+#
+# Target matrix sums of products:
+#
+c11 := P01 + P07 + P15 + T1;
+c12 := - P01 + P02 + P13 - P14 - T1;
+c21 := P03 + P07 - P12 + T1;
+c22 := P04 - P09 + P10 + T2;
+c31 := P05 - P06 + P13 + P15 - T2;
+c32 := P06 + P10 - P14 + T2;
+
+
+#
+# Algorithm validated via prime element calculation.
+#
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x3x2_15 solution file 's3x3x2_15.Hopcroft.simplified.txt'
+#

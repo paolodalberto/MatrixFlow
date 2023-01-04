@@ -1,0 +1,107 @@
+
+#
+# Simplified Yacas script 's3x3x3_23.CourtoisBardHulme.simplified.txt' created 04-Jan-2023 14:38:27
+#
+# Matrix multiplication method for 3x3x3_23
+#
+# Operation count was reduced by 24 add/subtract operations:
+#
+#         original  now
+# a terms:   33  =>  25
+# b terms:   27  =>  20
+# c terms:   47  =>  38
+# ---------------------------
+# total:    107  =>  83
+#
+
+#
+# Intermediate products: 23
+#
+
+#
+# Auxiliary variables:
+#
+F1 := - a11 + a31;
+F2 := - a21 + a23;
+F3 := - a11 + a13;
+F4 := - a12 + a32;
+
+G1 := b13 + b33;
+G2 := b21 + b22;
+G3 := - b12 + b13;
+G4 := b11 - b21;
+G5 := - b22 + b23;
+
+#
+# Product terms:
+#
+P01 := a23 * (- b12 - b32 + G1);
+P02 := (a13 + a32 + F1) * G2;
+P03 := (a13 + a23 - a33) * (b31 + b32 - b33);
+P04 := F3 * (b31 - G2);
+P05 := (a33 - F3) * b31;
+P06 := (a31 + F2) * (- G3);
+P07 := (- a31 - a32) * b22;
+P08 := a31 * G4;
+P09 := (- a22 + F2) * b33;
+P10 := (a21 - F1) * (b11 + b12 + b33);
+P11 := (- a22 + F4) * G5;
+P12 := a33 * b32;
+P13 := a22 * (b13 - b23);
+P14 := (a21 + a22) * G1;
+P15 := a11 * (- b31 - G4);
+P16 := a31 * (b12 - b22);
+P17 := a12 * (- b33 + G5);
+P18 := (a12 + a13 + a22 + F1) * (b33 + G2);
+P19 := (a22 + F1) * (b21 + G1);
+P20 := (- a12 + a22 - a33 - F2) * (- b33);
+P21 := (- a22 - a31) * (b13 - b22);
+P22 := (F1 + F4) * b21;
+P23 := (a11 + a23) * (- b31 - G3);
+
+#
+# Auxiliary variables for sums of products:
+#
+T1 := - P02 - P07 + P18 - P19 - P21 + P22;
+T2 := P02 + P04 + P07;
+T3 := P09 - P20;
+T4 := P06 - P14;
+
+#
+# Target matrix sums of products:
+#
+c11 := - P15 - P22 + T2;
+c12 := P01 + P03 + P05 + P12 + P23 + T1 + T3;
+c13 := P17 + T1;
+c21 := P08 + P10 + P15 + P19 - P23 + T4;
+c22 := - P01 + P09 + P16 + P21 - T4;
+c23 := P09 - P13 + P14;
+c31 := P05 + P08 + T2;
+c32 := - P07 + P12 + P16;
+c33 := - P07 + P11 - P13 + P17 - P21 - T3;
+
+
+#
+# Algorithm validated via prime element calculation.
+#
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2, 4]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x3x3_23 solution file 's3x3x3_23.CourtoisBardHulme.simplified.txt'
+#

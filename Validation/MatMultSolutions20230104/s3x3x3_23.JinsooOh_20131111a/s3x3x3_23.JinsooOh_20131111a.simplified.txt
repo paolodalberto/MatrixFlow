@@ -1,0 +1,105 @@
+
+#
+# Simplified Yacas script 's3x3x3_23.JinsooOh_20131111a.simplified.txt' created 04-Jan-2023 14:38:30
+#
+# Matrix multiplication method for 3x3x3_23
+#
+# Operation count was reduced by 32 add/subtract operations:
+#
+#         original  now
+# a terms:   28  =>  20
+# b terms:   36  =>  23
+# c terms:   45  =>  34
+# ---------------------------
+# total:    109  =>  77
+#
+
+#
+# Intermediate products: 23
+#
+
+#
+# Auxiliary variables:
+#
+F1 := - a23 + a33;
+F2 := - a11 - a13;
+F3 := - a11 - a12;
+
+G1 := b21 + b23;
+G2 := b13 - b31 - b33;
+G3 := b21 - b22;
+G4 := b11 - b12;
+
+#
+# Product terms:
+#
+P01 := (a21 + F2) * b11;
+P02 := (- a13) * (- b32);
+P03 := (a32 + a33) * b32;
+P04 := (- a22 + F2) * (- b13 + G1);
+P05 := (- a31 - a32 + F3) * G1;
+P06 := (a31 + a33) * (b31 + b33);
+P07 := (- a21) * (G3 + G4);
+P08 := (a32 + F1) * (b32 + G3);
+P09 := (a31 - F3) * (- b12 + G1);
+P10 := (- a12 + a22) * (- b21);
+P11 := F2 * (- b11 - b13 + G1);
+P12 := (- a31) * (G2 + G4);
+P13 := (- a12) * (- b12 + b22);
+P14 := (a31 + F1) * (- G2);
+P15 := (a21 - a22 + a32 + F1) * G3;
+P16 := (a21 + a22 - a31 - F1) * (- b13);
+P17 := (- a32) * (- b22 + b32 + G1);
+P18 := (- F3) * b12;
+P19 := a22 * (- b13 + b23);
+P20 := (- a13) * (- b11 + b31);
+P21 := F1 * (b13 - b32 - b33 - G3);
+P22 := (- a13 + a31) * (- b11 + G1 - G2);
+P23 := (- a23) * (- b31);
+
+#
+# Auxiliary variables for sums of products:
+#
+T1 := - P04 + P11 - P19;
+T2 := P08 + P14 + P17 + P21 + P23;
+T3 := P09 + P18;
+T4 := P10 - P20;
+
+#
+# Target matrix sums of products:
+#
+c11 := T1 + T4;
+c12 := P02 - P13 + P18;
+c13 := P04 + P12 + P19 - P22 + T3 - T4;
+c21 := P01 + P23 + T1;
+c22 := P01 + P03 + P07 - P08 + P15 + T1;
+c23 := P06 - P14 - P16 + P19 - P23;
+c31 := - P05 - P12 + T2 - T3;
+c32 := P03 - P05 + P17 - T3;
+c33 := P06 - T2;
+
+
+#
+# Algorithm validated via prime element calculation.
+#
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1, 3]
+# in even equations [0, 2]
+# in kernel columns [1, 2, 3, 4]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x3x3_23 solution file 's3x3x3_23.JinsooOh_20131111a.simplified.txt'
+#

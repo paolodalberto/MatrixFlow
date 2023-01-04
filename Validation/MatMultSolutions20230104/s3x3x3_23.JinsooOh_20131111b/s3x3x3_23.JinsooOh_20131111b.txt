@@ -1,0 +1,47 @@
+#
+#  Matrix multiplication algorithm for <3x3x3> matrices
+#  Solution # 0
+#  File:      3x3x3_23_JinsooOh_20131111002913.txt
+#  Directory: C:\AK\csrc\MatMultSearch\MatMultSearch
+#
+#  Found using the algorithm from:
+#  On the inequivalence of bilinear algorithms for 3 x 3 matrix multiplication
+#  Jinsoo Oh, Jin Kim, Byung-Ro Moon
+#  Information Processing Letters 113 (2013)
+
+P01 := (-a11 - a13 + a23) * ( b22 + b23 + b32 + b33);
+P02 := ( a13 - a33) * ( b22 + b32);
+P03 := (-a11 - a12) * (-b21 + b22 - b31 + b32);
+P04 := (-a11) * (-b11 - b13 + b21 + b23 + b31 + b33);
+P05 := (-a31 - a32) * (-b21 - b23);
+P06 := ( a12 - a13 + a33) * ( b22 - b31 + b32);
+P07 := ( a22) * (-b23);
+P08 := (-a11 - a33) * (-b11 + b12 - b13 + b21 + b23 + b31 + b33);
+P09 := (-a22 - a32) * (-b11 + b12 + b21);
+P10 := (-a23) * (-b33);
+P11 := (-a33) * (-b11 + b12 - b13 + b21 + b23 + b33);
+P12 := ( a12 - a13 - a22 + a23) * (-b22 - b23);
+P13 := (-a21 - a22 - a31 - a32) * ( b11 - b12);
+P14 := (-a12 + a13 - a23) * ( b22 + b23 - b31 + b32);
+P15 := ( a21) * ( b12 + b13);
+P16 := (-a12 + a13 + a32 - a33) * (-b22);
+P17 := ( a22 + a31 + a32) * (-b11 + b12 + b21 + b23);
+P18 := (-a11) * (-b11 + b12 + b21 - b22 + b31 - b32);
+P19 := ( a12 - a13) * (-b31 + b32);
+P20 := ( a11 - a31) * (-b12);
+P21 := (-a23) * (-b31);
+P22 := (-a21) * (-b12);
+P23 := (-a31 - a33) * ( b11 - b12 + b13 - b21 - b23);
+
+c11 :=  P02 + P03 + P04 + P06 - P08 + P11 + P18;
+c12 :=  P02 + P04 + P06 - P08 + P11 - P19;
+c13 := -P01 - P02 - P06 + P08 + P10 - P11 - P14 - P18 + P21;
+c21 := -P05 + P07 - P13 + P17 + P21 + P22;
+c22 :=  P07 + P12 - P14 - P19 + P21 + P22;
+c23 := -P07 + P10 + P15 - P22;
+c31 :=  P04 + P05 - P07 - P08 - P09 + P11 - P17 + P20;
+c32 :=  P04 + P06 - P08 + P11 - P16 - P19 + P20;
+c33 :=  P07 + P09 - P11 + P17 - P23;
+
+
+

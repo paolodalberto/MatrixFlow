@@ -1,0 +1,114 @@
+
+#
+# Simplified Yacas script 's3x4x3_29.Smirnov.simplified.txt' created 04-Jan-2023 14:38:33
+#
+# Matrix multiplication method for 3x4x3_29
+#
+# Operation count was reduced by 30 add/subtract operations:
+#
+#         original  now
+# a terms:   38  =>  29
+# b terms:   40  =>  31
+# c terms:   59  =>  47
+# ---------------------------
+# total:    137  => 107
+#
+
+#
+# Intermediate products: 29
+#
+
+#
+# Auxiliary variables:
+#
+F1 := - a32 - a33;
+F2 := a14 + a24;
+F3 := a11 + a21;
+F4 := - a12 - a22;
+
+G1 := - b21 + b31 - b41;
+G2 := b11 - b12 - b22;
+G3 := - b22 + b32;
+
+#
+# Product terms:
+#
+P01 := (a23 + a34) * (b42 + G1);
+P02 := (a13 + a31) * (b32 + G2);
+P03 := (- a22 + F2) * (- b21 + b43);
+P04 := (- a12 + F3) * (b13 - b22);
+P05 := (a13 + F1) * (b21 + b33);
+P06 := (- a23 - F1) * (b22 + b33);
+P07 := (- F1) * b33;
+P08 := (- a13 - F1 + F2 + F4) * b21;
+P09 := (- a23 - F1 + F3 + F4) * b22;
+P10 := a23 * (b32 + b33 - b42 - G1);
+P11 := a31 * (b12 - G3);
+P12 := a34 * (- G1);
+P13 := a13 * (b31 - b32 + b33 - G2);
+P14 := (a13 + F3) * (- G2);
+P15 := (a23 + F2) * (b21 + b41 - b42);
+P16 := (- a14 + a21) * (b11 - b42);
+P17 := (a22 - a24) * b43;
+P18 := (a11 - a12) * b13;
+P19 := (- a13 + a33 + a34) * (- b21 + b31);
+P20 := a21 * (b12 + b13 - b42);
+P21 := (a21 + a24 - a34) * b42;
+P22 := (- a23 + a31 + a33) * G3;
+P23 := (a11 + a14 - a31) * b11;
+P24 := a14 * (- b11 + b41 + b43);
+P25 := (- a12) * (b13 + b21 + b23);
+P26 := a22 * (b22 + b23 + b43);
+P27 := a32 * (b23 - b33);
+P28 := a31 * b13;
+P29 := a34 * b43;
+
+#
+# Auxiliary variables for sums of products:
+#
+T1 := P02 - P05 - P07 + P11 + P13;
+T2 := P01 + P06 - P07 + P10 + P12;
+T3 := - P03 - P17;
+T4 := P04 - P18;
+
+#
+# Target matrix sums of products:
+#
+c11 := - P08 + P23 + P24 + T1 + T3;
+c12 := P02 + P11 + P14 + P16 - P20 + P23 + T4;
+c13 := P05 + P07 + P08 + P18 - P25 - T3;
+c21 := P01 + P12 + P15 + P16 + P21 - P24 - T3;
+c22 := - P09 + P20 + P21 + T2 - T4;
+c23 := - P06 + P07 - P09 - P17 + P26 + T4;
+c31 := P12 + P19 + T1;
+c32 := P11 + P22 + T2;
+c33 := P07 + P27 + P28 + P29;
+
+# c23 = 100974 != -13056
+# Errors found: 1
+# Algorithm is **not** valid.
+
+#
+# Algorithm could *not* be validated via prime element calculation.
+#
+
+Simplify(c11 - (a11*b11 + a12*b21 + a13*b31 + a14*b41));
+Simplify(c12 - (a11*b12 + a12*b22 + a13*b32 + a14*b42));
+Simplify(c13 - (a11*b13 + a12*b23 + a13*b33 + a14*b43));
+Simplify(c21 - (a21*b11 + a22*b21 + a23*b31 + a24*b41));
+Simplify(c22 - (a21*b12 + a22*b22 + a23*b32 + a24*b42));
+Simplify(c23 - (a21*b13 + a22*b23 + a23*b33 + a24*b43));
+Simplify(c31 - (a31*b11 + a32*b21 + a33*b31 + a34*b41));
+Simplify(c32 - (a31*b12 + a32*b22 + a33*b32 + a34*b42));
+Simplify(c33 - (a31*b13 + a32*b23 + a33*b33 + a34*b43));
+
+# Brent equation statistics about non-zero triples:
+# in odd equations  [1]
+# in even equations [0, 2]
+# in kernel columns [1, 2]
+
+# Algorithm properly fulfills all Brent Equations
+
+#
+# End of 3x4x3_29 solution file 's3x4x3_29.Smirnov.simplified.txt'
+#

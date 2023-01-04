@@ -1,0 +1,19 @@
+#
+# File 's2x2x2_07.Strassen.Bini.txt'
+#
+# Solution for the 2x2x2_7 matrix multiplication problem in Bini matrix format
+#
+# Created: 04-Jan-2023 14:38:22
+#
+Bini 2 2 2 7
+
+product Gamma         Alpha         Beta
+  1 ;   1  0  0  1 ;  1  0  0  1 ;  1  0  0  1
+  2 ;   0  0  1 -1 ;  0  0  1  1 ;  1  0  0  0
+  3 ;   0  1  0  1 ;  1  0  0  0 ;  0  1  0 -1
+  4 ;   1  0  1  0 ;  0  0  0  1 ; -1  0  1  0
+  5 ;  -1  1  0  0 ;  1  1  0  0 ;  0  0  0  1
+  6 ;   0  0  0  1 ; -1  0  1  0 ;  1  1  0  0
+  7 ;   1  0  0  0 ;  0  1  0 -1 ;  0  0  1  1
+
+#

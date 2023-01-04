@@ -1,0 +1,56 @@
+"Simplification skipped due to prohibitive size of algorithm" 
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's8x8x8_343.Strassen.txt'
+Writing Bini-format solution file 's8x8x8_343.Strassen.Bini.txt'
+Writing Brent equations
+Writing Brent equations file 's8x8x8_343.Strassen.Brent.txt'
+
+Brent equations written to 's8x8x8_343.Strassen.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's8x8x8_343.Strassen.txt'
+Writing Yacas script file 's8x8x8_343.Strassen.yacas.txt'
+
+Algorithm  written to file 's8x8x8_343.Strassen.yacas.txt'
+verified OK!
+
+Writing Brent equations
+Writing Brent equations file 's8x8x8_343.Strassen.Brent.txt'
+
+Brent equations written to 's8x8x8_343.Strassen.Brent.txt'
+verified OK!
+
+
+ciao!
+
+
+akExtractMatMultSolution  -  Recover or Convert Matrix Multiplication Solution
+------------------------------------------------------------------------------
+Compiled: 04.01.2023
+
+Extracting variable value assignments
+Reading Yacas-format solution file 's8x8x8_343.Strassen.txt'
+Writing Brent equations
+Writing Brent equations file 's8x8x8_343.Strassen.Brent.txt'
+
+Brent equations written to 's8x8x8_343.Strassen.Brent.txt'
+verified OK!
+
+Writing product contributions report file 's8x8x8_343.Strassen.contrib.txt'
+
+ciao!
+
