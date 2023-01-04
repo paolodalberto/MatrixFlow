@@ -22,18 +22,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-m","--M", help="Factor of A", type=int, default=2)
     parser.add_argument("-n","--N", help="Factor of A", type=int, default=2)
+    parser.add_argument("-k","--K", help="Factor of A", type=int, default=5)
     parser.add_argument("-e", "--error", help="pretty display error", type =str, default =None)
     args = parser.parse_args()
 
     
     if args.N is None: args.N = 2
     if args.M is None: args.M = 2
+    if args.K is None: args.K = 5
     
     import sys 
     X = args.M 
     Y = args.N
-
-    T = X*Y*5
+    K = args.K
+    
+    T = X*Y*K
+    print("X*Y*5=",T)
     A = gen_matrix(T,T,args.error)
     B = gen_matrix(T,T,args.error)
 
@@ -53,9 +57,9 @@ if __name__ == "__main__":
     ## C_ij = sum_k A_ik B_kj
     D = Scalar(0)*C
     G1 = algorithm_mult_example(D, 1,A,B,X)
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
 
-    import pdb; pdb.set_trace()
+
     del G1; gc.collect()
 
     
@@ -69,7 +73,7 @@ if __name__ == "__main__":
     D = Scalar(0)*C
     ## compute and dependency .... 
     G3 = bini_mult_example(D,c, A,a,B,b,1)
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     del G3; gc.collect()
     
 
@@ -77,7 +81,7 @@ if __name__ == "__main__":
     D = Scalar(0)*C
     print(at.shape)
     G3 = bini_mult_example(D,ct, A,at,B,bt,1)
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     del G3; gc.collect()
     
     
@@ -85,7 +89,7 @@ if __name__ == "__main__":
         ac,bc,cc = fact['%d,%d,%d' % (X*Y,X*Y,X*Y)]
         D = Scalar(0)*C
         G3 = bini_mult_example(D,cc, A,ac,B,bc,1)
-        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        if args.error and args.error !="anything" : Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
         del G3; gc.collect()
     except Exception as e:
         print("Warning: very likely not found the algorithm", e)
@@ -97,7 +101,7 @@ if __name__ == "__main__":
     print(a1.shape)
     D = Scalar(0)*C
     G3 = bini_mult_example(D,c1, A,a1,B,b1,1)
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     del G3; gc.collect()
     
     ## X and Y 
@@ -105,5 +109,5 @@ if __name__ == "__main__":
     print(a1.shape)
     D = Scalar(0)*C
     G3 = bini_mult_example(D,c1, A,a1,B,b1,1)
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    if args.error and args.error !="anything":Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     del G3; gc.collect()

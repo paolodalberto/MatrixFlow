@@ -946,6 +946,10 @@ def algorithm_mult_example(
         sub = cc
 
 
+    M = A.value().shape[0]
+    N = A.value().shape[1]
+    K = B.value().shape[0]
+
     ## disjoint partition of input output
     CP = PartitionMatrix(C,sub)
     BP = PartitionMatrix(B,sub)
@@ -1011,7 +1015,9 @@ def algorithm_mult_example(
         start = time.time()
         exec(E)
         end = time.time()
-        print("compute_time", end-start)
+        t = end-start
+        
+        print("compute_time",t, "GFLOPS",2*M*N*K/t/1000000000  )
     
     ###
     ## Compute the graph for validation. Yep we can and we should run
@@ -1079,6 +1085,9 @@ def bini_mult_example(
 ):
 
 
+    M = A.value().shape[0]
+    N = A.value().shape[1]
+    K = B.value().shape[0]
     
     
     subblocks = int(math.sqrt(CT.shape[0]))
@@ -1254,7 +1263,10 @@ def bini_mult_example(
         start = time.time()
         exec(E)
         end = time.time()
-        print("compute_time", end-start)
+        t = end-start
+        
+        print("compute_time",t, "GFLOPS",2*M*N*K/t/1000000000  )
+
 
     
     ###
@@ -1277,6 +1289,9 @@ def bini_mult_example_three_temp(
         B : Matrix, BT : numpy.ndarray, deepmindformat = True,
 ):
 
+    M = A.value().shape[0]
+    N = A.value().shape[1]
+    K = B.value().shape[0]
     subblocks = int(math.sqrt(CT.shape[0]))
     products  = CT.shape[1]
     
@@ -1404,7 +1419,9 @@ def bini_mult_example_three_temp(
         start = time.time()
         exec(E)
         end = time.time()
-        print("compute_time", end-start)
+        t = end-start
+        print("compute_time",t, "GFLOPS",2*M*N*K/t/1000000000  )
+
     ###
     ## Compute the graph for validation. Yep we can and we should run
     ## the graph
@@ -1630,7 +1647,7 @@ def gen_matrix(X : int , Y : int, random = None):
                 numpy.random.uniform(-1,0,(X*Y,X*Y))
             )
         )
-    elif random =='middle':
+    else :
         A = Matrix(
             numpy.matrix(
                 numpy.random.uniform(-1,1,(X*Y,X*Y))
@@ -1660,7 +1677,8 @@ if __name__ == "__main__":
     start = time.time()
     C = alpha*A*B
     end = time.time()
-    print(end - start)
+    t = end-time
+    print("time", t)
 
 
 
