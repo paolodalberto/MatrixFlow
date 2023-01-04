@@ -51,7 +51,8 @@ if __name__ == "__main__":
     start = time.time()
     C = A*B
     end = time.time()
-    print("time",end - start)
+    t = end-start
+    print("time",t, "GFLOPS", 2*T*T*T / time)
 
     
     ## C_ij = sum_k A_ik B_kj
