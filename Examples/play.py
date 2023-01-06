@@ -89,7 +89,7 @@ if __name__ == "__main__":
         #import pdb; pdb.set_trace()
         
     ## X and Y 
-    c1,a1,b1 = bini_matrices_2(c,a,b, ct,at,bt,validate=c.shape[1]*ct.shape[1]<150)
+    c1,a1,b1 = bini_matrices_2(c,a,b, ct,at,bt,validate=c.shape[1]*ct.shape[1]<250)
     print(a1.shape)
     D = Scalar(0)*C
     start = time.time()
