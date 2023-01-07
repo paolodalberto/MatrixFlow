@@ -106,11 +106,13 @@ The process is simple: given the input matrices A,B,C, and their
 ndarray a,b,c. We create a matrix partition of the operand and then we
 execute the fast algorithms step by step.
 
-```sh
 We also show how to build the fast algorithm from 2x2x2 and 3x3x3 (for
-the 6x6x6 which is not available) and there are two ways. You can also validate the correctneAll of this,
-you will see the graphical and quantitative error analysis of each
-algorithm.
+the 6x6x6 which is not available) and there are two ways. You can also
+validate the correctness. All of this, you will see the graphical and
+quantitative error analysis of each algorithm.
+
+
+```sh
 Fast Matrix Multiplication MxK * KxN -> MxN 
  Introduce --M --K --N
  We show case the rest

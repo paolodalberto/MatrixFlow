@@ -601,14 +601,16 @@ class Graph(Function):
         C.set_value( numpy.absolute(T.value()-Z.value()))
         return C
 
-    def heatmap_diff(self, C: Matrix, mul =1.0 ):
+    def heatmap_diff(self, C: Matrix, mul =1.0, save : str = None ):
 
         print("Maximum Error", numpy.max(C.value()))
         cax = plt.imshow( C.value()*mul, cmap = 'gray' ,interpolation = 'nearest' )
         plt.colorbar(cax)
         #ax = sns.heatmap( C.value() , linewidth = 0.5 , cmap = 'coolwarm' )
         plt.title( "2-D Heat Map" )
-        plt.show()
+        if not save: plt.show()
+        if save: plt.savefig(save)
+        plt.clf()
         
 
     def single_output(self,C : Matrix):
