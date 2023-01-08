@@ -604,7 +604,7 @@ class Graph(Function):
     def heatmap_diff(self, C: Matrix, mul =1.0, save : str = None ):
 
         print("Maximum Error", numpy.max(C.value()))
-        cax = plt.imshow( C.value()*mul, cmap = 'gray' ,interpolation = 'nearest' )
+        cax = plt.imshow( C.value()*mul, cmap = 'hot' ,interpolation = 'nearest' )
         plt.colorbar(cax)
         #ax = sns.heatmap( C.value() , linewidth = 0.5 , cmap = 'coolwarm' )
         plt.title( "2-D Heat Map" )

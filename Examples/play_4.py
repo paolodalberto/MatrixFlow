@@ -60,6 +60,13 @@ if __name__ == "__main__":
     end = time.time()
     print("time",end - start)
 
+    print("compute")
+    start = time.time()
+    D = numpy.matmul(A.value(),B.value())
+    end = time.time()
+    print("time",end - start)
+
+
 
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     FA = {}
@@ -94,8 +101,9 @@ if __name__ == "__main__":
     c,a,b    = FA['3x2']
     ct,at,bt = FA['2']
     FA['3x2x2'] = bini_matrices_2(c,a,b, ct,at,bt,False)
-
-
+    
+    #import pdb; pdb.set_trace()
+    
     for k in FA.keys():
         print("Alg", k)
                 
