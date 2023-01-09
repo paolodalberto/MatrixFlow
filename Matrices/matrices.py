@@ -14,41 +14,21 @@ class Matrix:
         self.min = (0,0)
         self.max = A.shape
         self.logicalshape = A.shape
-
+        self.padded = False
         
-    def value(self): return self.matrix
+    def value(self): return self.matrix[self.min[0]:self.max[0],self.min[1]:self.max[1]]
     def set_value(self, A):
-        self.matrix[...] = A;
+        self.value()[...] = A;
         return self.matrix 
         
     def __add__( self, A ):
-        L = self.matrix
+        L = self.value()
         R = A.value()
-
-        if False:
-            ls = L.shape
-            rs = R.shape
-            
-            mx  = A.logicalshape
-            if mx>ls:
-                L = numpy.pad(L, [ (0, mx[0]-ls[0]),(0, mx[1]-ls[1])]) 
-            if mx>rs:
-                L = numpy.pad(R, [ (0, mx[0]-rs[0]),(0, mx[1]-rs[1])]) 
         
         return Matrix(L+R)
     def __sub__( self, A ):
-        L = self.matrix
+        L = self.value()
         R = A.value()
-
-        if False:
-            ls = L.shape
-            rs = R.shape
-            
-            mx  = A.logicalshape
-            if mx>ls:
-                L = numpy.pad(L, [ (0, mx[0]-ls[0]),(0, mx[1]-ls[1])]) 
-            if mx>rs:
-                L = numpy.pad(R, [ (0, mx[0]-rs[0]),(0, mx[1]-rs[1])]) 
         
         return Matrix(L-R)
 
@@ -115,7 +95,7 @@ class PartitionMatrix:
         self.l = []
         
         
-        matrix = A.value()
+        matrix = A.matrix #value()
         shape  = matrix.shape
         
         m= [ (0,shape[0] %  self.logicalshape[0]),
@@ -126,16 +106,17 @@ class PartitionMatrix:
         ## algorithms can be applied without worries. There are better
         ## solution and Paolo should be alble to do better
 
-        matrix = numpy.pad(matrix, m)
+        if shape[0] %  self.logicalshape[0] > 0 or \
+           shape[1] %  self.logicalshape[1]:
+            A.padded = True
+            matrix = numpy.pad(matrix, m)
+            
         shape  = matrix.shape
         
         for i in range(math.ceil(shape[0]/logicalShape[0])):
             row = []
             for j in range(math.ceil(shape[1]/logicalShape[1])):
-                A = Matrix(matrix[
-                    i*logicalShape[0]:min((i+1)*logicalShape[0],shape[0]),
-                    j*logicalShape[1]:min((j+1)*logicalShape[1],shape[1])
-                ])
+                A = Matrix(matrix)
                 A.min = (i*logicalShape[0],j*logicalShape[1])
                 A.max = (
                     min((i+1)*logicalShape[0],shape[0]),

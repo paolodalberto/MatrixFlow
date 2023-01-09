@@ -1,7 +1,7 @@
 
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, Algorithm, read_alpha
 from  Graph.graph import Graph, Operation, Data, algorithm_mult_example, \
-    bini_mult_example, prev_def, all_prev_instruction_indexes,bini
+    bini_mult_example, prev_def, all_prev_instruction_indexes,bini,gen_matrix
 from  Hw.hw import Memory, PE, AbstractHW
 import numpy
 import math
@@ -204,25 +204,13 @@ if __name__ == "__main__":
 
     import time
     import gc
-    X = 4
-    
-    Y = 16*27
+    X = 2
+    R = 3
+    Y = (2**5)
 
-    A = Matrix(
-        numpy.matrix(
-            [
-                [ numpy.random.uniform(-1,1) + 1/(1+i) for i in range(X*Y)] for j in range(X*Y)
-            ]
-        )
-    )
+    A = gen_matrix(Y,Y,"middle")
+    B = gen_matrix(Y,Y,"middle")
 
-    B = Matrix(
-        numpy.matrix(
-            [
-                [ numpy.random.uniform(-1,1) + 2/(2+i) for i in range(X*Y)] for j in range(X*Y)
-            ]
-        )
-    )
 
     alpha = Scalar(1)
     alphai = Data('alpha', alpha)
@@ -239,8 +227,11 @@ if __name__ == "__main__":
     #import pdb; pdb.set_trace()    
 
     ## C_ij = sum_k A_ik B_kj
-    G1 = algorithm_mult_example(C, alpha,A,B,X)
-
+    DD = Scalar(0) * C
+    G1 = algorithm_mult_example(DD, alpha,A,B,X)
+    G1.heatmap_diff(Matrix(numpy.abs(C.value()-DD.value())))
+    #import pdb; pdb.set_trace()    
+    
     #import pdb; pdb.set_trace()    
     #del G1
     #gc.collect()
@@ -254,13 +245,13 @@ if __name__ == "__main__":
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
 
-    import pdb; pdb.set_trace()        
-    for recursion in range(1,5):
+    #import pdb; pdb.set_trace()        
+    for recursion in range(1,R+1):
         print(recursion)
         D = Scalar(0)*C
         D = bini(D,c,A,a,B,b,recursion=recursion)
         G1.heatmap_diff(Matrix(numpy.abs(C.value()-D.value())))
-        import pdb; pdb.set_trace()        
+        #import pdb; pdb.set_trace()        
     
     
     
@@ -285,10 +276,10 @@ if __name__ == "__main__":
     
     G2 = bini_mult_example(D,c, A,a,B,b)#,recursion = 2)
     #G2.data_dependency()
-    import pdb; pdb.set_trace()    
-    G1.single_output(D)
-    G2.compare_graph(G1,D)
-    G2.heatmap_diff(D)
+    #import pdb; pdb.set_trace()    
+    #G2.single_output(D)
+    #G2.compare_graph(G1,D)
+    G2.heatmap_diff(Matrix(numpy.abs(C.value()-D.value())))
 
 
     #del G2
@@ -298,6 +289,23 @@ if __name__ == "__main__":
     #print(S2.fit_hw_memory())
     #S2.naive_distribute_computation_by_output(P)
     
+
+    Y = (3**4)
+
+    A = gen_matrix(Y,Y,"middle")
+    B = gen_matrix(Y,Y,"middle")
+
+
+    alpha = Scalar(1)
+    alphai = Data('alpha', alpha)
+
+    ## Pure Python Interface
+    print("compute")
+    start = time.time()
+    C = alpha*A*B
+    end = time.time()
+    print(end - start)
+
     
     a1,b1,c1 = read_alpha('s3x3x3_23.Fawzi_b.bini.txt', numpy.float)
 
@@ -315,18 +323,18 @@ if __name__ == "__main__":
     ##
     D = Matrix(C.value()*0)
     
-    G3 = bini_mult_example(D,c1, A,a1,B,b1,False)
+    #G3 = bini_mult_example(D,c1, A,a1,B,b1,False)
     #G3.data_dependency()
-    G3.compare_graph(G1,D)
-    G3.heatmap_diff(D)
-    import pdb; pdb.set_trace()    
+    #G3.compare_graph(G1,D)
+    #G3.heatmap_diff(Matrix(numpy.abs(C.value()-D.value())))
     #import pdb; pdb.set_trace()    
-    import pdb; pdb.set_trace()        
-    for recursion in range(1,5):
+    #import pdb; pdb.set_trace()    
+    #import pdb; pdb.set_trace()        
+    for recursion in range(1,R+1):
         print(recursion)
         D = Scalar(0)*C
         D = bini(D,c1,A,a1,B,b1,False,recursion=recursion)
-        G1.heatmap_diff(Matrix(numpy.abs(C.value()-D.value())))
-        import pdb; pdb.set_trace()        
+        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        #import pdb; pdb.set_trace()        
 
     

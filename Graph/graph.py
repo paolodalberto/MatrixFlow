@@ -734,10 +734,12 @@ class Graph(Function):
         end = time.time()
         print("compute", end - start)
         
-        if self.temp_result:
+        if self.temp_result and self.temp_result.padded:
             self.single_output(self.temp_result)
             return self.temp_result 
-        return None
+        if self.temp_result and not self.temp_result.padded:
+            return self.temp_result 
+        return 
 
     def create_addequal(left : Data,right: Operation):
         return   Operation('ta', '+=',left,  right)
@@ -1424,12 +1426,13 @@ def bini_mult_example_three_temp(
         t = end-start
         print("compute_time",t, "GFLOPS",2*M*N*K/t/1000000000  )
 
-    ###
-    ## Compute the graph for validation. Yep we can and we should run
-    ## the graph
-    ###
-    print("Compute")
-    G1.compute()
+        ###
+        ## Compute the graph for validation. Yep we can and we should run
+        ## the graph
+        ###
+    else:
+        print("Compute")
+        G1.compute()
 
     ## we create a stmt-by-stm data dependency
     print("Dependency")
