@@ -127,7 +127,7 @@ class Operation:
             self.temp_result = L * R
         elif self.operation == '/':
             self.temp_result = L / R
-        elif self.operation == '=':  # =
+        elif self.operation in  ['<<','=']:  # =
             #import pdb;pdb.set_trace()
             self.temp_result =  R
             if type(self.left) is list:
@@ -227,7 +227,7 @@ class Operation:
                         
                     )
                 )
-            O = Operation("a", "=",  As[i] , T)
+            O = Operation("a", "<<",  As[i] , T)
             Os.append(O)
         return Os
 
@@ -959,7 +959,7 @@ def algorithm_mult_example(
     BP = PartitionMatrix(B,sub)
     AP = PartitionMatrix(A,sub)
 
-    CDP = CP.flatten()
+    CDP = CP.flatten() 
     ADP = AP.flatten()
     BDP = BP.flatten()
     
@@ -998,7 +998,7 @@ def algorithm_mult_example(
                 T1 = Operation("p%d"%k, "*", AD[i*Col+k],BD[k*Col+j])
                 T = Operation('c','+',T,T1)
             V.append(
-                Operation("s0", '=',
+                Operation("s0", '<<',
                           CD[i*Col+j],
                           T
                 )
@@ -1085,7 +1085,7 @@ def bini_mult_example(
         A : Matrix, AT : numpy.ndarray,
         B : Matrix, BT : numpy.ndarray, deepmindformat = True,
         recursion : int = 1,
-        comp = True
+        comp = False
 ):
 
 
@@ -1121,8 +1121,8 @@ def bini_mult_example(
         )
     )
 
-
-    CDP = CP.flatten()
+    
+    CDP = CP.flatten( ) if not  deepmindformat else CP.transpose_l()
     ADP = AP.flatten()
     BDP = BP.flatten()
 
@@ -1169,9 +1169,11 @@ def bini_mult_example(
     ## of different size
     Pss = [] 
     Ps = []
+    
     for i in range(products):
-        Ps.append(Data("Pss[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
-        Pss.append(Scalar(0)*CDP[0])
+        Q = Matrix(CP.value()[0][0].value()*0)
+        Pss.append(Data("Ps[%d]" % i, Q))
+        Ps.append(Q)
 
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
@@ -1186,7 +1188,7 @@ def bini_mult_example(
         
         for c in range(AT.shape[1]):
             O = Operation(
-                'ta', '=',
+                'ta', '<<',
                 Ps[c], # temp product 
                 Operation(
                     'tp_%d' % c, '*',
@@ -1290,7 +1292,9 @@ def bini_mult_example(
 def bini_mult_example_three_temp(
         C : Matrix, CT : numpy.ndarray,
         A : Matrix, AT : numpy.ndarray,
-        B : Matrix, BT : numpy.ndarray, deepmindformat = True,
+        B : Matrix, BT : numpy.ndarray,
+        deepmindformat = True,
+        comp = False
 ):
 
     M = A.value().shape[0]
@@ -1298,14 +1302,13 @@ def bini_mult_example_three_temp(
     K = B.value().shape[0]
     subblocks = int(math.sqrt(CT.shape[0]))
     products  = CT.shape[1]
-    
+
+    #import pdb; pdb.set_trace()
+    shape = C.value().shape
     ## disjoint partition of input output
     CP = PartitionMatrix(
         C,
-        tuple (
-            [int(math.ceil(i/subblocks)) for i in C.value().shape]
-        )
-    )
+        tuple ([int(math.ceil(i/subblocks)) for i in shape] ) )
         
 
 
@@ -1323,7 +1326,7 @@ def bini_mult_example_three_temp(
         )
     )
 
-    CDP = CP.flatten()
+    CDP = CP.flatten() if not  deepmindformat else CP.transpose_l()
     ADP = AP.flatten()
     BDP = BP.flatten()
 
@@ -1365,11 +1368,10 @@ def bini_mult_example_three_temp(
     #for i in CD: print(i)
 
     ## we create a declaration of one  temporary products
-    Pss = []
-    Ps = []
-    for i in range(1):
-        Ps.append(Data("Pss[%d]" % i, Matrix(CP.value()[0][0].value()*0)))
-        Pss.append(Scalar(0)*CDP[0])
+    #Pss = []
+    P = Matrix(CP.value()[0][0].value()*0)
+    Ps = Data("P" , P)
+    #Pss.append(Scalar(0)*CDP[0])
 
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
@@ -1383,8 +1385,8 @@ def bini_mult_example_three_temp(
         
     for c in range(AT.shape[1]):
         O = Operation(
-            'ta', '=',
-            Ps[0], # temp product 
+            'ta', '<<',
+            Ps, # temp product 
             Operation(
                 'tp_%d' % c, '*',
                 Operation.AdditionBini(AD,AT[:,c]), # Sum a_iA_i
@@ -1401,9 +1403,11 @@ def bini_mult_example_three_temp(
 
         # we distribute the product 
         Os = Operation.AssignAdditionBini(
-            CD,CT[:,c],Ps[0]
+            CD,CT[:,c],Ps
         )
         V.extend(Os)
+    #import pdb; pdb.set_trace()
+        
     ###
     ## create a graph
     ###
@@ -1430,7 +1434,7 @@ def bini_mult_example_three_temp(
         ## Compute the graph for validation. Yep we can and we should run
         ## the graph
         ###
-    else:
+    else: 
         print("Compute")
         G1.compute()
 
@@ -1635,7 +1639,7 @@ def gen_matrix(X : int , Y : int, random = None):
         A = Matrix(
             numpy.matrix(
                 [
-                    [ (1+i+j+i*j) for i in range(X*Y)] for j in range(X*Y)
+                    [ (1+i+j+i*j) for i in range(X)] for j in range(Y)
                 ]
             )
         )
@@ -1643,19 +1647,19 @@ def gen_matrix(X : int , Y : int, random = None):
     elif random =='up':
         A = Matrix(
             numpy.matrix(
-                numpy.random.uniform(0,1,(X*Y,X*Y))
+                numpy.random.uniform(0,1,(X,Y))
             )
         )
     elif random =='down':
         A = Matrix(
             numpy.matrix(
-                numpy.random.uniform(-1,0,(X*Y,X*Y))
+                numpy.random.uniform(-1,0,(X,Y))
             )
         )
     else :
         A = Matrix(
             numpy.matrix(
-                numpy.random.uniform(-1,1,(X*Y,X*Y))
+                numpy.random.uniform(-1,1,(X,Y))
             )
         )
     return A

@@ -26,7 +26,16 @@ class Matrix:
         R = A.value()
         
         return Matrix(L+R)
+    def __lshift__( self, A ):
+        self.set_value(A.value())
+        return self
     def __sub__( self, A ):
+        L = self.value()
+        R = A.value()
+        
+        return Matrix(L-R)
+
+    def __eq__( self, A ):
         L = self.value()
         R = A.value()
         
@@ -77,6 +86,7 @@ class PartitionMatrix:
                  logicalShape : list = None
                  
     ) :
+        #import pdb; pdb.set_trace()
         self.original = A
         self.logicalshape = logicalShape
 
@@ -147,6 +157,14 @@ class PartitionMatrix:
             
         self.l = L
         return self
+    def transpose_l(self):
+        
+        L = [ ]
+        for j in range(len(self.l[0])):
+            for i in range(len(self.l)):
+                L.append(self.l[i][j])
+        
+        return L
             
     def value(self): return self.l
 

@@ -26,6 +26,7 @@ if __name__ == "__main__":
     parser.add_argument("-e", "--error", help="float operands for  error analysis", type =str, default =None)
     parser.add_argument("-v", "--visual", help="pretty display error", type =str, default =None)
     parser.add_argument("-r", "--relative", help="pretty display error", type =str, default =None)
+    parser.add_argument("-s", "--minimumspaceonly", help="pretty display error", type =str, default =None)
     args = parser.parse_args()
 
     
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     A = gen_matrix(T,T,args.error)
     B = gen_matrix(T,T,args.error)
 
-
+    #import pdb; pdb.set_trace()
     ####
     ##  We do just the pure computations 
     ####
@@ -60,11 +61,13 @@ if __name__ == "__main__":
     end = time.time()
     print("time",end - start)
 
-    print("compute")
-    start = time.time()
-    D = numpy.matmul(A.value(),B.value())
-    end = time.time()
-    print("time",end - start)
+
+    if False:
+        print("compute")
+        start = time.time()
+        D = numpy.matmul(A.value(),B.value())
+        end = time.time()
+        print("time",end - start)
 
 
 
@@ -103,8 +106,11 @@ if __name__ == "__main__":
     FA['3x2x2'] = bini_matrices_2(c,a,b, ct,at,bt,False)
     
     #import pdb; pdb.set_trace()
+
     
-    for k in FA.keys():
+    KEYS = list(FA.keys()) if args.minimumspaceonly is None else []
+    
+    for k in KEYS:
         print("Alg", k)
                 
         D = Scalar(0)*C
@@ -122,6 +128,28 @@ if __name__ == "__main__":
             
         
         del G3; gc.collect()
-   
+
+
+    KEYS = list(FA.keys())
+    print("Minimum space")
+    for k in KEYS:
+        print("Alg", k)
+                
+        D = Scalar(0)*C
+        c,a,b = FA[k]
+        G3 = bini_mult_example_three_temp(D,c, A,a,B,b,True,True)
+        if args.visual:
+            E = numpy.abs(C.value()-D.value())
+            if args.relative:
+                E = E/numpy.abs(C.value())
+            Graph.heatmap_diff(Graph,Matrix(E),save=k+".png")
+        else:
+            E = numpy.abs(C.value()-D.value())
+            print("MAX ERROR", numpy.max(E))
+            print("MAX Relative ERROR", numpy.max(E/numpy.abs(C.value())))
+            
+        
+        del G3; gc.collect()
+
 
     
