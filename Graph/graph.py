@@ -116,7 +116,7 @@ class Operation:
     def compute(self):
         #print(self)
         #import pdb; pdb.set_trace()
-        if type(self.left) is list:
+        if type(self.left) is list: ## this is for the LU
             L =  [ i.compute() for i in self.left]
         else:    
             L =  self.left.compute()
