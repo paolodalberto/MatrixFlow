@@ -1,5 +1,5 @@
 ![Screenshot from 2023-01-13 22-43-49](https://user-images.githubusercontent.com/15663156/212459821-7e0d1894-cff5-42e2-8296-d62f9fd65ac2.png)
-![Screenshot from 2023-01-13 22-46-53](https://user-images.githubusercontent.com/15663156/212459823-dea87b3c-1689-4d92-b897-4e46e922dc4f.png)
+
 # Matrix Flow Examples
 
 In this directory, we have a few examples. All of them are
@@ -24,7 +24,7 @@ my Bologna doctorate thesis committee. Here we can execute any fast
 algorithm from the deepmind repository. We present cases only for
 square matrices.
 
-```sh play_2.py```
+```play_2.py```
 
 As above, but we create a computation DAG. The computation is written
 into a graph you are going to execute. As in the validation, you can
@@ -54,7 +54,7 @@ can create algorithm not available in the deepmind repository.
 The example play_3.py is nothing to brag about home.
 
 
-```sh play_4.py``` is so much more interesting.
+```play_4.py``` is so much more interesting.
 
 The idea is to build several algorithms (without validation because
 they are correct). The strassen's algorithm is represented by the
@@ -221,3 +221,4 @@ Play with the size ```sh -m 4 -n 9 -k 100```. Play with the number of
 cores ```export OPENBLAS_NUM_THREADS=1```. And play with the nature of
 the matrices ```-e "up"``` (try "middle").
 
+![Screenshot from 2023-01-13 22-46-53](https://user-images.githubusercontent.com/15663156/212459823-dea87b3c-1689-4d92-b897-4e46e922dc4f.png)
