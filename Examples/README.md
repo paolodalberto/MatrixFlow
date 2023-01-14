@@ -6,13 +6,13 @@ In this directory, we have a few examples. All of them are
 work-in-progress but they all try to provide applications to the same
 ideas.
 
-Take three matrices A,B, and C and do C = A*B using fast
+Take three matrices A,B, and C and do C = AB using fast
 algorithms. If you are using the deepmind repository the algorithms
-are actually C^T =A*B but the transposition is only for the
+are actually C^T =AB but the transposition is only for the
 submatrices. If you are using the "bini" format you will have the
-standard C = A*B.
+standard C = AB.
 
-```sh play.py```
+```play.py```
 
 It is pure test where we take the at,bt,ct matrices representing an
 fast algorithm, and we call a
