@@ -110,30 +110,57 @@ class Operation:
         self.temp_space = A
         return  A
 
+    
+
+    
     def compute(self):
+        #print(self)
+        #import pdb; pdb.set_trace()
         if type(self.left) is list:
             L =  [ i.compute() for i in self.left]
         else:    
             L =  self.left.compute()
+
         R =  self.right.compute()
+
+        temp_result = None
         if self.operation == '+':
-            self.temp_result = L + R
-        if self.operation == '+=':
-            self.temp_result = L + R
-            self.left.temp_result.set_value(self.temp_result.value())
+            temp_result = L + R
         elif self.operation == '-':
-            self.temp_result = L - R
+            #import pdb; pdb.set_trace()
+            temp_result = L - R
         elif self.operation == '*':
-            self.temp_result = L * R
+            temp_result = L * R
         elif self.operation == '/':
-            self.temp_result = L / R
+            temp_result = L / R
+        elif self.operation == '+=':
+            temp_result = L + R
+            self.left.temp_result.set_value(temp_result.value())
+            del temp_result
+            temp_result = None
         elif self.operation in  ['<<','=']:  # =
             #import pdb;pdb.set_trace()
-            self.temp_result =  R
+            temp_result =  None
             if type(self.left) is list:
                 for i in range(len(R)):
                     self.left[i].set_value(R[i].value())
-            else: self.left.temp_result.set_value(R.value())
+            else:
+                self.left.temp_result.set_value(R.value())
+                if type(self.right) is Operation:
+                    del self.right.temp_result
+                    
+        if temp_result: 
+            if type(self.left) is Data and type(self.right) is Data:
+                #first call 
+                self.temp_result =temp_result
+            else:
+                # in the middle
+                self.temp_result =temp_result
+                if type(self.left) is Operation:
+                   del self.left.temp_result
+                if type(self.right) is Operation:
+                    del self.right.temp_result 
+                
                 
         return  self.temp_result
 
@@ -861,13 +888,13 @@ class Graph(Function):
                         
                     u = i.left.dependantOperands()
                 r = i.right.dependantOperands()
-                t = i.right.space()
+                #t = i.right.space()
                 defs.append(r)
                 uses.append(u)
                 #print("lhs",u, '= rhs', r)
             else:
                 u = self
-                t = i.space()
+                #t = i.space()
 
                 r = i.dependantOperands()
                 defs.append(r[0])
@@ -876,7 +903,7 @@ class Graph(Function):
 
         dep =  {'uses' : uses,
                 'defs' : defs,
-                'temp' : [t]} 
+                'temp' : [0]} 
         if local: self.dep = dep
         return dep
 
@@ -954,6 +981,9 @@ def algorithm_mult_example(
     N = A.value().shape[1]
     K = B.value().shape[0]
 
+    OPS = 2*M*N*K
+    GIGA= 1000000000
+    
     ## disjoint partition of input output
     CP = PartitionMatrix(C,sub)
     BP = PartitionMatrix(B,sub)
@@ -1021,7 +1051,7 @@ def algorithm_mult_example(
         end = time.time()
         t = end-start
         
-        print("compute_time",t, "GFLOPS",2*M*N*K/t/1000000000  )
+        print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
     
     ###
     ## Compute the graph for validation. Yep we can and we should run
@@ -1093,6 +1123,8 @@ def bini_mult_example(
     N = A.value().shape[1]
     K = B.value().shape[0]
     
+    OPS = 2*M*N*K
+    GIGA= 1000000000
     
     subblocks = int(math.sqrt(CT.shape[0]))
     products  = CT.shape[1]
@@ -1172,9 +1204,14 @@ def bini_mult_example(
     
     for i in range(products):
         Q = Matrix(CP.value()[0][0].value()*0)
-        Pss.append(Data("Ps[%d]" % i, Q))
-        Ps.append(Q)
+        Ps.append(Data("Pss[%d]" % i, Q))
+        Pss.append(Q)
 
+    
+    shape = Q.value().shape
+    summ  = shape[0]*shape[1]*4
+    print(Q.value().shape,Q.value().dtype,products, "TEMP SPACE GB", summ*products/1024/1024/1024)
+        
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
     
@@ -1271,16 +1308,17 @@ def bini_mult_example(
         end = time.time()
         t = end-start
         
-        print("compute_time",t, "GFLOPS",2*M*N*K/t/1000000000  )
+        print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
 
 
     
-    ###
-    ## Compute the graph for validation. Yep we can and we should run
-    ## the graph
-    ###
-    print("Compute")
-    G1.compute()
+        ###
+        ## Compute the graph for validation. Yep we can and we should run
+        ## the graph
+        ###
+    else:
+        print("Compute")
+        G1.compute()
 
     ## we create a stmt-by-stm data dependency
     print("Dependency")
@@ -1300,6 +1338,8 @@ def bini_mult_example_three_temp(
     M = A.value().shape[0]
     N = A.value().shape[1]
     K = B.value().shape[0]
+    OPS = 2*M*N*K
+    GIGA= 1000000000
     subblocks = int(math.sqrt(CT.shape[0]))
     products  = CT.shape[1]
 
@@ -1373,6 +1413,10 @@ def bini_mult_example_three_temp(
     Ps = Data("P" , P)
     #Pss.append(Scalar(0)*CDP[0])
 
+    shape = P.value().shape
+    summ  = shape[0]*shape[1]*4
+    print(P.value().shape,P.value().dtype, "TEMP SPACE GB", summ/1024/1024/1024)
+
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
     
@@ -1428,7 +1472,7 @@ def bini_mult_example_three_temp(
         exec(E)
         end = time.time()
         t = end-start
-        print("compute_time",t, "GFLOPS",2*M*N*K/t/1000000000  )
+        print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
 
         ###
         ## Compute the graph for validation. Yep we can and we should run

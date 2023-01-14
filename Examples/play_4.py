@@ -40,6 +40,8 @@ if __name__ == "__main__":
                  ## with matrices 36x36
                  
     T = X*Y*K # 4x3x3 
+    OPS = 2*T*T*T
+    GIGA= 1000000000
     print("Matrix Size", T)
     for f in F:
         if T % f !=0:
@@ -59,7 +61,8 @@ if __name__ == "__main__":
     start = time.time()
     C = A*B
     end = time.time()
-    print("time",end - start)
+    t = end-start
+    print("time",t, "GFLOPS", OPS/t/GIGA)
 
 
     if False:
@@ -67,6 +70,7 @@ if __name__ == "__main__":
         start = time.time()
         D = numpy.matmul(A.value(),B.value())
         end = time.time()
+        
         print("time",end - start)
 
 
@@ -137,7 +141,7 @@ if __name__ == "__main__":
                 
         D = Scalar(0)*C
         c,a,b = FA[k]
-        G3 = bini_mult_example_three_temp(D,c, A,a,B,b,True,True)
+        G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
         if args.visual:
             E = numpy.abs(C.value()-D.value())
             if args.relative:
