@@ -597,7 +597,9 @@ class Graph(Function):
         self.declarations = D
 
         self.visgraph = graphviz.Digraph()
-
+        self.time = 0
+        self.temp_space = 0
+        
     def compile_graph(self):
 
         E = compile(str(self),'test','exec')
@@ -760,7 +762,7 @@ class Graph(Function):
         
         end = time.time()
         print("compute", end - start)
-        
+        self.time = end - start
         if self.temp_result and self.temp_result.padded:
             self.single_output(self.temp_result)
             return self.temp_result 
@@ -1293,7 +1295,7 @@ def bini_mult_example(
     #import pdb; pdb.set_trace()
     G1 = Graph("C = Fast A*B", V,decls,C, [A,B] )
     #print(G1)
-
+    G1.space = summ*products
     G1.set_bini_matrices(CT,AT,BT)
 
     if comp:
@@ -1416,7 +1418,7 @@ def bini_mult_example_three_temp(
     shape = P.value().shape
     summ  = shape[0]*shape[1]*4
     print(P.value().shape,P.value().dtype, "TEMP SPACE GB", summ/1024/1024/1024)
-
+    
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
     
@@ -1458,7 +1460,7 @@ def bini_mult_example_three_temp(
     #import pdb; pdb.set_trace()
     G1 = Graph("C = Fast A*B", V,decls,C, [A,B] )
     #print(G1)
-
+    G1.space = summ
     G1.set_bini_matrices(CT,AT,BT)
     
     if comp:

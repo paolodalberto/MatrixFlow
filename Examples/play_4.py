@@ -12,6 +12,9 @@ import sys
 import argparse
 import gc
 
+Line = "# %s %5s %5d %1.3e %1.5e" 
+
+
 if __name__ == "__main__":
 
 
@@ -64,14 +67,18 @@ if __name__ == "__main__":
     t = end-start
     print("time",t, "GFLOPS", OPS/t/GIGA)
 
+    print("# type  alg  size gflops    max err")
+    print(Line %("pyt","reg", T,OPS/t/GIGA, 0))
 
     if False:
         print("compute")
         start = time.time()
         D = numpy.matmul(A.value(),B.value())
         end = time.time()
-        
-        print("time",end - start)
+        t = end - start
+        print("time",t)
+        print("# type  alg  size gflops    max")
+        print(Line %("pyt","reg", T,OPS/t/GIGA, numpy.max(C.value() - D.value())))
 
 
 
@@ -111,49 +118,64 @@ if __name__ == "__main__":
     
     #import pdb; pdb.set_trace()
 
+    Parallel = {}
+    One      = {}     
+    Performance = {
+        'par' : Parallel,
+        'one' : One
+    }
+    Dimension = {T : Performance}
+
+    
     
     KEYS = list(FA.keys()) if args.minimumspaceonly is None else []
-    
-    for k in KEYS:
-        print("Alg", k)
-                
-        D = Scalar(0)*C
-        c,a,b = FA[k]
-        G3 = bini_mult_example(D,c, A,a,B,b,1)
-        if args.visual:
-            E = numpy.abs(C.value()-D.value())
-            if args.relative:
-                E = E/numpy.abs(C.value())
-            Graph.heatmap_diff(Graph,Matrix(E),save=k+".png")
-        else:
-            E = numpy.abs(C.value()-D.value())
-            print("MAX ERROR", numpy.max(E))
-            print("MAX Relative ERROR", numpy.max(E/numpy.abs(C.value())))
-            
-        
-        del G3; gc.collect()
 
 
-    KEYS = list(FA.keys())
-    print("Minimum space")
-    for k in KEYS:
-        print("Alg", k)
-                
-        D = Scalar(0)*C
-        c,a,b = FA[k]
-        G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
-        if args.visual:
-            E = numpy.abs(C.value()-D.value())
-            if args.relative:
-                E = E/numpy.abs(C.value())
-            Graph.heatmap_diff(Graph,Matrix(E),save=k+".png")
-        else:
-            E = numpy.abs(C.value()-D.value())
-            print("MAX ERROR", numpy.max(E))
-            print("MAX Relative ERROR", numpy.max(E/numpy.abs(C.value())))
+    for ver in Performance.keys():
+        if args.minimumspaceonly is not None and ver =='par':
+            KEYS = [] 
+        else: KEYS = list(FA.keys())
+        print(ver,KEYS)
+        for k in KEYS:
+            print("Alg", k)
             
-        
-        del G3; gc.collect()
+            D = Scalar(0)*C
+            c,a,b = FA[k]
+            if  ver =='par':
+                G3 = bini_mult_example(D,c, A,a,B,b,1)
+            else:
+                G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
+
+            if args.visual:
+                E = numpy.abs(C.value()-D.value())
+                if args.relative:
+                    E = E/numpy.abs(C.value())
+                Graph.heatmap_diff(Graph,Matrix(E),save=k+".png")
+            else:
+                E = numpy.abs(C.value()-D.value())
+                print("MAX ERROR", numpy.max(E))
+                print("MAX Relative ERROR", numpy.max(E/numpy.abs(C.value())))
+                
+            Dimension[T][ver][k] = {
+                'time'      : G3.time,
+                'gflops'    : OPS/G3.time/GIGA,
+                'max_error' :  numpy.max(E),
+                'max_rel_error' :  numpy.max(E/numpy.abs(C.value())),
+                'size' : T
+            }
+            del G3; gc.collect()
 
 
     
+    #print(Dimension)
+    ##     type alg size gflops max rel 
+    for size in Dimension:
+        for typ  in Dimension[size]:
+            for alg in  Dimension[size][typ]:
+                cont = Dimension[size][typ][alg]
+                print(Line %(typ,alg,
+                             cont['size'],
+                             cont['gflops'],
+                             cont['max_error'])
+                )
+                                 
