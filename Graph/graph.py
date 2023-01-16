@@ -34,6 +34,9 @@ class Operation:
 
         self.temp_space = None
         self.operands = None
+        self.parallel = False
+        self.group = 0
+
         
         try:
             if self.left:
@@ -1029,13 +1032,13 @@ def algorithm_mult_example(
             for k in range(1,K):
                 T1 = Operation("p%d"%k, "*", AD[i*Col+k],BD[k*Col+j])
                 T = Operation('c','+',T,T1)
-            V.append(
-                Operation("s0", '<<',
+            R = Operation("s0", '<<',
                           CD[i*Col+j],
                           T
-                )
             )
-    
+            R.parallel = True
+            V.append(R)
+            
     ###
     ## create a graph
     ###
@@ -1235,6 +1238,7 @@ def bini_mult_example(
                     Operation.AdditionBini(BD,BT[:,c])  # Sum a_iA_i
                 )
             )
+            O.parallel = True
             V.append(O)
             try:
                 O.compute()
@@ -1286,6 +1290,8 @@ def bini_mult_example(
             CD[c], # lhs 
             Operation.AdditionBini(Ps,CT[c,:])  # Sum p_iP_i
         )
+        O.parallel = True
+        O.group = 1
         V.append(O)
     
                 

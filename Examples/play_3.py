@@ -11,6 +11,10 @@ from  Validation.BiniScheme import  BiniScheme
 import sys
 import argparse
 import gc
+from Hw.hw import AbstractHW, PE
+
+
+HW =  AbstractHW('Doohm')
 
 if __name__ == "__main__":
 
@@ -23,6 +27,7 @@ if __name__ == "__main__":
     parser.add_argument("-m","--M", help="Factor of A", type=int, default=2)
     parser.add_argument("-n","--N", help="Factor of A", type=int, default=2)
     parser.add_argument("-e", "--error", help="pretty display error", type =str, default =None)
+    parser.add_argument("-k","--K", help="Factor of A", type=int, default=3)
     args = parser.parse_args()
 
     
@@ -33,8 +38,9 @@ if __name__ == "__main__":
     X = args.M 
     Y = args.N
 
-    T = X*Y*10
+    T = X*Y*args.K
 
+    print(T)
     A = gen_matrix(T,T,args.error)
     B = gen_matrix(T,T,args.error)
 
@@ -63,6 +69,14 @@ if __name__ == "__main__":
 
     
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+
+
+    start = time.time()
+    HW.compute_graph_queue_pool(G3)
+    end = time.time()
+    print("time",end - start)
+    import pdb; pdb.set_trace()
+    
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     ## reduce temporary space
@@ -75,7 +89,7 @@ if __name__ == "__main__":
     print(a.shape)
     D = Scalar(0)*C
     ## compute and dependency .... 
-    G3 = bini_mult_example_three_temp(D,c, A,a,B,b,1)
+    G3 = bini_mult_example_three_temp(D,ct, A,at,B,bt,1)
 
     
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))

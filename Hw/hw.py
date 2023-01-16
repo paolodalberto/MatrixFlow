@@ -1,5 +1,6 @@
 from Matrices.matrices import Matrix
-
+from multiprocessing import Process, Queue, Pool, Manager
+from Graph.graph import Graph
 
 class Memory:
     def __init__(self,
@@ -19,7 +20,8 @@ class PE:
                  memory : Memory):
         self.name = name 
         self.internal_memory = memory
-        self.graph = None 
+        self.graph = None
+        self.operations  = None
         
     def space(self): return self.internal_memory.space()
     def compute(self):
@@ -34,8 +36,18 @@ class PE:
         return self.graph.count(operation,operands_type) if self.graph else 0 
 
 
-PEN = 1
-    
+PEN = 4
+
+
+def writer(i,q,V):
+    #print("push", V[i])
+    q.put(V[i])
+def reader(i,q):
+    op = q.get()
+    #print("compute", op)
+    op.compute()
+
+
 class AbstractHW:
     def __init__(self,
                  name : str,
@@ -47,7 +59,12 @@ class AbstractHW:
     ):
         self.name = name 
         self.memory = memory
-        self.pes = pes 
+        self.pes = pes
+
+        self.manager = Manager()
+        self.queue   = self.manager.Queue()
+        self.pool    = Pool(len(self.pes))
+        
 
     def __str__(self):
         ps = [str(pe) for pe in self.pes ]
@@ -66,6 +83,41 @@ class AbstractHW:
     def compute(self):
         for pe in self.pes:
             print(pe.compute())
+
+
+            
+    def compute_graph_by_queue_pool(self,graph: Graph):
+        print(len(graph.V), len(self.pes))
+        H = [ i for i in graph.V if i.parallel and i.group == 0]
+        T = [  i for i in graph.V if i.parallel and i.group ==1 ]
+
+        # products
+        for i in range(len(H)):
+            Process(target=writer, args=(i,self.queue,H)).start()
+        readers = []
+
+        #import pdb; pdb.set_trace()
+        for i in range(len(H)):
+            readers.append(self.pool.apply_async(reader, (i,self.queue,)))
+        # Wait for the asynchrounous reader threads to finish
+        [r.get() for r in readers]
+        #import pdb; pdb.set_trace()
+
+        if len(T)>0:
+            ## distribution
+            for i in range(len(T)):
+                Process(target=writer, args=(i,self.queue,T)).start()
+            readers = []
+
+            #import pdb; pdb.set_trace()
+            for i in range(len(T)):
+                readers.append(self.pool.apply_async(reader, (i,self.queue,)))
+            # Wait for the asynchrounous reader threads to finish
+            [r.get() for r in readers]
+        
+        
+            
+        
     def count(self,
               operation : str = '*',
               operands_type = [Matrix, Matrix]):
@@ -74,3 +126,7 @@ class AbstractHW:
             counts.append(pe.count(operation,operands_type))
         return counts
                         
+
+
+
+
