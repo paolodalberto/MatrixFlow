@@ -151,8 +151,8 @@ dependency analysis where inputs and outputs must be explicitly
 defined. However, this is still an interpreted environment (even by
 compiling) and you can add temporary variables and computations as you like. 
 
-``` python3 Examples/play_4.py``` 
-Is an example how to collect performance (time, GFLOPS, maximum error, max relative, error, distribution of the error) for a complete set of algorithm if the natrix has the proper factors. Anyone can reproduce the performance numbers (in their system) and the performance plot created and stored in ```Plots```
+``` python3 Examples/play_4.py -n 4 -m 3 -k 100``` 
+Is an example how to collect performance (time, GFLOPS, maximum error, max relative, error, distribution of the error) for a complete set of algorithms if the matrix has the proper factors. Anyone can reproduce the performance numbers (in their system) and the performance plots created and stored in ```Plots``` here an example for the execution by using only one core of my threadripper.
 
 ![CORES_1](https://user-images.githubusercontent.com/15663156/212575773-fb8da32f-0af5-4f7b-9ec9-81faecd8b4c3.png)
 
