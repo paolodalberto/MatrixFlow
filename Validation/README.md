@@ -27,3 +27,8 @@ python3 akBiniChecker.py MatMultSolutions20230104/s3x3x3_23.JinsooOh_20131111a/s
 python3 akBiniChecker.py MatMultSolutions20230104/s2x2x2_07.Strassen/s2x2x2_07.Strassen.Bini.txt MatMultSolutions20230104/s5x5x5_99.Sedoglavic/s5x5x5_99.Sedoglavic.Bini.txt 
 python3 akBiniChecker.py MatMultSolutions20230104/s2x2x2_07.Strassen/s2x2x2_07.Strassen.Bini.txt s6x6x6_161.bini.txt
  ```
+ 
+The factorization tools, the way of combining two different algorithms into a single set of three tensors, have important ramifications. 
+If you consider a problem MxKxN, a single tensor solution creates a balanced computation: each product is well defined, the submatrices are well defined and the whole algorithm can be verified. The data dependecies between input submatrices and products are direct, and so the dependecy between products and output submatrices.   
+
+For every tensor representation, there is an equivalent recursive algorithm. The recursion makes the data depedency tricker (we will no go into the details). But a recursive algorithm does not need the same depth from the root to the leaf computation, practical matrix products can be different, it is not clear if there is an equivalent tensor representation of the recursive algorithm, and there is no clear representation of how to apply matrix transposition to reduce the effect of error.     
