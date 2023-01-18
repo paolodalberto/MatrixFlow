@@ -449,12 +449,49 @@ class Data(Operation):
         self.inputs = False
         self.temps  = False
         self.outputs= False
-        
+        self.original = None
+
+    def partition(self):
+        return not self.original is None
+    def partition_name(self):
+        par = self.name.find("[")
+        if self.partition():
+            return self.name[0:par]
+        if par>0 : return self.name[0:par]
+        return self.name
+    def original_matrix_name(self):
+        return self.original
+    def type_matrix(self):
+        return self.left.matrix.dtype
+
+    
+    
     def __str__(self):
 
         if type(self.left) == Scalar:
             return str(self.left)
         return self.name
+
+    def pretty__(self):
+        
+        
+        if self.left.pointer:
+            # declaration of pointer (pointer because of a partition) 
+            A_original = self.left.pointer
+            A = self.left
+            M, N = A_original.value().shape
+            d = self.name  + "= " +\
+                self.original  + "+%d*%d +%d;" % (M,A.min[0], A.min[1])
+            return d
+        else:
+            #import pdb; pdb.set_trace()
+            ## space for temporary: declaration of a matrix
+            A = self.left
+            M, N = A.value().shape
+            d = self.name  + "= " +\
+                "malloc (%d*%d);" % (A.max[0]-A.min[0], A.max[1] -A.min[1])
+            return d
+        
         
     def count(self,
               operation : str = '*',
@@ -465,7 +502,7 @@ class Data(Operation):
     def set_value(self, A):
         
         self.temp_result.set_value(A)
-    
+        
     def dependantOperands(self):
         return [self]
 
@@ -473,27 +510,35 @@ class Data(Operation):
     ## order) partition. Now these beauties will be sprinckled out in
     ## the computation and for data dependency we need just to compare
     ## pointers to class objects.
-    def data_factory_flat(A : list):
+    def data_factory_flat(A : list, original : str = None):
+        if original:
+            for row in A:
+                for i in row:
+                    i.original = original
         return [ i for row in A for i in row ]
-    def data_factory(name : str , A = PartitionMatrix):
+    def data_factory(name : str , A = PartitionMatrix, original : str = None):
         AD = []
         Ashape = (len(A.value()), len(A.value()[0]))
         for i in range(Ashape[0]):
             R = [] 
             for j in range(Ashape[1]):
-                L = Data('%s[%d]' %(name, len(AD)*Ashape[1] + len(R)),
+                #print(i*Ashape[1] + j)
+                L = Data('%s[%d]' %(name, i*Ashape[1] + j),
                          A.value()[i][j])
+                L.original = original
                 R.append(L)
             AD.append(R)
         return AD
-    def data_factory_transpose(name : str , A = PartitionMatrix):
+    def data_factory_transpose(name : str , A = PartitionMatrix, original : str = None):
         AD = []
         Ashape = (len(A.value()[0]), len(A.value()))
         for i in range(Ashape[0]):
             R = [] 
             for j in range(Ashape[1]):
-                L = Data('%s[%d]' %(name, len(AD)*Ashape[1] + len(R)),
+                #print(i*Ashape[1] + j)
+                L = Data('%s[%d]' %(name, i*Ashape[1] + j),
                          A.value()[j][i])
+                L.original = original
                 R.append(L)
             AD.append(R)
         return AD
@@ -608,7 +653,7 @@ class Graph(Function):
         E = compile(str(self),'test','exec')
 
         return E
-        
+    
     def set_bini_matrices(self,
                           ct = numpy.ndarray,
                           at = numpy.ndarray,
@@ -655,7 +700,7 @@ class Graph(Function):
             
 
         return C
-            
+    
         
     def count(self,
               operation : str = '*',
@@ -666,7 +711,7 @@ class Graph(Function):
             count += v.count(operation,operands_type)
 
         return count
-        
+    
     ## those operands that are on the lhs but then are recomputed
     ## afterwords
     def outputs(self, dep : dict = None):
@@ -677,7 +722,7 @@ class Graph(Function):
         if local:
             if self.dep is None:
                 self.dep = self.dependency()
-            dep = self.dep
+                dep = self.dep
         if self._outputs_: return  self._outputs_
         
         O = []
@@ -690,15 +735,15 @@ class Graph(Function):
                         A = True
                         break
                 if not A: O.append(i)
-        OO = []
+                OO = []
         for i in O:
             if i.outputs:
                 OO.append(i)
-            #else:
-            #    print("TEMP?", i)
+                #else:
+                #    print("TEMP?", i)
         if len(OO) != len(O):
             O = OO
-        
+            
         if local: self._outputs_ = set(O)
 
 
@@ -714,7 +759,7 @@ class Graph(Function):
         if local:
             if self.dep is None:
                 self.dep  = self.dependency()
-            dep = self.dep
+                dep = self.dep
         if self._inputs_: return self._inputs_
 
         I = []
@@ -742,10 +787,51 @@ class Graph(Function):
             red += str(n)+"\n"
         return red
 
+    def pretty__(self):
+        red = ""
+        #import pdb; pdb.set_trace()
+        for block  in self.declarations:
+            ## either a partition or a definition
+            #print(block[0])
+            #import pdb; pdb.set_trace()
+            partition = block[0].partition()
+            init = ""
+            if True : #partition:
+                TYP = str(block[0].type_matrix())
+                L = len(block)
+                name = block[0].partition_name()
+                decl = "%s* %s[%d]; " % (TYP,name,L)
+                init += decl
+            else:
+                TYP = str(block[0].type_matrix())
+                L = len(block)
+                name = block[0].partition_name()
+                decl = "%s* %s[%d]; " % (TYP,name,L)
+                init += decl
+
+            for d in block:
+                #print(d)
+                init += d.pretty__()
+            #import pdb; pdb.set_trace()
+            print(init)
+            red+= init +"\n" 
+        print("## declarations")
+        print(red)
+
+        code = ''
+        for n in self.V:
+            code += str(n)+"\n"
+
+        print("## code")
+        print(code)
+        return red + code
+
     ## We execute each statement in the V list in order
     def compute(self, verbose = False):
         start = time.time()
         for ds in self.declarations:
+                
+            
             if type(ds) is list:
                 for d in ds:
                     if d.outputs:
@@ -1178,16 +1264,16 @@ def bini_mult_example(
     ###
 
     # linear description instead of 2d matrix  
-    AD = Data.data_factory_flat(Data.data_factory('ADP', AP)) 
+    AD = Data.data_factory_flat(Data.data_factory('ADP', AP),'A') 
     for i in AD: i.inputs = True
-    BD = Data.data_factory_flat(Data.data_factory('BDP', BP))
+    BD = Data.data_factory_flat(Data.data_factory('BDP', BP),'B')
     for i in BD: i.inputs = True
 
 
     ## deepmind format need a transposition of the C to make it work
 
     CD = Data.data_factory_flat(
-        Data.data_factory('CDP', CP) if not deepmindformat else  Data.data_factory_transpose('CDP', CP)
+        Data.data_factory('CDP', CP,'C') if not deepmindformat else  Data.data_factory_transpose('CDP', CP, 'C')
     )
 
     ## WARNING: There is a problem in transforming a computation into
@@ -1219,6 +1305,8 @@ def bini_mult_example(
         
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
+
+    #import pdb; pdb.set_trace()
     
     ###
     ## Computation as a sequence of assignment statements
@@ -1392,16 +1480,16 @@ def bini_mult_example_three_temp(
     ###
 
     # linear description instead of 2d matrix  
-    AD = Data.data_factory_flat(Data.data_factory('ADP', AP)) 
+    AD = Data.data_factory_flat(Data.data_factory('ADP', AP,'A')) 
     for i in AD: i.inputs = True
-    BD = Data.data_factory_flat(Data.data_factory('BDP', BP))
+    BD = Data.data_factory_flat(Data.data_factory('BDP', BP,'B'))
     for i in BD: i.inputs = True
 
 
     ## deepmind format need a transposition of the C to make it work
 
     CD = Data.data_factory_flat(
-        Data.data_factory('CDP', CP) if not deepmindformat else  Data.data_factory_transpose('CDP', CP)
+        Data.data_factory('CDP', CP,'C') if not deepmindformat else  Data.data_factory_transpose('CDP', CP,'C')
     )
 
     ## WARNING: There is a problem in transforming a computation into
@@ -1417,13 +1505,20 @@ def bini_mult_example_three_temp(
 
     ## we create a declaration of one  temporary products
     #Pss = []
-    P = Matrix(CP.value()[0][0].value()*0)
-    Ps = Data("P" , P)
+    Pss = [] 
+    Ps = []
+    
+    for i in range(1):
+        Q = Matrix(CP.value()[0][0].value()*0)
+        Ps.append(Data("Pss[%d]" % i, Q))
+        Pss.append(Q)
+    #P = Matrix(CP.value()[0][0].value()*0)
+    #Ps = Data("P" , P)
     #Pss.append(Scalar(0)*CDP[0])
 
-    shape = P.value().shape
+    shape = Pss[0].value().shape
     summ  = shape[0]*shape[1]*4
-    print(P.value().shape,P.value().dtype, "TEMP SPACE GB", summ/1024/1024/1024)
+    print(Pss[0].value().shape,Pss[0].value().dtype, "TEMP SPACE GB", summ/1024/1024/1024)
     
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
@@ -1438,7 +1533,7 @@ def bini_mult_example_three_temp(
     for c in range(AT.shape[1]):
         O = Operation(
             'ta', '<<',
-            Ps, # temp product 
+            Ps[0], # temp product 
             Operation(
                 'tp_%d' % c, '*',
                 Operation.AdditionBini(AD,AT[:,c]), # Sum a_iA_i
@@ -1455,7 +1550,7 @@ def bini_mult_example_three_temp(
 
         # we distribute the product 
         Os = Operation.AssignAdditionBini(
-            CD,CT[:,c],Ps
+            CD,CT[:,c],Ps[0]
         )
         V.extend(Os)
     #import pdb; pdb.set_trace()

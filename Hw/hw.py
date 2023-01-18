@@ -36,15 +36,15 @@ class PE:
         return self.graph.count(operation,operands_type) if self.graph else 0 
 
 
-PEN = 4
+PEN = 2
 
 
 def writer(i,q,V):
-    #print("push", V[i])
+    print("push", V[i])
     q.put(V[i])
 def reader(i,q):
     op = q.get()
-    #print("compute", op)
+    print("compute", op)
     op.compute()
 
 

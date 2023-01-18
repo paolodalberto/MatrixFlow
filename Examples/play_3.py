@@ -67,12 +67,13 @@ if __name__ == "__main__":
     ## compute and dependency .... 
     G3 = bini_mult_example(D,c, A,a,B,b,1)
 
-    
+    import pdb; pdb.set_trace()
+    print(G3.pretty__())
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
 
-
+    
     start = time.time()
-    HW.compute_graph_queue_pool(G3)
+    HW.compute_graph_by_queue_pool(G3)
     end = time.time()
     print("time",end - start)
     import pdb; pdb.set_trace()
@@ -91,7 +92,7 @@ if __name__ == "__main__":
     ## compute and dependency .... 
     G3 = bini_mult_example_three_temp(D,ct, A,at,B,bt,1)
 
-    
+    print(G3.pretty__())
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))

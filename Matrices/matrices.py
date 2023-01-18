@@ -15,6 +15,8 @@ class Matrix:
         self.max = A.shape
         self.logicalshape = A.shape
         self.padded = False
+        self.pointer = None
+
         
     def value(self): return self.matrix[self.min[0]:self.max[0],self.min[1]:self.max[1]]
     def set_value(self, A):
@@ -131,6 +133,7 @@ class PartitionMatrix:
                 A.max = (
                     min((i+1)*logicalShape[0],shape[0]),
                     min((j+1)*logicalShape[1],shape[1]))
+                A.pointer = self.original
                 row.append(A)
                 A.logicalshape =  self.logicalshape
             self.l.append(row)
