@@ -68,6 +68,7 @@ if __name__ == "__main__":
     G3 = bini_mult_example(D,c, A,a,B,b,1)
 
     import pdb; pdb.set_trace()
+    print(G3.V[1].pretty__q())
     print(G3.pretty__())
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
 

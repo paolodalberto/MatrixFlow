@@ -8,6 +8,9 @@ import time
 import seaborn as sns
 from  Validation.BiniScheme import  BiniScheme
 
+import pdb;
+
+
 ###
 ## if we build a Abstract Syntax Tree os a sequence of matrix
 ## operations we have basically binary operator such as +,* and =. The
@@ -36,7 +39,7 @@ class Operation:
         self.operands = None
         self.parallel = False
         self.group = 0
-
+        self.tempname = ""
         
         try:
             if self.left:
@@ -81,6 +84,51 @@ class Operation:
         tmp = L  +" "+self.operation+" "+ R
         
         return tmp
+
+    def set_temp(self, temp  :str = "T"):
+        if self.operation in ['+','-']:
+            self.tempname = temp
+            if self.right: self.right.set_temp(temp)
+            if self.left: self.left.set_temp(temp)
+            
+
+    def pretty__q(self):
+        print(self)
+        #if self.operation == '+=':
+        #    pdb.set_trace()
+        #pdb.set_trace()
+        if self.operation in ['data'] :
+            return self.name
+        if self.operation in ['*', '/']:
+            self.left.set_temp("Ts[0]")
+            self.right.set_temp("Ts[1]")
+            
+        L = self.left.pretty__q()
+        R = self.right.pretty__q()
+        
+        Q = []
+        if type(L) is list : Q.extend(L)
+        elif L.find("=")>0 : Q.append(L) 
+        if type(R) is list : Q.extend(R)
+        elif R.find("=")>0 : Q.append(R)
+
+        #if self.operation == '+=':
+        #    pdb.set_trace()
+
+        
+        if self.operation in ['*'] or (self.operation in ['+', '-'] and self.tempname==''):
+            self.tempname = self.left.tempname + self.operation + self.right.tempname
+        elif self.operation in ['<<', '+=']:
+            ## ASSIGNMENT 
+                Q.append(
+                    self.left.tempname + self.operation + self.right.tempname +";"
+                )
+        else:
+            Q.append(
+                self.tempname +'='+ self.left.tempname + self.operation + self.right.tempname
+            )
+
+        return "\n".join(Q)
 
     
     def space(self):
@@ -375,6 +423,9 @@ def bini(
     for c in range(AT.shape[1]):
         Ps.append(Matrix(CD[0].value()*0))
 
+
+
+        
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps ] 
     
@@ -450,7 +501,8 @@ class Data(Operation):
         self.temps  = False
         self.outputs= False
         self.original = None
-
+        self.tempname = name
+        
     def partition(self):
         return not self.original is None
     def partition_name(self):
@@ -472,6 +524,10 @@ class Data(Operation):
             return str(self.left)
         return self.name
 
+    def pretty__q(self):
+        
+        return self.name
+
     def pretty__(self):
         
         
@@ -486,10 +542,16 @@ class Data(Operation):
         else:
             #import pdb; pdb.set_trace()
             ## space for temporary: declaration of a matrix
+
+            type = Graph.numpytoC(self.type_matrix())
             A = self.left
             M, N = A.value().shape
             d = self.name  + "= " +\
-                "malloc (%d*%d);" % (A.max[0]-A.min[0], A.max[1] -A.min[1])
+                "(%s*)malloc (%d*%d*sizeof(%s));" % (
+                    type,
+                    A.max[0]-A.min[0], A.max[1] -A.min[1],
+                    type
+                )
             return d
         
         
@@ -630,8 +692,9 @@ class Graph(Function):
         self.ADP = list()
         self.BDP = list()
 
-
-
+        self.A = None
+        self.B = None
+        self.C = None 
         
         self.alpha = None 
         self.beta  = None
@@ -663,6 +726,16 @@ class Graph(Function):
         self.alpha = at 
         self.beta  = bt
         self.gamma = ct
+
+    def set_original_matrices(self,
+                          c = Matrix,
+                          a = Matrix,
+                          b = Matrix):
+        
+
+        self.A  = a 
+        self.B  = b
+        self.C  = c
 
         
     def space(self):
@@ -787,8 +860,18 @@ class Graph(Function):
             red += str(n)+"\n"
         return red
 
+    def numpytoC(dty : str):
+        if dty =="float64": return "double"
+        if dty =="float32": return "float"
+        if dty =="float16": return "__fp16"
+        if dty =="complex64": return "double complex"
+        if dty =="complex32": return "float double"
+        if dty =="int64"  :  return "int"
+
+    
     def pretty__(self):
-        red = ""
+
+        red = "## declaration \n"
         #import pdb; pdb.set_trace()
         for block  in self.declarations:
             ## either a partition or a definition
@@ -797,13 +880,13 @@ class Graph(Function):
             partition = block[0].partition()
             init = ""
             if True : #partition:
-                TYP = str(block[0].type_matrix())
+                TYP = str(Graph.numpytoC(block[0].type_matrix()))
                 L = len(block)
                 name = block[0].partition_name()
                 decl = "%s* %s[%d]; " % (TYP,name,L)
                 init += decl
             else:
-                TYP = str(block[0].type_matrix())
+                TYP = str(Graph.numpytoC(block[0].type_matrix()))
                 L = len(block)
                 name = block[0].partition_name()
                 decl = "%s* %s[%d]; " % (TYP,name,L)
@@ -813,18 +896,28 @@ class Graph(Function):
                 #print(d)
                 init += d.pretty__()
             #import pdb; pdb.set_trace()
-            print(init)
+            #print(init)
             red+= init +"\n" 
-        print("## declarations")
-        print(red)
 
-        code = ''
+        
+        code = '## code \n'
         for n in self.V:
-            code += str(n)+"\n"
+            code += "### " + str(n) + "\n"
+            code += n.pretty__q()+"\n"
 
-        print("## code")
-        print(code)
-        return red + code
+        free = "## free \n"
+        ## Free malloc above
+        for block  in self.declarations:
+            ## either a partition or a definition
+            partition = block[0].partition()
+            
+            if not partition :
+                L = len(block)
+                name = block[0].partition_name()
+                for i in range(L):
+                    free  += "free(%s[%d]); " % (name,i)
+        
+        return red + code + free
 
     ## We execute each statement in the V list in order
     def compute(self, verbose = False):
@@ -1105,6 +1198,8 @@ def algorithm_mult_example(
     CD = Data.data_factory_flat(Data.data_factory('CDP', CP)) 
     for i in CD: i.outputs = True
 
+    
+    
     decls = [alphai,      AD ,        BD,          CD ] 
     
     ###
@@ -1294,17 +1389,20 @@ def bini_mult_example(
     Ps = []
     
     for i in range(products):
-        Q = Matrix(CP.value()[0][0].value()*0)
+        Q  =Matrix(CP.value()[0][0].value()*0)
         Ps.append(Data("Pss[%d]" % i, Q))
         Pss.append(Q)
-
+        
     
+    Ts = [ Data("Ts[0]"  , Matrix(AP.value()[0][0].value()*0)),Data("Ts[1]"  , Matrix(BP.value()[0][0].value()*0)) ]
+
+        
     shape = Q.value().shape
     summ  = shape[0]*shape[1]*4
     print(Q.value().shape,Q.value().dtype,products, "TEMP SPACE GB", summ*products/1024/1024/1024)
         
     ## A,B,C partitions and Partial products
-    decls = [AD , BD, CD, Ps ] 
+    decls = [AD , BD, CD, Ps, Ts ] 
 
     #import pdb; pdb.set_trace()
     
@@ -1391,6 +1489,7 @@ def bini_mult_example(
     #print(G1)
     G1.space = summ*products
     G1.set_bini_matrices(CT,AT,BT)
+    G1.set_original_matrices(C,A,B)
 
     if comp:
         #import pdb; pdb.set_trace()
@@ -1520,8 +1619,11 @@ def bini_mult_example_three_temp(
     summ  = shape[0]*shape[1]*4
     print(Pss[0].value().shape,Pss[0].value().dtype, "TEMP SPACE GB", summ/1024/1024/1024)
     
+    Ts = [ Data("Ts[0]"  , Matrix(AP.value()[0][0].value()*0)),Data("Ts[1]"  , Matrix(BP.value()[0][0].value()*0)) ]
+
+
     ## A,B,C partitions and Partial products
-    decls = [AD , BD, CD, Ps ] 
+    decls = [AD , BD, CD, Ps, Ts ] 
     
     ###
     ## Computation as a sequence of assignment statements
@@ -1563,7 +1665,8 @@ def bini_mult_example_three_temp(
     #print(G1)
     G1.space = summ
     G1.set_bini_matrices(CT,AT,BT)
-    
+    G1.set_original_matrices(C,A,B)
+
     if comp:
         #import pdb; pdb.set_trace()
         start = time.time()
