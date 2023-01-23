@@ -70,7 +70,7 @@ if __name__ == "__main__":
     import pdb; pdb.set_trace()
     print(G3.V[1].pretty__q())
     print(G3.pretty__())
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
 
     
     start = time.time()
@@ -94,7 +94,7 @@ if __name__ == "__main__":
     G3 = bini_mult_example_three_temp(D,ct, A,at,B,bt,1)
 
     print(G3.pretty__())
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     

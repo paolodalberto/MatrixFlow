@@ -93,18 +93,20 @@ class Operation:
             
 
     def pretty__q(self):
-        print(self)
-        #if self.operation == '+=':
-        #    pdb.set_trace()
-        #pdb.set_trace()
-        if self.operation in ['data'] :
-            return self.name
+
+        
+        if self.operation == '+=':
+            self.right.set_temp("Ts[0]")
+            #pdb.set_trace()
+        
         if self.operation in ['*', '/']:
             self.left.set_temp("Ts[0]")
             self.right.set_temp("Ts[1]")
             
         L = self.left.pretty__q()
         R = self.right.pretty__q()
+        if L.find("i")>= 0 or R.find("i")>=0:
+            pdb.set_trace()
         
         Q = []
         if type(L) is list : Q.extend(L)
@@ -116,18 +118,18 @@ class Operation:
         #    pdb.set_trace()
 
         
-        if self.operation in ['*'] or (self.operation in ['+', '-'] and self.tempname==''):
-            self.tempname = self.left.tempname + self.operation + self.right.tempname
-        elif self.operation in ['<<', '+=']:
+        if self.operation in ['<<', '+=']:
             ## ASSIGNMENT 
                 Q.append(
                     self.left.tempname + self.operation + self.right.tempname +";"
                 )
+        elif self.operation in ['*'] or  self.tempname is ''  :
+            self.tempname = self.left.tempname + self.operation + self.right.tempname
         else:
             Q.append(
                 self.tempname +'='+ self.left.tempname + self.operation + self.right.tempname
             )
-
+            
         return "\n".join(Q)
 
     
@@ -519,14 +521,18 @@ class Data(Operation):
     
     
     def __str__(self):
-
-        if type(self.left) == Scalar:
+            
+        if type(self.left) is Scalar:
+            #print(self)
+            
             return str(self.left)
+        
         return self.name
 
     def pretty__q(self):
+        self.tempname = str(self)
         
-        return self.name
+        return str(self)
 
     def pretty__(self):
         
