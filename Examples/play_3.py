@@ -67,17 +67,18 @@ if __name__ == "__main__":
     ## compute and dependency .... 
     G3 = bini_mult_example(D,c, A,a,B,b,1)
 
+    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     import pdb; pdb.set_trace()
     print(G3.V[1].pretty__q())
     print(G3.pretty__())
-    #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
 
     
-    start = time.time()
-    HW.compute_graph_by_queue_pool(G3)
-    end = time.time()
-    print("time",end - start)
-    import pdb; pdb.set_trace()
+
+    #start = time.time()
+    #HW.compute_graph_by_queue_pool(G3)
+    #end = time.time()
+    #print("time",end - start)
+    #import pdb; pdb.set_trace()
     
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
@@ -91,10 +92,10 @@ if __name__ == "__main__":
     print(a.shape)
     D = Scalar(0)*C
     ## compute and dependency .... 
-    G3 = bini_mult_example_three_temp(D,ct, A,at,B,bt,1)
+    G3 = bini_mult_example_three_temp(D,ct, A,at,B,bt,1,True)
 
     print(G3.pretty__())
-    #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     

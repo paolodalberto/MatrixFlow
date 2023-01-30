@@ -94,7 +94,7 @@ class Operation:
 
     def pretty__q(self):
 
-        
+        #import pdb; pdb.set_trace()
         if self.operation == '+=':
             self.right.set_temp("Ts[0]")
             #pdb.set_trace()
@@ -110,24 +110,27 @@ class Operation:
         
         Q = []
         if type(L) is list : Q.extend(L)
-        elif L.find("=")>0 : Q.append(L) 
+        elif L.find("<<")>0 : Q.append(L) 
         if type(R) is list : Q.extend(R)
-        elif R.find("=")>0 : Q.append(R)
+        elif R.find("<<")>0 : Q.append(R)
 
         #if self.operation == '+=':
         #    pdb.set_trace()
 
         
-        if self.operation in ['<<', '+=']:
+        if self.operation in ['<<', '+=','=']:
+            #import pdb; pdb.set_trace()
             ## ASSIGNMENT 
-                Q.append(
-                    self.left.tempname + self.operation + self.right.tempname +";"
-                )
+            Q.append(
+                self.left.tempname +
+                (self.operation if self.operation != '=' else '<<') +
+                self.right.tempname +";"
+            )
         elif self.operation in ['*'] or  self.tempname is ''  :
             self.tempname = self.left.tempname + self.operation + self.right.tempname
         else:
             Q.append(
-                self.tempname +'='+ self.left.tempname + self.operation + self.right.tempname
+                self.tempname +'<<'+ self.left.tempname + self.operation + self.right.tempname
             )
             
         return "\n".join(Q)
@@ -187,6 +190,7 @@ class Operation:
         elif self.operation == '/':
             temp_result = L / R
         elif self.operation == '+=':
+            #import pdb;pdb.set_trace()
             temp_result = L + R
             self.left.temp_result.set_value(temp_result.value())
             del temp_result
@@ -717,9 +721,12 @@ class Graph(Function):
         self.time = 0
         self.temp_space = 0
         
-    def compile_graph(self):
+    def compile_graph(self, TwoOperands : bool = False):
 
-        E = compile(str(self),'test','exec')
+        Code = self.pretty__() if TwoOperands else str(self)
+        
+        
+        E = compile(Code,'test','exec')
 
         return E
     
@@ -875,7 +882,7 @@ class Graph(Function):
         if dty =="int64"  :  return "int"
 
     
-    def pretty__(self):
+    def pretty__(self, python_compiler : bool = True ):
 
         red = "## declaration \n"
         #import pdb; pdb.set_trace()
@@ -884,7 +891,7 @@ class Graph(Function):
             #print(block[0])
             #import pdb; pdb.set_trace()
             partition = block[0].partition()
-            init = ""
+            init = ("# " if python_compiler else '') 
             if True : #partition:
                 TYP = str(Graph.numpytoC(block[0].type_matrix()))
                 L = len(block)
@@ -900,7 +907,7 @@ class Graph(Function):
 
             for d in block:
                 #print(d)
-                init += d.pretty__()
+                init +=  d.pretty__()
             #import pdb; pdb.set_trace()
             #print(init)
             red+= init +"\n" 
@@ -911,7 +918,7 @@ class Graph(Function):
             code += "### " + str(n) + "\n"
             code += n.pretty__q()+"\n"
 
-        free = "## free \n"
+        free = "## free " + ('' if python_compiler else '\n')
         ## Free malloc above
         for block  in self.declarations:
             ## either a partition or a definition
@@ -921,7 +928,7 @@ class Graph(Function):
                 L = len(block)
                 name = block[0].partition_name()
                 for i in range(L):
-                    free  += "free(%s[%d]); " % (name,i)
+                    free  +=   "free(%s[%d]); " % (name,i)
         
         return red + code + free
 
@@ -929,8 +936,7 @@ class Graph(Function):
     def compute(self, verbose = False):
         start = time.time()
         for ds in self.declarations:
-                
-            
+                        
             if type(ds) is list:
                 for d in ds:
                     if d.outputs:
@@ -1231,6 +1237,7 @@ def algorithm_mult_example(
     ###
     G1 = Graph("C = alpha*A*B", V,decls,C)
 
+
     if comp:
         #import pdb; pdb.set_trace()
         start = time.time()
@@ -1400,7 +1407,9 @@ def bini_mult_example(
         Pss.append(Q)
         
     
-    Ts = [ Data("Ts[0]"  , Matrix(AP.value()[0][0].value()*0)),Data("Ts[1]"  , Matrix(BP.value()[0][0].value()*0)) ]
+    Ts = [ Matrix(AP.value()[0][0].value()*0),
+           Matrix(BP.value()[0][0].value()*0) ]
+    Tss = [ Data("Ts[0]"  , Ts[0]),Data("Ts[1]"  , Ts[1]) ]
 
         
     shape = Q.value().shape
@@ -1408,7 +1417,7 @@ def bini_mult_example(
     print(Q.value().shape,Q.value().dtype,products, "TEMP SPACE GB", summ*products/1024/1024/1024)
         
     ## A,B,C partitions and Partial products
-    decls = [AD , BD, CD, Ps, Ts ] 
+    decls = [AD , BD, CD, Ps, Tss ] 
 
     #import pdb; pdb.set_trace()
     
@@ -1497,6 +1506,7 @@ def bini_mult_example(
     G1.set_bini_matrices(CT,AT,BT)
     G1.set_original_matrices(C,A,B)
 
+    #import pdb; pdb.set_trace()
     if comp:
         #import pdb; pdb.set_trace()
         start = time.time()
@@ -1625,11 +1635,13 @@ def bini_mult_example_three_temp(
     summ  = shape[0]*shape[1]*4
     print(Pss[0].value().shape,Pss[0].value().dtype, "TEMP SPACE GB", summ/1024/1024/1024)
     
-    Ts = [ Data("Ts[0]"  , Matrix(AP.value()[0][0].value()*0)),Data("Ts[1]"  , Matrix(BP.value()[0][0].value()*0)) ]
+    Ts = [ Matrix(AP.value()[0][0].value()*0),
+           Matrix(BP.value()[0][0].value()*0) ]
+    Tss = [ Data("Ts[0]"  , Ts[0]),Data("Ts[1]"  , Ts[1]) ]
 
 
     ## A,B,C partitions and Partial products
-    decls = [AD , BD, CD, Ps, Ts ] 
+    decls = [AD , BD, CD, Ps, Tss ] 
     
     ###
     ## Computation as a sequence of assignment statements
@@ -1673,10 +1685,11 @@ def bini_mult_example_three_temp(
     G1.set_bini_matrices(CT,AT,BT)
     G1.set_original_matrices(C,A,B)
 
+    #import pdb; pdb.set_trace()
     if comp:
         #import pdb; pdb.set_trace()
         start = time.time()
-        E = G1.compile_graph()
+        E = G1.compile_graph(True)
         end = time.time()
         print("Compile", end-start)
         
