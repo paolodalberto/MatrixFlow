@@ -31,17 +31,26 @@ class Matrix:
     def __lshift__( self, A ):
         self.set_value(A.value())
         return self
+    def __iadd__( self, A ):
+        #import pdb; pdb.set_trace()
+        self.set_value(self.value() + A.value())
+        return self
+    def __isub__( self, A ):
+        
+        self.set_value(self.value() - A.value())
+        return self
     def __sub__( self, A ):
         L = self.value()
         R = A.value()
         
         return Matrix(L-R)
 
-    def __eq__( self, A ):
-        L = self.value()
-        R = A.value()
-        
-        return Matrix(L-R)
+    #def __eq__( self, A ):
+    #    self.set_value(A.value())
+    #    #L = self.value()
+    #    #R = A.value()
+    #    return self
+    #return Matrix(L-R)
 
     def __mul__( self, A ):
 

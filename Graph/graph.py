@@ -40,6 +40,7 @@ class Operation:
         self.parallel = False
         self.group = 0
         self.tempname = ""
+        self.graph = None
         
         try:
             if self.left:
@@ -52,6 +53,13 @@ class Operation:
         except Exception as e :
             print(e)
             import pdb; pdb.set_trace()
+
+    def set_graph(self, graph):
+        self.graph = graph
+        if self.left and type(self.left) is Operation:
+            self.left.set_graph(graph)
+        if self.right and type(self.left) is Operation:
+            self.right.set_graph(graph)
         
     def count(self,
               operation : str = '*',
@@ -126,7 +134,50 @@ class Operation:
                 (self.operation if self.operation != '=' else '<<') +
                 self.right.tempname +";"
             )
-        elif self.operation in ['*'] or  self.tempname is ''  :
+        elif self.operation in ['*'] or  self.tempname == ''  :
+            self.tempname = self.left.tempname + self.operation + self.right.tempname
+        else:
+            Q.append(
+                self.tempname +'<<'+ self.left.tempname + self.operation + self.right.tempname
+            )
+            
+        return "\n".join(Q)
+
+    def pretty__C(self):
+
+        #import pdb; pdb.set_trace()
+        if self.operation == '+=':
+            self.right.set_temp("Ts[0]")
+            #pdb.set_trace()
+        
+        if self.operation in ['*', '/']:
+            self.left.set_temp("Ts[0]")
+            self.right.set_temp("Ts[1]")
+            
+        L = self.left.pretty__q()
+        R = self.right.pretty__q()
+        if L.find("i")>= 0 or R.find("i")>=0:
+            pdb.set_trace()
+        
+        Q = []
+        if type(L) is list : Q.extend(L)
+        elif L.find("<<")>0 : Q.append(L) 
+        if type(R) is list : Q.extend(R)
+        elif R.find("<<")>0 : Q.append(R)
+
+        #if self.operation == '+=':
+        #    pdb.set_trace()
+
+        
+        if self.operation in ['<<', '+=','=']:
+            #import pdb; pdb.set_trace()
+            ## ASSIGNMENT 
+            Q.append(
+                self.left.tempname +
+                (self.operation if self.operation != '=' else '<<') +
+                self.right.tempname +";"
+            )
+        elif self.operation in ['*'] or  self.tempname == ''  :
             self.tempname = self.left.tempname + self.operation + self.right.tempname
         else:
             Q.append(
@@ -257,7 +308,8 @@ class Operation:
 
     def AdditionBini(
             As : list(),       ## this is a list of Matrices
-            I  : numpy.ndarray
+            I  : numpy.ndarray,
+            graph = None
     ):
         #print(I)
         #print(I.shape)
@@ -326,13 +378,10 @@ class Function(Operation):
             Ops  : list
             
     ):
-        self.name = name
+        ## here the operation is actually a function
+        Operation.__init__(self,name,None,Ops,None, None)
         self.operation = func
-        self.right = None
-        self.left   = Ops
-        self.result = None
-        self.temp_result = None
-
+        
     def count(self,
               operation : str = '*',
               operands_type = [Matrix, Matrix]):
@@ -495,13 +544,10 @@ class Data(Operation):
     def __init__(
             self,
             name : str,
-            Dest
+            Dest,
+            graph = None
     ):
-        self.name = name
-        self.operation = 'data'
-        self.left   = Dest
-        self.right  = None
-        self.result = None
+        Operation.__init__(self,name,'data',Dest,None, None)
         self.temp_result = Dest
         self.inputs = False
         self.temps  = False
@@ -690,7 +736,7 @@ class Graph(Function):
                   I : list  = None
                   
     ):
-        Function.__init__(self,name, None, D)
+        Function.__init__(self,name, None, None)
         self.temp_result = O
         self.right = I
         self.name = name
@@ -720,6 +766,8 @@ class Graph(Function):
         self.visgraph = graphviz.Digraph()
         self.time = 0
         self.temp_space = 0
+        self.set_graph()
+
         
     def compile_graph(self, TwoOperands : bool = False):
 
@@ -730,6 +778,12 @@ class Graph(Function):
 
         return E
     
+
+    def set_graph(self):
+        for v in self.V:
+            v.set_graph(self)
+
+
     def set_bini_matrices(self,
                           ct = numpy.ndarray,
                           at = numpy.ndarray,
@@ -1447,7 +1501,7 @@ def bini_mult_example(
                 print(e)
                 print(O)
                 import pdb; pdb.set_trace() 
-
+                O.compute()
     else:
         recursion -=1
         for c in range(AT.shape[1]):
