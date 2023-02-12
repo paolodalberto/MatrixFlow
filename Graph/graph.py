@@ -7,6 +7,7 @@ import graphviz
 import time
 import seaborn as sns
 from  Validation.BiniScheme import  BiniScheme
+from Hw.hw_code import ROCBLAS, GPU
 
 import pdb;
 
@@ -41,7 +42,7 @@ class Operation:
         self.group = 0
         self.tempname = ""
         self.graph = None
-        
+        self.M = None
         try:
             if self.left:
                 if type(self.left) is list:
@@ -56,9 +57,9 @@ class Operation:
 
     def set_graph(self, graph):
         self.graph = graph
-        if self.left and type(self.left) is Operation:
+        if self.left and type(self.left) in [ Data, Operation, Function]:
             self.left.set_graph(graph)
-        if self.right and type(self.left) is Operation:
+        if self.right and type(self.left) in [ Data, Operation, Function]:
             self.right.set_graph(graph)
         
     def count(self,
@@ -143,9 +144,10 @@ class Operation:
             
         return "\n".join(Q)
 
-    def pretty__C(self):
-
-        #import pdb; pdb.set_trace()
+    def pretty__C(self, gpu : GPU = ROCBLAS):
+        #print(self)
+        #import pdb; 
+        #from Hw.hw import GPU
         if self.operation == '+=':
             self.right.set_temp("Ts[0]")
             #pdb.set_trace()
@@ -154,35 +156,79 @@ class Operation:
             self.left.set_temp("Ts[0]")
             self.right.set_temp("Ts[1]")
             
-        L = self.left.pretty__q()
-        R = self.right.pretty__q()
-        if L.find("i")>= 0 or R.find("i")>=0:
-            pdb.set_trace()
-        
+        if self.operation in ['<<', '+=','=']:
+            #import pdb; pdb.set_trace()
+            ## ASSIGNMENT
+            self.right.tempname = self.left.name
+            self.right.M = "one" if self.operation =='+=' else "zero"
+            
+        L = self.left.pretty__C()
+        R = self.right.pretty__C()
+         
         Q = []
         if type(L) is list : Q.extend(L)
-        elif L.find("<<")>0 : Q.append(L) 
+        elif L and L.find("gem")>0 : Q.append(L) 
         if type(R) is list : Q.extend(R)
-        elif R.find("<<")>0 : Q.append(R)
+        elif R and R.find("gem")>0 : Q.append(R)
 
         #if self.operation == '+=':
         #    pdb.set_trace()
 
         
-        if self.operation in ['<<', '+=','=']:
-            #import pdb; pdb.set_trace()
-            ## ASSIGNMENT 
-            Q.append(
-                self.left.tempname +
-                (self.operation if self.operation != '=' else '<<') +
-                self.right.tempname +";"
-            )
-        elif self.operation in ['*'] or  self.tempname == ''  :
-            self.tempname = self.left.tempname + self.operation + self.right.tempname
-        else:
-            Q.append(
-                self.tempname +'<<'+ self.left.tempname + self.operation + self.right.tempname
-            )
+        if self.operation in ['*']  :
+            #pdb.set_trace()
+
+            l = self.graph.find_decl_by_name(self.left.tempname)
+            M,K = l.left.value().shape
+            r = self.graph.find_decl_by_name(self.right.tempname)
+            K,N = l.left.value().shape
+                
+            ## if it comes from a partition the leading dimension is
+            ## different from the logical shape
+            lda = K
+            if l.left.pointer:
+                lda = l.left.pointer.value().shape[1]
+            ldb = N
+            if r.left.pointer:
+                ldb = r.left.pointer.value().shape[1]
+            ldc = N
+            #print(gpu.GEMM_x)
+            # rocblas_dgemm( %s, 'n', 'n', %d, %d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d)
+            r = gpu.GEMM_x % ("gpu0",M,N,K, "one",
+                              self.left.tempname,lda,
+                              self.right.tempname,ldb,
+                              self.M,self.tempname,ldc) 
+            #print(r)
+            Q.append(r)
+        elif self.operation in ['+','-']  :
+            #print(type(self))
+            
+            l = self.graph.find_decl_by_name(self.left.tempname)
+            M,K = l.left.value().shape
+            r = self.graph.find_decl_by_name(self.right.tempname)
+            K,N = l.left.value().shape
+                
+            ## if it comes from a partition the leading dimension is
+            ## different from the logical shape
+            lda = K
+            if l.left.pointer:
+                lda = l.left.pointer.value().shape[1]
+            ldb = N
+            if r.left.pointer:
+                ldb = r.left.pointer.value().shape[1]
+            ldc = N
+
+            ## the result is a temporary matriix
+            
+            r = gpu.GEMA_x % (
+                "gpu0",M,N, K,"one",
+                self.left.tempname,lda,
+                self.right.tempname,ldb,
+                "one" if self.operation == '+' else "-one",
+                self.tempname,ldc )
+
+            #print(r)
+            Q.append(r)
             
         return "\n".join(Q)
 
@@ -256,6 +302,7 @@ class Operation:
                 self.left.temp_result.set_value(R.value())
                 if type(self.right) is Operation:
                     del self.right.temp_result
+                    self.right.temp_result = None
                     
         if temp_result: 
             if type(self.left) is Data and type(self.right) is Data:
@@ -266,8 +313,10 @@ class Operation:
                 self.temp_result =temp_result
                 if type(self.left) is Operation:
                    del self.left.temp_result
+                   self.left.temp_result = None
                 if type(self.right) is Operation:
-                    del self.right.temp_result 
+                    del self.right.temp_result
+                    self.right.temp_result = None
                 
                 
         return  self.temp_result
@@ -584,6 +633,10 @@ class Data(Operation):
         
         return str(self)
 
+    def pretty__C(self):
+        self.tempname = str(self)
+        
+        #return str(self)
     def pretty__(self):
         
         
@@ -767,7 +820,7 @@ class Graph(Function):
         self.time = 0
         self.temp_space = 0
         self.set_graph()
-
+        self.lookuptable = None
         
     def compile_graph(self, TwoOperands : bool = False):
 
@@ -778,7 +831,7 @@ class Graph(Function):
 
         return E
     
-
+    
     def set_graph(self):
         for v in self.V:
             v.set_graph(self)
@@ -1096,7 +1149,19 @@ class Graph(Function):
                 it = V[j]
                 
             
-            
+    def find_decl_by_name(self, name):
+        
+
+        if self.lookuptable is None:
+            decls = self.declarations
+            self.lookuptable = {}
+            for Is in decls:
+                for i in Is:
+                    self.lookuptable[i.name] = i
+
+                    
+        return self.lookuptable[name]
+
             
 
         
