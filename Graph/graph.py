@@ -55,6 +55,17 @@ class Operation:
             print(e)
             import pdb; pdb.set_trace()
 
+
+    def split_factors(self): ## this si used for alpha*A
+        mat = self.left
+        scal = self.right
+        if not type(self.right.left) is Scalar :
+            scal = self.left
+            mat = self.right
+
+        return scal, mat
+            
+            
     def set_graph(self, graph):
         self.graph = graph
         if self.left and type(self.left) in [ Data, Operation, Function]:
@@ -175,7 +186,8 @@ class Operation:
         #    pdb.set_trace()
 
         
-        if self.operation in ['*']  :
+        if self.operation in ['*']  and not (type(self.right.left) is Scalar or  type(self.left.left) is Scalar):
+            ## GEMM is only for 
             #pdb.set_trace()
 
             l = self.graph.find_decl_by_name(self.left.tempname)
@@ -202,12 +214,33 @@ class Operation:
             Q.append(r)
         elif self.operation in ['+','-']  :
             #print(type(self))
+            one = "one"
+            minusone = "-"+ one
+            two      = "one"
+            minustwo = "-"+two
+            
+
             
             l = self.graph.find_decl_by_name(self.left.tempname)
-            M,K = l.left.value().shape
+            if l:
+                M,K = l.left.value().shape
+            else:
+                #import pdb; pdb.set_trace()
+                scal, mat = self.left.split_factors()
+                l = self.graph.find_decl_by_name(mat.tempname)
+                M,K = mat.left.value().shape
+                one = one+"*" + str(scal.left.value())
+
             r = self.graph.find_decl_by_name(self.right.tempname)
-            K,N = l.left.value().shape
-                
+            if r:
+                K,N = l.left.value().shape
+            else:
+                #import pdb; pdb.set_trace()
+                scal, mat = self.right.split_factors()
+                r = self.graph.find_decl_by_name(mat.tempname)
+                K,N = mat.left.value().shape
+                two = two+"*" + str(scal.left.value())
+
             ## if it comes from a partition the leading dimension is
             ## different from the logical shape
             lda = K
@@ -216,16 +249,18 @@ class Operation:
             ldb = N
             if r.left.pointer:
                 ldb = r.left.pointer.value().shape[1]
-            ldc = N
+            t = self.graph.find_decl_by_name(self.tempname)
+            _,ldc = t.left.value().shape
 
             ## the result is a temporary matriix
+            two = two if self.operation == '+' else minustwo
             
             r = gpu.GEMA_x % (
-                "gpu0",M,N, K,"one",
-                self.left.tempname,lda,
-                self.right.tempname,ldb,
-                "one" if self.operation == '+' else "-one",
-                self.tempname,ldc )
+                "gpu0",M,N, K,one,
+                l.tempname,lda,
+                r.tempname,ldb,
+                two, 
+                t.name,ldc )
 
             #print(r)
             Q.append(r)
@@ -1038,6 +1073,55 @@ class Graph(Function):
                     free  +=   "free(%s[%d]); " % (name,i)
         
         return red + code + free
+    def pretty__C(self, python_compiler : bool = False ):
+
+        red = "// declaration \n"
+        #import pdb; pdb.set_trace()
+        for block  in self.declarations:
+            ## either a partition or a definition
+            #print(block[0])
+            #import pdb; pdb.set_trace()
+            partition = block[0].partition()
+            init = ("# " if python_compiler else '') 
+            if True : #partition:
+                TYP = str(Graph.numpytoC(block[0].type_matrix()))
+                L = len(block)
+                name = block[0].partition_name()
+                decl = "%s* %s[%d]; " % (TYP,name,L)
+                init += decl
+            else:
+                TYP = str(Graph.numpytoC(block[0].type_matrix()))
+                L = len(block)
+                name = block[0].partition_name()
+                decl = "%s* %s[%d]; " % (TYP,name,L)
+                init += decl
+
+            for d in block:
+                #print(d)
+                init +=  d.pretty__()
+            #import pdb; pdb.set_trace()
+            #print(init)
+            red+= init +"\n" 
+
+        
+        code = '// code \n'
+        for n in self.V:
+            code += "// " + str(n) + "\n"
+            code += n.pretty__C()+"\n"
+
+        free = "// free " + ('' if python_compiler else '\n')
+        ## Free malloc above
+        for block  in self.declarations:
+            ## either a partition or a definition
+            partition = block[0].partition()
+            
+            if not partition :
+                L = len(block)
+                name = block[0].partition_name()
+                for i in range(L):
+                    free  +=   "free(%s[%d]); " % (name,i)
+        
+        return red + code + free
 
     ## We execute each statement in the V list in order
     def compute(self, verbose = False):
@@ -1159,9 +1243,8 @@ class Graph(Function):
                 for i in Is:
                     self.lookuptable[i.name] = i
 
-                    
-        return self.lookuptable[name]
-
+        if name in self.lookuptable:    return self.lookuptable[name]
+        else:                           return None ## this is scalar computation
             
 
         
