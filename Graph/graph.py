@@ -56,7 +56,20 @@ class Operation:
             import pdb; pdb.set_trace()
 
 
+    def look_const(self, d):
+        cal = d.left.value()
+        L = self.graph.constantlookuptable
+        if cal in L:
+            return self.graph.constantlookuptable[cal]
+        return None
+    def look_const_d(self, d):
+        cal = -d.left.value()
+        L = self.graph.constantlookuptable
+        if cal in L:
+            return self.graph.constantlookuptable[cal]
+        return None
     def split_factors(self): ## this si used for alpha*A
+        #print(self, type(self))
         mat = self.left
         scal = self.right
         if not type(self.right.left) is Scalar :
@@ -189,7 +202,8 @@ class Operation:
         if self.operation in ['*']  and not (type(self.right.left) is Scalar or  type(self.left.left) is Scalar):
             ## GEMM is only for 
             #pdb.set_trace()
-
+            one = self.graph.constantlookuptable[1]
+            
             l = self.graph.find_decl_by_name(self.left.tempname)
             M,K = l.left.value().shape
             r = self.graph.find_decl_by_name(self.right.tempname)
@@ -206,18 +220,15 @@ class Operation:
             ldc = N
             #print(gpu.GEMM_x)
             # rocblas_dgemm( %s, 'n', 'n', %d, %d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d)
-            r = gpu.GEMM_x % ("gpu0",M,N,K, "one",
+            r = gpu.GEMM_x % ("gpu0",M,N,K, "&"+one,
                               self.left.tempname,lda,
                               self.right.tempname,ldb,
                               self.M,self.tempname,ldc) 
             #print(r)
             Q.append(r)
         elif self.operation in ['+','-']  :
-            #print(type(self))
-            one = "one"
-            minusone = "-"+ one
-            two      = "one"
-            minustwo = "-"+two
+            one = self.graph.constantlookuptable[1]
+            two = self.graph.constantlookuptable[1]
             
 
             
@@ -229,9 +240,15 @@ class Operation:
                 scal, mat = self.left.split_factors()
                 l = self.graph.find_decl_by_name(mat.tempname)
                 M,K = mat.left.value().shape
-                one = one+"*" + str(scal.left.value())
+                
+                #one = one+"*" + str(scal.left.value())
 
+                one  = self.look_const(scal)
+                if one is None:
+                    import pdb; pdb.set_trace()
+                
             r = self.graph.find_decl_by_name(self.right.tempname)
+            scal = None
             if r:
                 K,N = l.left.value().shape
             else:
@@ -239,7 +256,9 @@ class Operation:
                 scal, mat = self.right.split_factors()
                 r = self.graph.find_decl_by_name(mat.tempname)
                 K,N = mat.left.value().shape
-                two = two+"*" + str(scal.left.value())
+
+                two  = self.look_const(scal)
+
 
             ## if it comes from a partition the leading dimension is
             ## different from the logical shape
@@ -253,13 +272,15 @@ class Operation:
             _,ldc = t.left.value().shape
 
             ## the result is a temporary matriix
-            two = two if self.operation == '+' else minustwo
-            
+            if scal and self.operation == '-' :
+                two = self.look_const_d(scal)
+            elif self.operation == '-' :
+                two = self.graph.constantlookuptable[-1]
             r = gpu.GEMA_x % (
-                "gpu0",M,N, K,one,
+                "gpu0",M,N, K,"&"+one,
                 l.tempname,lda,
                 r.tempname,ldb,
-                two, 
+                "&"+two, 
                 t.name,ldc )
 
             #print(r)
@@ -856,6 +877,8 @@ class Graph(Function):
         self.temp_space = 0
         self.set_graph()
         self.lookuptable = None
+        self.constantlookuptable = None
+        self.constant_base="z_"
         
     def compile_graph(self, TwoOperands : bool = False):
 
@@ -881,7 +904,34 @@ class Graph(Function):
         self.alpha = at 
         self.beta  = bt
         self.gamma = ct
+        #import pdb; pdb.set_trace()
+        self.constants_placeholder()
+        
 
+    def constants_placeholder(self):
+        self.constantlookuptable= {}
+        self.lookuptableconstant= {}
+        count = 0
+        A = [self.alpha, self.beta, self.gamma ]
+        for a in A:
+            for i in a.flatten():
+                if not i in self.constantlookuptable:
+                    na = self.constant_base + str(count)
+                    count +=1
+                    self.constantlookuptable[i] = na 
+                    self.lookuptableconstant[na] = i
+            
+        if not 1 in self.constantlookuptable:
+            na = self.constant_base + str(count)
+            count +=1
+            self.constantlookuptable[1] = na 
+            self.lookuptableconstant[na] = 1
+        if not -1 in self.constantlookuptable:
+            na = self.constant_base + str(count)
+            count +=1
+            self.constantlookuptable[-1] = na 
+            self.lookuptableconstant[na] = -1
+        
     def set_original_matrices(self,
                           c = Matrix,
                           a = Matrix,
@@ -1074,8 +1124,8 @@ class Graph(Function):
         
         return red + code + free
     def pretty__C(self, python_compiler : bool = False ):
-
-        red = "// declaration \n"
+        TYP = None
+        red = "// Variables declaration \n"
         #import pdb; pdb.set_trace()
         for block  in self.declarations:
             ## either a partition or a definition
@@ -1103,6 +1153,13 @@ class Graph(Function):
             #print(init)
             red+= init +"\n" 
 
+        red += "// Constant declaration \n"
+        red += TYP+ " " 
+        for k,v in self.lookuptableconstant.items():
+            red += k  +"="+ str(v) +","
+        red += ";\n"
+        
+            
         
         code = '// code \n'
         for n in self.V:
@@ -1232,17 +1289,22 @@ class Graph(Function):
             for j in self.adj[i,:]:
                 it = V[j]
                 
-            
+                
+    def create_lookup_table(self):
+        decls = self.declarations
+        self.lookuptable = {}
+        for Is in decls:
+            for i in Is:
+                self.lookuptable[i.name] = i
+
+        return 1
+        
     def find_decl_by_name(self, name):
         
 
         if self.lookuptable is None:
-            decls = self.declarations
-            self.lookuptable = {}
-            for Is in decls:
-                for i in Is:
-                    self.lookuptable[i.name] = i
-
+            self.create_lookup_table()
+            
         if name in self.lookuptable:    return self.lookuptable[name]
         else:                           return None ## this is scalar computation
             
@@ -1621,6 +1683,11 @@ def bini_mult_example(
     ## A,B,C partitions and Partial products
     decls = [AD , BD, CD, Ps, Tss ] 
 
+
+    
+
+
+    
     #import pdb; pdb.set_trace()
     
     ###
