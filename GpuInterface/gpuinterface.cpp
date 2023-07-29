@@ -300,7 +300,7 @@ std::vector<double> csr_mv(int device_id,
   HIP_CHECK(hipDeviceSynchronize());
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration =std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  std::cout << "Time Kernel "  << duration.count()/1000000.0 << std::endl;
+  std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   HIP_CHECK(hipMemcpy(y.data(), dy, sizeof(double) * m, hipMemcpyDeviceToHost));
   // clean up descriptor
   if (info_csrmv[device_id] == nullptr) {ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(local_descrA));}
@@ -337,6 +337,9 @@ std::vector<double> gemm(int device_id,
   int size_c = hc.size();
   
 
+  
+  auto start = std::chrono::high_resolution_clock::now();
+
   rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
   hipDeviceProp_t devProp;
 
@@ -355,21 +358,28 @@ std::vector<double> gemm(int device_id,
   HIP_CHECK(hipMemcpy(da, ha.data(), sizeof(double) * size_a, hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(db, hb.data(), sizeof(double) * size_b, hipMemcpyHostToDevice));
   HIP_CHECK(hipMemcpy(dc, hc.data(), sizeof(double) * size_c, hipMemcpyHostToDevice));
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
 
-  auto start = std::chrono::high_resolution_clock::now();
+  start = std::chrono::high_resolution_clock::now();
 
   ROCBLAS_CHECK(
 		rocblas_dgemm(rochandle, transa, transb, m, n, k, &alpha, da, lda, db, ldb, &beta, dc, ldc));
   
   HIP_CHECK(hipDeviceSynchronize());
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  std::cout << "Time Kernel "  << duration.count()/1000000.0 << std::endl;
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   // copy output from device to CPU
+  start = std::chrono::high_resolution_clock::now();
   HIP_CHECK(hipMemcpy(hc.data(), dc, sizeof(double) * size_c, hipMemcpyDeviceToHost));
   HIP_CHECK(hipFree(da));
   HIP_CHECK(hipFree(db));
   HIP_CHECK(hipFree(dc));
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  std::cout << "\t Read data from  Kernel "  << duration.count()/1000000.0 << std::endl;
   
   if (DEBUG) std::cout  << "m, n, k, lda, ldb, ldc = " << m << ", " << n << ", " << k << ", " << lda
 	       << ", " << ldb << ", " << ldc << std::endl;
@@ -460,7 +470,7 @@ std::vector<double> coo_mv(int device_id,
   HIP_CHECK(hipDeviceSynchronize());
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  std::cout << "Time Kernel "  << duration.count()/1000000.0 << std::endl;
+  std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   if (DEBUG) std::cout << "Sync " << std::endl;
   HIP_CHECK(hipMemcpy(y.data(), dy, sizeof(double) * m, hipMemcpyDeviceToHost));
   // clean up descriptor
