@@ -22,7 +22,7 @@
  *
  * ************************************************************************ */
 
-#include  <rocblas/rocblas.h>
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/complex.h>
@@ -34,6 +34,7 @@
 #include <hip/hip_runtime_api.h>
 #include <iomanip>
 #include <iostream>
+#include  <rocblas/rocblas.h>
 #include <rocsparse/rocsparse.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,13 +46,7 @@
 
 #define GPUS_  8
 
-static int DEBUG = 0;
-static rocblas_handle rochandle ;
-static rocsparse_handle handle;
-static rocsparse_mat_info info_csrmv[GPUS_]  = { nullptr,nullptr,nullptr,nullptr, \
-					     nullptr,nullptr,nullptr,nullptr} ;
-static rocsparse_mat_descr descrA[GPUS_]     = { nullptr,nullptr,nullptr,nullptr, \
-					     nullptr,nullptr,nullptr,nullptr} ;
+static int DEBUG = 1;
 
 
 #define HIP_CHECK(stat)						\
@@ -162,7 +157,80 @@ static inline void  ROCSPARSE_CHECK(rocsparse_status  stat)
   }
 }
 
+namespace py = pybind11;
 
+std::vector<double> csr_mv(int device_id,
+			   std::vector<rocsparse_int> hAptr,
+			   std::vector<rocsparse_int> hAcol,
+			   std::vector<double>        hAval,
+			   std::vector<double> x,
+			   std::vector<double> y,
+			   double halpha,
+			   double hbeta,
+			   int _info
+			   );
+std::vector<double> gemm(int device_id,
+			 std::vector<double> ha, int lda, 
+			 std::vector<double> hb, int ldb
+			 );
+
+std::vector<double> coo_mv(int device_id,
+			   std::vector<rocsparse_int> hrow,
+			   std::vector<rocsparse_int> hcol,
+			   std::vector<double>        hAval,
+			   std::vector<double> x,
+			   std::vector<double> y,
+			   double halpha,
+			   double hbeta
+			   );
+
+void reset();
+void init();
+void endit();
+
+
+PYBIND11_MODULE(rocmgpu, m) {
+  m.doc() = "pybind11 example plugin"; // optional module docstring
+  
+  m.def("csr_mv", &csr_mv, "CSR MV",
+	py::arg("device_id") ,
+	py::arg("hAptr"),
+	py::arg("hAcol"),
+	py::arg("hAval"),
+	py::arg("x"),
+	py::arg("y"),
+	py::arg("halpha"),
+	py::arg("hbeta"),
+	py::arg("_info") = 0
+	);
+  m.def("coo_mv", &coo_mv, "COO MV",
+	py::arg("device_id") ,
+	py::arg("hrow"),
+	py::arg("hcol"),
+	py::arg("hAval"),
+	py::arg("x"),
+	py::arg("y"),
+	py::arg("halpha"),   
+	py::arg("hbeta")
+	);
+  m.def("gemm", &gemm, "GEMM",
+	py::arg("device_id") ,
+	py::arg("a"),py::arg("lda"),
+	py::arg("b"),py::arg("ldb")
+	);
+  
+  //  m.def("reset",reset);
+  //  m.def("init", init);
+  //  m.def("endit", endit);
+
+  
+
+
+
+}
+
+
+/*
 void init()
 {
   ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
@@ -189,7 +257,7 @@ void reset() {
     }
   
 }
-
+*/
 
 
 std::vector<double> csr_mv(int device_id,
@@ -202,6 +270,27 @@ std::vector<double> csr_mv(int device_id,
        double hbeta,
        int _info
        ) {
+
+  rocsparse_handle handle = nullptr;
+  rocsparse_mat_info info_csrmv[GPUS_]  = { nullptr,nullptr,nullptr,nullptr, \
+						   nullptr,nullptr,nullptr,nullptr} ;
+  rocsparse_mat_descr descrA[GPUS_]     = { nullptr,nullptr,nullptr,nullptr, \
+						   nullptr,nullptr,nullptr,nullptr} ;
+
+
+  ROCSPARSE_CHECK(rocsparse_create_handle(&handle));  
+
+  if (_info >=0  && handle!= nullptr) ROCSPARSE_CHECK(rocsparse_create_handle(&handle));  
+  if (_info <0) {
+      for (int i=0; i<GPUS_; i++)
+	if (info_csrmv[i]) {
+	  ROCSPARSE_CHECK(rocsparse_destroy_mat_info(info_csrmv[i]));
+	  info_csrmv[i] = nullptr;
+	  ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(descrA[i]));
+	  descrA[i] = nullptr;
+	}
+  }
+  
 
   rocsparse_mat_info  local_info = nullptr;
   rocsparse_mat_descr local_descrA = nullptr;
@@ -233,7 +322,7 @@ std::vector<double> csr_mv(int device_id,
   HIP_CHECK(hipMalloc((void**)&dAval, sizeof(double) * nnz));
   HIP_CHECK(hipMalloc((void**)&dx, sizeof(double) * n));
   HIP_CHECK(hipMalloc((void**)&dy, sizeof(double) * m));
-  
+  HIP_CHECK(hipDeviceSynchronize());  
   if (DEBUG) std::cout << "Move " << std::endl;
   HIP_CHECK(
 	    hipMemcpy(dAptr, hAptr.data(), sizeof(rocsparse_int) * (m + 1), hipMemcpyHostToDevice));
@@ -242,9 +331,9 @@ std::vector<double> csr_mv(int device_id,
   if (DEBUG) std::cout << "Move hacol" << std::endl;
   HIP_CHECK(hipMemcpy(dAval, hAval.data(), sizeof(double) * nnz, hipMemcpyHostToDevice));
   if (DEBUG) std::cout << "Move haval" << std::endl;
-  if (DEBUG) std::cout << "Move "<<x.size()<< std::endl;
+  if (DEBUG) std::cout << "Move x "<<x.size()<<  " " << x[0] <<std::endl;
   HIP_CHECK(hipMemcpy(dx, x.data(), sizeof(double) * n, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move "<<y.size()<< std::endl;
+  if (DEBUG) std::cout << "Move y "<<y.size()<< " " << y[0] <<std::endl;
   HIP_CHECK(hipMemcpy(dy, y.data(), sizeof(double) * m, hipMemcpyHostToDevice));
   
 
@@ -276,7 +365,7 @@ std::vector<double> csr_mv(int device_id,
   if (DEBUG)std::cout << device_id << " INFO " << local_info << " D " << local_descrA << std::endl;
   if (DEBUG)   std::cout << "Run " << std::endl;
   // Start time measurement
-  
+  HIP_CHECK(hipDeviceSynchronize());
   auto start = std::chrono::high_resolution_clock::now();
   ROCSPARSE_CHECK(rocsparse_dcsrmv(handle,
 				   rocsparse_operation_none,
@@ -302,6 +391,7 @@ std::vector<double> csr_mv(int device_id,
   auto duration =std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   HIP_CHECK(hipMemcpy(y.data(), dy, sizeof(double) * m, hipMemcpyDeviceToHost));
+  std::cout << "\t return "  << y.size() << " " << y[0]  << std::endl;
   // clean up descriptor
   if (info_csrmv[device_id] == nullptr) {ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(local_descrA));}
 
@@ -313,30 +403,45 @@ std::vector<double> csr_mv(int device_id,
   HIP_CHECK(hipFree(dAval));
   HIP_CHECK(hipFree(dx));
   HIP_CHECK(hipFree(dy));
+
+  if (_info >=0  && handle!= nullptr) 
+  for (int i=0; i<GPUS_; i++)
+    if (info_csrmv[i]) {
+      ROCSPARSE_CHECK(rocsparse_destroy_mat_info(info_csrmv[i]));
+      info_csrmv[i] = nullptr;  
+      ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(descrA[i]));
+      descrA[i] = nullptr;
+    }
+  ROCSPARSE_CHECK(rocsparse_destroy_handle(handle));
+  
   return y;
 }	   
 
 
 
 
+
+
 std::vector<double> gemm(int device_id,
-			 std::vector<double> hc, int ldc, 
 			 std::vector<double> ha, int lda, 
-			 std::vector<double> hb, int ldb,
-			 double alpha,
-			 double beta
+			 std::vector<double> hb, int ldb
 			 ) {
 
 
-  rocsparse_int m = hc.size()/ldc;
-  rocsparse_int n = ldc;
-  rocsparse_int k = lda;
+  rocblas_handle rochandle  = nullptr;
+  ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
+  std::cout << "\t BLAS  "  <<  rochandle << std::endl;
+  rocblas_int m = ha.size()/lda;
+  rocblas_int n = ldb;
+  rocblas_int k = lda;
 
   int size_a = ha.size();
   int size_b = hb.size();
-  int size_c = hc.size();
+  int size_c = m*n;
+  rocblas_int ldc = n;
+  double  alpha = 1.0 , beta = 0.0;
   
-
+  std::vector<double> hc(size_c);
   
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -348,6 +453,8 @@ std::vector<double> gemm(int device_id,
   HIP_CHECK(hipGetDeviceProperties(&devProp, device_id));
   if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
 
+
+  
   // allocate memory on device
   double *da, *db, *dc;
   HIP_CHECK(hipMalloc(&da, size_a * sizeof(double)));
@@ -356,34 +463,47 @@ std::vector<double> gemm(int device_id,
   
   // copy matrices from host to device
   HIP_CHECK(hipMemcpy(da, ha.data(), sizeof(double) * size_a, hipMemcpyHostToDevice));
+  std::cout << "\t A "  << ha[0] << " " << ha[lda]  << std::endl;
   HIP_CHECK(hipMemcpy(db, hb.data(), sizeof(double) * size_b, hipMemcpyHostToDevice));
+  std::cout << "\t B "  << hb[0] << " " <<hb[ldb]  << std::endl;
   HIP_CHECK(hipMemcpy(dc, hc.data(), sizeof(double) * size_c, hipMemcpyHostToDevice));
+  std::cout << "\t C "  << hc[0] << " " <<hc[ldc]  << std::endl;
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
 
-  start = std::chrono::high_resolution_clock::now();
 
+  //HIP_CHECK(hipDeviceSynchronize());
+  start = std::chrono::high_resolution_clock::now();
   ROCBLAS_CHECK(
 		rocblas_dgemm(rochandle, transa, transb, m, n, k, &alpha, da, lda, db, ldb, &beta, dc, ldc));
   
   HIP_CHECK(hipDeviceSynchronize());
+
+
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   // copy output from device to CPU
   start = std::chrono::high_resolution_clock::now();
   HIP_CHECK(hipMemcpy(hc.data(), dc, sizeof(double) * size_c, hipMemcpyDeviceToHost));
-  HIP_CHECK(hipFree(da));
-  HIP_CHECK(hipFree(db));
-  HIP_CHECK(hipFree(dc));
+  std::cout << "\t C <- "  << hc[0] << " " <<hc[ldc]  << std::endl;
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   std::cout << "\t Read data from  Kernel "  << duration.count()/1000000.0 << std::endl;
   
-  if (DEBUG) std::cout  << "m, n, k, lda, ldb, ldc = " << m << ", " << n << ", " << k << ", " << lda
-	       << ", " << ldb << ", " << ldc << std::endl;
+
+
+
+  HIP_CHECK(hipFree(da));
+  HIP_CHECK(hipFree(db));
+  HIP_CHECK(hipFree(dc));
   
+  if (DEBUG) std::cout  << "m, n, k, lda, ldb, ldc = " << m << ", " << n << ", " << k << ", " << lda
+			<< ", " << ldb << ", " << ldc << ", alpha=" << alpha << ", beta=" << beta << std::endl;
+  
+  ROCBLAS_CHECK(rocblas_destroy_handle(rochandle));
+  rochandle  = nullptr;
   return hc;
 }	   
 std::vector<double> coo_mv(int device_id,
@@ -396,6 +516,8 @@ std::vector<double> coo_mv(int device_id,
        double hbeta
        ) {
 
+  rocsparse_handle handle;
+  ROCSPARSE_CHECK(rocsparse_create_handle(&handle));  
 
   rocsparse_mat_descr local_descrA = nullptr;
 
@@ -426,18 +548,19 @@ std::vector<double> coo_mv(int device_id,
   HIP_CHECK(hipMalloc((void**)&dAval, sizeof(double) * nnz));
   HIP_CHECK(hipMalloc((void**)&dx, sizeof(double) * n));
   HIP_CHECK(hipMalloc((void**)&dy, sizeof(double) * m));
-  
+  HIP_CHECK(hipDeviceSynchronize());  
   if (DEBUG) std::cout << "Move " << std::endl;
   HIP_CHECK(
 	    hipMemcpy(drow, hrow.data(), sizeof(rocsparse_int) * (nnz), hipMemcpyHostToDevice)
 	    );
-  if (DEBUG) std::cout << "Move haptr" << std::endl;
+  if (DEBUG) std::cout << "Move row " <<hrow[0]<< std::endl;
   HIP_CHECK(hipMemcpy(dcol, hcol.data(), sizeof(rocsparse_int) * nnz, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move hacol" << std::endl;
+  if (DEBUG) std::cout << "Move hacol " << hcol[0] << std::endl;
   HIP_CHECK(hipMemcpy(dAval, hAval.data(), sizeof(double) * nnz, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move haval" << std::endl;
-  if (DEBUG) std::cout << "Move "<<x.size()<< std::endl;
+  if (DEBUG) std::cout << "Move haval " << hAval[0] << std::endl;
+  if (DEBUG) std::cout << "Move x "<<x.size()<<  " " << x[0] <<std::endl;
   HIP_CHECK(hipMemcpy(dx, x.data(), sizeof(double) * n, hipMemcpyHostToDevice));
+  if (DEBUG) std::cout << "Move y "<<y.size()<<  " " << y[0] <<std::endl;
   HIP_CHECK(hipMemcpy(dy, y.data(), sizeof(double) * m, hipMemcpyHostToDevice));
   
 
@@ -447,7 +570,7 @@ std::vector<double> coo_mv(int device_id,
   ROCSPARSE_CHECK(rocsparse_create_mat_descr(&local_descrA));
   
   if (DEBUG)   std::cout << "Run " << std::endl;
-  
+  HIP_CHECK(hipDeviceSynchronize());
   auto start = std::chrono::high_resolution_clock::now();
   ROCSPARSE_CHECK(rocsparse_dcoomv(handle,
 				   rocsparse_operation_none,
@@ -473,6 +596,7 @@ std::vector<double> coo_mv(int device_id,
   std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   if (DEBUG) std::cout << "Sync " << std::endl;
   HIP_CHECK(hipMemcpy(y.data(), dy, sizeof(double) * m, hipMemcpyDeviceToHost));
+  std::cout << "\t return "  << y.size() << " " << y[0]  << std::endl;
   // clean up descriptor
   ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(local_descrA));
 
@@ -484,49 +608,11 @@ std::vector<double> coo_mv(int device_id,
   HIP_CHECK(hipFree(dAval));
   HIP_CHECK(hipFree(dx));
   HIP_CHECK(hipFree(dy));
+
+  ROCSPARSE_CHECK(rocsparse_destroy_handle(handle));
+  
   return y;
 }	   
-
-namespace py = pybind11;
-
-PYBIND11_MODULE(rocmgpu, m) {
-  m.doc() = "pybind11 example plugin"; // optional module docstring
-  
-  m.def("csr_mv", &csr_mv, "CSR MV",
-	py::arg("device_id") ,
-	py::arg("hAptr"),
-	py::arg("hAcol"),
-	py::arg("hAval"),
-	py::arg("x"),
-	py::arg("y"),
-	py::arg("halpha"),
-	py::arg("hbeta"),
-	py::arg("_info") = 0
-	);
-  m.def("coo_mv", &coo_mv, "COO MV",
-	py::arg("device_id") ,
-	py::arg("hrow"),
-	py::arg("hcol"),
-	py::arg("hAval"),
-	py::arg("x"),
-	py::arg("y"),
-	py::arg("halpha"),   
-	py::arg("hbeta")
-	);
-  m.def("gemm", &gemm, "GEMM",
-	py::arg("device_id") ,
-	py::arg("c"),py::arg("ldc"),
-	py::arg("a"),py::arg("lda"),
-	py::arg("b"),py::arg("ldb"),
-	py::arg("alpha"),
-	py::arg("beta")
-	);
-	
-  m.def("reset",reset);
-  m.def("init", init);
-  m.def("endit", endit);
-}
-
 
 
 

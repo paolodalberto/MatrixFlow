@@ -10,10 +10,11 @@ import seaborn as sns
 from  Validation.BiniScheme import  BiniScheme
 import sys
 import argparse
+#import rocmgpu
 
 if __name__ == "__main__":
 
-
+    #rocmgpu.init() 
     print(" Fast Matrix Multiplication MxK * KxN -> MxN ")  
     print(" Introduce --M --K --N")
     print(" We show case the rest")
@@ -32,7 +33,7 @@ if __name__ == "__main__":
     X = args.M 
     Y = args.N
 
-    T = X*Y*5
+    T = X*Y*20
 
 
     A = gen_matrix(T,T,args.error)

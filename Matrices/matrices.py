@@ -1,6 +1,7 @@
 import numpy 
 import math
 
+import rocmgpu
 
 ###
 ## A 2 dimensional matrix represented by a numpy matrix 
@@ -16,7 +17,6 @@ class Matrix:
         self.logicalshape = A.shape
         self.padded = False
         self.pointer = None
-
         
     def value(self): return self.matrix[self.min[0]:self.max[0],self.min[1]:self.max[1]]
     def set_value(self, A):
@@ -64,7 +64,23 @@ class Matrix:
             ## SELF  * A (multiplication)
             L = self.value()
             R = A.value()
-            return Matrix(numpy.matmul(L,R))#[:,0:k],R[0:k,:] ))
+            #import pdb; pdb.set_trace()
+
+            if False:
+                B= numpy.matmul(L,R)
+            else:
+                B1 = numpy.matmul(L,R)
+                Result = B1*0.0
+            
+                B = numpy.matrix(rocmgpu.gemm(0,L.A1, L.shape[1], R.A1, R.shape[1]))
+                
+                B.resize(B1.shape)
+                diff = numpy.sum(B-B1)
+                print(B1.shape,diff)
+                if diff !=0.0: import pdb; pdb.set_trace()
+                                
+            C = Matrix(B)
+            return C
         elif type(A) is Vector:
             ## A*v = w
             return Vector(numpy.matmul(self.value(), A.value()))
