@@ -166,8 +166,7 @@ std::vector<double> csr_mv(int device_id,
 			   std::vector<double> x,
 			   std::vector<double> y,
 			   double halpha,
-			   double hbeta,
-			   int _info
+			   double hbeta
 			   );
 std::vector<double> gemm(int device_id,
 			 std::vector<double> ha, int lda, 
@@ -200,8 +199,7 @@ PYBIND11_MODULE(rocmgpu, m) {
 	py::arg("x"),
 	py::arg("y"),
 	py::arg("halpha"),
-	py::arg("hbeta"),
-	py::arg("_info") = 0
+	py::arg("hbeta")
 	);
   m.def("coo_mv", &coo_mv, "COO MV",
 	py::arg("device_id") ,
@@ -261,42 +259,23 @@ void reset() {
 
 
 std::vector<double> csr_mv(int device_id,
-       std::vector<rocsparse_int> hAptr,
-       std::vector<rocsparse_int> hAcol,
-       std::vector<double>        hAval,
-       std::vector<double> x,
-       std::vector<double> y,
-       double halpha,
-       double hbeta,
-       int _info
-       ) {
-
-  rocsparse_handle handle = nullptr;
-  rocsparse_mat_info info_csrmv[GPUS_]  = { nullptr,nullptr,nullptr,nullptr, \
-						   nullptr,nullptr,nullptr,nullptr} ;
-  rocsparse_mat_descr descrA[GPUS_]     = { nullptr,nullptr,nullptr,nullptr, \
-						   nullptr,nullptr,nullptr,nullptr} ;
-
-
-  ROCSPARSE_CHECK(rocsparse_create_handle(&handle));  
-
-  if (_info >=0  && handle!= nullptr) ROCSPARSE_CHECK(rocsparse_create_handle(&handle));  
-  if (_info <0) {
-      for (int i=0; i<GPUS_; i++)
-	if (info_csrmv[i]) {
-	  ROCSPARSE_CHECK(rocsparse_destroy_mat_info(info_csrmv[i]));
-	  info_csrmv[i] = nullptr;
-	  ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(descrA[i]));
-	  descrA[i] = nullptr;
-	}
-  }
+			   std::vector<rocsparse_int> hAptr,
+			   std::vector<rocsparse_int> hAcol,
+			   std::vector<double>        hAval,
+			   std::vector<double> x,
+			   std::vector<double> y,
+			   double halpha,
+			   double hbeta
+			   ) {
   
+  rocsparse_handle handle = nullptr;
+  ROCSPARSE_CHECK(rocsparse_create_handle(&handle));  
 
   rocsparse_mat_info  local_info = nullptr;
   rocsparse_mat_descr local_descrA = nullptr;
 
   rocsparse_int m = hAptr.size() -1;
-  rocsparse_int n = hAcol.size();
+  rocsparse_int n = x.size();
   rocsparse_int nnz = hAval.size();
 
 
@@ -326,11 +305,11 @@ std::vector<double> csr_mv(int device_id,
   if (DEBUG) std::cout << "Move " << std::endl;
   HIP_CHECK(
 	    hipMemcpy(dAptr, hAptr.data(), sizeof(rocsparse_int) * (m + 1), hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move haptr" << std::endl;
+  if (DEBUG) std::cout << "Move haptr" << hAptr[0] <<std::endl;
   HIP_CHECK(hipMemcpy(dAcol, hAcol.data(), sizeof(rocsparse_int) * nnz, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move hacol" << std::endl;
+  if (DEBUG) std::cout << "Move hacol" << hAcol[0] <<std::endl;
   HIP_CHECK(hipMemcpy(dAval, hAval.data(), sizeof(double) * nnz, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move haval" << std::endl;
+  if (DEBUG) std::cout << "Move haval" << hAval[0] <<std::endl;
   if (DEBUG) std::cout << "Move x "<<x.size()<<  " " << x[0] <<std::endl;
   HIP_CHECK(hipMemcpy(dx, x.data(), sizeof(double) * n, hipMemcpyHostToDevice));
   if (DEBUG) std::cout << "Move y "<<y.size()<< " " << y[0] <<std::endl;
@@ -338,30 +317,8 @@ std::vector<double> csr_mv(int device_id,
   
 
 
-  // Create meta data
-  if (_info != 0) { 
-    if (info_csrmv[device_id] == nullptr) {
-      ROCSPARSE_CHECK(rocsparse_create_mat_info(&info_csrmv[device_id]));
-      ROCSPARSE_CHECK(rocsparse_create_mat_descr(&descrA[device_id]));
-      // Analyse CSR matrix
-      ROCSPARSE_CHECK(
-	  rocsparse_dcsrmv_analysis(
-	      handle, rocsparse_operation_none, m, n, nnz,
-	      descrA[device_id],
-	      dAval, dAptr, dAcol,
-	      info_csrmv[device_id]
-	  )
-      );
-    }
-  }
-  if (info_csrmv[device_id] != nullptr)
-    {
-      local_descrA = descrA[device_id];
-      local_info   = info_csrmv[device_id];
-    }
-  else {
-    ROCSPARSE_CHECK(rocsparse_create_mat_descr(&local_descrA));
-  } 
+  ROCSPARSE_CHECK(rocsparse_create_mat_descr(&local_descrA));
+  
   if (DEBUG)std::cout << device_id << " INFO " << local_info << " D " << local_descrA << std::endl;
   if (DEBUG)   std::cout << "Run " << std::endl;
   // Start time measurement
@@ -392,8 +349,6 @@ std::vector<double> csr_mv(int device_id,
   std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   HIP_CHECK(hipMemcpy(y.data(), dy, sizeof(double) * m, hipMemcpyDeviceToHost));
   std::cout << "\t return "  << y.size() << " " << y[0]  << std::endl;
-  // clean up descriptor
-  if (info_csrmv[device_id] == nullptr) {ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(local_descrA));}
 
   if (DEBUG) std::cout << "Free " << std::endl;
 
@@ -404,14 +359,7 @@ std::vector<double> csr_mv(int device_id,
   HIP_CHECK(hipFree(dx));
   HIP_CHECK(hipFree(dy));
 
-  if (_info >=0  && handle!= nullptr) 
-  for (int i=0; i<GPUS_; i++)
-    if (info_csrmv[i]) {
-      ROCSPARSE_CHECK(rocsparse_destroy_mat_info(info_csrmv[i]));
-      info_csrmv[i] = nullptr;  
-      ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(descrA[i]));
-      descrA[i] = nullptr;
-    }
+  ROCSPARSE_CHECK(rocsparse_destroy_mat_descr(local_descrA));
   ROCSPARSE_CHECK(rocsparse_destroy_handle(handle));
   
   return y;

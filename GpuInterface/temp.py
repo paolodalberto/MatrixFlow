@@ -7,14 +7,13 @@ import numpy
 
 #example.init()
 R = 2
-A = mmread("./MTX/arrow.mtx")
 
-x =  []
-for i in range(A.shape[1]):
-     x.append(0.5)
-y =  []
-for i in range(A.shape[0]):
-     y.append(0.0)
+
+A = mmread("/sparse/clients/samples/MTX/Groebner_id2003_aug.mtx")
+
+A = A.astype('float64')
+x =  numpy.zeros(A.shape[1]) + 0.5
+y =  numpy.zeros(A.shape[0]) 
 
 
 W = A.todense()
@@ -23,8 +22,8 @@ y = numpy.array(y)
 RT = numpy.dot(W,x)
 
      
-if True :
-     #import pdb; pdb.set_trace()
+if False:
+     #
      Av = A.data +0.1
      IA = A.row
      JA = A.col
@@ -33,30 +32,38 @@ if True :
 
      a = time.time()
      for i in range(R):
-          z = example.coo_mv(0, IA,JA, Av,x,y,1,0); print(z[0])
-          #z1= example.coo_mv(1, IA,JA, Av,x,y,1,0); print(z1[0])
+          z = example.coo_mv(0, IA,JA, Av,x,y,1.0,0.0); print(z[0])
+          #z1= example.coo_mv(1, IA,JA, Av,x,y,1.0,0.0); print(z1[0])
      b = time.time()
      print("NOINFO time", (b-a)/R)
      #print(z[0], z1[0])
+     import pdb; pdb.set_trace()
+     z = example.coo_mv(1, IA,JA, Av,x,y,1.0,0.0); print(z[0])
+     t = A@x
+     print(numpy.sum(z-t))
+     
 
 
 
+import pdb; pdb.set_trace()#
 
-import pdb; #
-
-AA = scipy.sparse.csr_matrix(W)
+AA = scipy.sparse.csr_matrix(A)
 
 A = AA.data
 A1 = A
 IA = AA.indptr
 JA = AA.indices
 
-
+z = example.csr_mv(0, IA,JA, A,x,y,1.0,0.0);  print(z[0])
+t = AA@x
+print(numpy.sum(numpy.array(z)-t))
+     
+pdb.set_trace()
 
 print(R)
 a = time.time()
 for i in range(R):
-     z = example.csr_mv(0, IA,JA, A,x,y,1,0);  print(z[0])
+     
      z1= example.csr_mv(1, IA,JA, A1,x,y,1,0); #print(z1[0])
     #z2= example.csr_mv(2, IA,JA, A1,x,y,1,0); #print(z2[0])
 b = time.time()
