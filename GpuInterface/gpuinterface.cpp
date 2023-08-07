@@ -46,7 +46,7 @@
 
 #define GPUS_  8
 
-static int DEBUG = 1;
+static int DEBUG = 0;
 
 
 #define HIP_CHECK(stat)						\
@@ -274,9 +274,9 @@ std::vector<double> csr_mv(int device_id,
   rocsparse_mat_info  local_info = nullptr;
   rocsparse_mat_descr local_descrA = nullptr;
 
-  rocsparse_int m = hAptr.size() -1;
-  rocsparse_int n = x.size();
-  rocsparse_int nnz = hAval.size();
+  rocsparse_int m =   (rocsparse_int) y.size();
+  rocsparse_int n =   (rocsparse_int) x.size();
+  rocsparse_int nnz = (rocsparse_int) hAval.size();
 
 
   
@@ -294,26 +294,34 @@ std::vector<double> csr_mv(int device_id,
   double*        dx    = NULL;
   double*        dy    = NULL;
 
-  if (DEBUG) std::cout << "Allocate " << std::endl;
+  if (DEBUG) std::cout << "Allocate " << " m " << m << " n "<< n<< " nnz " << nnz<< std::endl;
+  if (DEBUG) std::cout << "ptr " << hAptr.size() << " hAcol " << hAcol.size() << std::endl;
+  if (DEBUG) std::cout << "rocsparse_int " << sizeof(rocsparse_int)  << " double " << sizeof(double) << std::endl;
   
   HIP_CHECK(hipMalloc((void**)&dAptr, sizeof(rocsparse_int) * (m + 1)));
   HIP_CHECK(hipMalloc((void**)&dAcol, sizeof(rocsparse_int) * nnz));
   HIP_CHECK(hipMalloc((void**)&dAval, sizeof(double) * nnz));
-  HIP_CHECK(hipMalloc((void**)&dx, sizeof(double) * n));
-  HIP_CHECK(hipMalloc((void**)&dy, sizeof(double) * m));
+  HIP_CHECK(hipMalloc((void**)&dx,    sizeof(double) * n));
+  HIP_CHECK(hipMalloc((void**)&dy,    sizeof(double) * m));
   HIP_CHECK(hipDeviceSynchronize());  
   if (DEBUG) std::cout << "Move " << std::endl;
   HIP_CHECK(
-	    hipMemcpy(dAptr, hAptr.data(), sizeof(rocsparse_int) * (m + 1), hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move haptr" << hAptr[0] <<std::endl;
+	    hipMemcpy(dAptr, hAptr.data(), sizeof(rocsparse_int) * hAptr.size(), hipMemcpyHostToDevice));
+  if (DEBUG) std::cout << hAptr.size()<< " Move haptr " << hAptr[0] <<"--" << hAptr[m] <<std::endl;
+  if (DEBUG) {
+    for (int i =0; i< hAptr.size(); i++)  std::cout << " " << hAptr[i];
+    std::cout << std::endl;
+  }
   HIP_CHECK(hipMemcpy(dAcol, hAcol.data(), sizeof(rocsparse_int) * nnz, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move hacol" << hAcol[0] <<std::endl;
+  if (DEBUG) std::cout << "Move hacol " << hAcol[0] <<"--" << hAcol[nnz-1]<<std::endl;
   HIP_CHECK(hipMemcpy(dAval, hAval.data(), sizeof(double) * nnz, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move haval" << hAval[0] <<std::endl;
-  if (DEBUG) std::cout << "Move x "<<x.size()<<  " " << x[0] <<std::endl;
+  if (DEBUG) std::cout << "Move haval " << hAval[0] <<"--" << hAval[nnz-1]<<std::endl;
+  if (DEBUG) std::cout << "Move x "<<x.size()<<  " " << x[0] <<"--" << x[n-1]<<std::endl;
   HIP_CHECK(hipMemcpy(dx, x.data(), sizeof(double) * n, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "Move y "<<y.size()<< " " << y[0] <<std::endl;
+  if (DEBUG) std::cout << "Move y "<<y.size()<< " " << y[0] <<"--" << y[m-1]<<std::endl;
   HIP_CHECK(hipMemcpy(dy, y.data(), sizeof(double) * m, hipMemcpyHostToDevice));
+
+
   
 
 
@@ -322,7 +330,7 @@ std::vector<double> csr_mv(int device_id,
   if (DEBUG)std::cout << device_id << " INFO " << local_info << " D " << local_descrA << std::endl;
   if (DEBUG)   std::cout << "Run " << std::endl;
   // Start time measurement
-  HIP_CHECK(hipDeviceSynchronize());
+  //HIP_CHECK(hipDeviceSynchronize());
   auto start = std::chrono::high_resolution_clock::now();
   ROCSPARSE_CHECK(rocsparse_dcsrmv(handle,
 				   rocsparse_operation_none,
