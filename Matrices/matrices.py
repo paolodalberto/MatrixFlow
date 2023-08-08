@@ -75,8 +75,12 @@ class Matrix:
                 if L.dtype != numpy.float64:
                     LL=L.astype(numpy.float64)
                     RR=R.astype(numpy.float64)
-                
-                    B = numpy.matrix(rocmgpu.gemm(0,LL.A1, LL.shape[1], RR.A1, RR.shape[1]))
+                    BB=numpy.ones(  LL.shape[0]*RR.shape[1])*0.0
+                    B = numpy.matrix(
+                        rocmgpu.gemm(0,LL.A1, LL.shape[1],
+                                     RR.A1, RR.shape[1],
+                                     BB.data,RR.shape[1]
+                        ))
                 else:
                     B = numpy.matrix(rocmgpu.gemm(0,L.A1, L.shape[1], R.A1, R.shape[1]))
                 B.resize(B1.shape)

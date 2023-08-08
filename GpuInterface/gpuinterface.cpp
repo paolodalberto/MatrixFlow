@@ -170,7 +170,8 @@ std::vector<double> csr_mv(int device_id,
 			   );
 std::vector<double> gemm(int device_id,
 			 std::vector<double> ha, int lda, 
-			 std::vector<double> hb, int ldb
+			 std::vector<double> hb, int ldb,
+			 std::vector<double> hc, int ldc
 			 );
 
 std::vector<double> coo_mv(int device_id,
@@ -214,7 +215,8 @@ PYBIND11_MODULE(rocmgpu, m) {
   m.def("gemm", &gemm, "GEMM",
 	py::arg("device_id") ,
 	py::arg("a"),py::arg("lda"),
-	py::arg("b"),py::arg("ldb")
+	py::arg("b"),py::arg("ldb"),
+	py::arg("c"),py::arg("ldc")
 	);
   
   //  m.def("reset",reset);
@@ -380,7 +382,8 @@ std::vector<double> csr_mv(int device_id,
 
 std::vector<double> gemm(int device_id,
 			 std::vector<double> ha, int lda, 
-			 std::vector<double> hb, int ldb
+			 std::vector<double> hb, int ldb,
+			 std::vector<double> hc, int ldc
 			 ) {
 
 
@@ -393,11 +396,8 @@ std::vector<double> gemm(int device_id,
 
   int size_a = (int)ha.size();
   int size_b = (int)hb.size();
-  int size_c = (int)m*n;
-  rocblas_int ldc = n;
+  int size_c = (int)hc.size();
   const double  alpha = 1.0 , beta = 0.0;
-  
-  std::vector<double> hc(size_c);
   
   auto start = std::chrono::high_resolution_clock::now();
 
