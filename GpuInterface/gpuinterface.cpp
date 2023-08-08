@@ -46,7 +46,7 @@
 
 #define GPUS_  8
 
-static int DEBUG = 0;
+static int DEBUG = 1;
 
 
 #define HIP_CHECK(stat)						\
@@ -387,15 +387,15 @@ std::vector<double> gemm(int device_id,
   rocblas_handle rochandle  = nullptr;
   ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
   std::cout << "\t BLAS  "  <<  rochandle << std::endl;
-  rocblas_int m = ha.size()/lda;
+  rocblas_int m = (int)ha.size()/lda;
   rocblas_int n = ldb;
   rocblas_int k = lda;
 
-  int size_a = ha.size();
-  int size_b = hb.size();
-  int size_c = m*n;
+  int size_a = (int)ha.size();
+  int size_b = (int)hb.size();
+  int size_c = (int)m*n;
   rocblas_int ldc = n;
-  double  alpha = 1.0 , beta = 0.0;
+  const double  alpha = 1.0 , beta = 0.0;
   
   std::vector<double> hc(size_c);
   
@@ -419,11 +419,11 @@ std::vector<double> gemm(int device_id,
   
   // copy matrices from host to device
   HIP_CHECK(hipMemcpy(da, ha.data(), sizeof(double) * size_a, hipMemcpyHostToDevice));
-  std::cout << "\t A "  << ha[0] << " " << ha[lda]  << std::endl;
+  std::cout << "\t A "  << ha[0] << " " << ha[lda-1]  << std::endl;
   HIP_CHECK(hipMemcpy(db, hb.data(), sizeof(double) * size_b, hipMemcpyHostToDevice));
-  std::cout << "\t B "  << hb[0] << " " <<hb[ldb]  << std::endl;
+  std::cout << "\t B "  << hb[0] << " " <<hb[ldb-1]  << std::endl;
   HIP_CHECK(hipMemcpy(dc, hc.data(), sizeof(double) * size_c, hipMemcpyHostToDevice));
-  std::cout << "\t C "  << hc[0] << " " <<hc[ldc]  << std::endl;
+  std::cout << "\t C "  << hc[0] << " " <<hc[ldc-1]  << std::endl;
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
