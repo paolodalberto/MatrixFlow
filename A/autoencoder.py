@@ -1,5 +1,19 @@
-import rocmgpu as example
+
+
+GPU   = False
+dense = True
+DEBUG= False
 import os, sys, math
+
+if "GPU" in os.environ:
+  GPU = True
+if "SPARSE" in os.environ:
+  dense  = False
+if "DEBUG" in os.environ:
+  DEBUG = True
+
+  
+import rocmgpu as example
 import scipy.sparse as sps
 import numpy as np
 from scipy.io import mmread
@@ -9,33 +23,25 @@ import time
 
 
 
-dense = False
-DEBUG = False
-
 if (dense) :
   def FC(A, x, b):
-    return  A.toarray()@x + b.toarray() 
+    if GPU:
+      import pdb; pdb.set_trace()
+
+      W = example.gemv(0, A.toarray().flatten(),A.shape[1],x,b.toarray().flatten(),1.0,1.0); print(W[0])
+      W = np.array(W).reshape(b.shape)
+
+      return W
+    else:
+        return  A.toarray()@x + b.toarray() 
   def ACT(x):
     y = np.round(np.maximum(x, 0))
     return y
 else:
   def FC(A, x, b):
-    if example:
-      #import pdb; pdb.set_trace()
-      if True:
-        #print(A.shape, x.shape,b.shape)
-        
-        #print(A.dtype, x.dtype, b.dtype, type(1.0))
-        W = example.csr_mv(0, A.indptr.flatten(),A.indices.flatten(), A.data.flatten(),x.toarray().flatten(),b.toarray().flatten(),1.0,1.0); print(W[0])
-        
-        W2 = A@ x + b
-        
-        print("DIF ", sum(W-W2.toarray().flatten()))
-        
-        
-        #import pdb; pdb.set_trace()
-        W = csr_matrix(np.array(W).reshape(b.shape))
-        
+    if GPU:
+      W = example.csr_mv(0, A.indptr.flatten(),A.indices.flatten(), A.data.flatten(),x.toarray().flatten(),b.toarray().flatten(),1.0,1.0); print(W[0])
+      W = csr_matrix(np.array(W).reshape(b.shape))
     else:
       W = A@x + b
     return W 
@@ -62,7 +68,7 @@ if __name__ == '__main__':
   b = [] 
   A_path = BASE + "q_dense_batchnorm_weights.mtx"
   b_path = BASE + "q_dense_batchnorm_bias.mtx"
-  import pdb; pdb.set_trace()
+  #import pdb; pdb.set_trace()
   A.append( read_tensor(A_path))
   b.append(read_tensor(b_path))
   for i in range(1,5) :

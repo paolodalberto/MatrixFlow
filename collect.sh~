@@ -1,0 +1,8 @@
+
+
+
+for k in 1 10 50 75 100 125 150 200 300
+do
+    echo $k
+    python3 Examples/play_4.py -e "middle" -m 4 -n 9  -k $k -v "t" | grep "#" >> out 
+done

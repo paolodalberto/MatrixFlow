@@ -1,0 +1,42 @@
+@echo off
+::
+::  runExtract.cmd -  go through all local matrix multiplication algorithms
+::                    simplify by common subexpression elimination
+::                    create Bini matrix format
+::                    create unified Yacas format
+::                    show product contribitions
+::
+::  Axel Kemper  04-Jan-2023
+::
+
+setlocal
+set do=akExtractMatMultSolution.exe
+
+for /D %%D in (s*_*) do call :do %%D
+
+goto xit
+
+:do
+set PRJ=%1
+echo %1
+cd %1
+if exist "!!! skip simplify" (
+echo     simplify %PRJ% skipped!
+echo "Simplification skipped due to prohibitive size of algorithm" > %PRJ%.log.txt
+) else (
+echo     simplify %PRJ%
+%do% --cse %PRJ%.txt %PRJ%.simplified.txt %PRJ%.Brent.txt > %PRJ%.log.txt
+)
+echo     Bini format for %PRJ%
+%do% --binigen %PRJ%.txt %PRJ%.Bini.txt %PRJ%.Brent.txt >> %PRJ%.log.txt
+echo     Yacas format for %PRJ%
+%do% --yacas %PRJ%.txt %PRJ%.yacas.txt %PRJ%.Brent.txt >> %PRJ%.log.txt
+echo     Product contributions for %PRJ%
+%do% --contrib %PRJ%.txt %PRJ%.contrib.txt %PRJ%.Brent.txt >> %PRJ%.log.txt
+echo     %PRJ% complete!
+cd ..
+goto :EOF
+
+:xit
+pause
+endlocal

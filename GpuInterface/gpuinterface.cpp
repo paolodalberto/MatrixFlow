@@ -174,6 +174,14 @@ std::vector<double> gemm(int device_id,
 			 std::vector<double> hc, int ldc
 			 );
 
+std::vector<double> gemv(int device_id,
+			 std::vector<double> ha, int lda, 
+			 std::vector<double> hx, 
+			 std::vector<double> hy,
+			 double alpha,
+			 double beta
+			 );
+
 std::vector<double> coo_mv(int device_id,
 			   std::vector<rocsparse_int> hrow,
 			   std::vector<rocsparse_int> hcol,
@@ -217,6 +225,14 @@ PYBIND11_MODULE(rocmgpu, m) {
 	py::arg("a"),py::arg("lda"),
 	py::arg("b"),py::arg("ldb"),
 	py::arg("c"),py::arg("ldc")
+	);
+  m.def("gemv", &gemv, "GEMV",
+	py::arg("device_id") ,
+	py::arg("a"),py::arg("lda"),
+	py::arg("x"),
+	py::arg("y"),
+	py::arg("alpha"),
+	py::arg("beta")
 	);
   
   //  m.def("reset",reset);
@@ -354,11 +370,14 @@ std::vector<double> csr_mv(int device_id,
   if (DEBUG) std::cout << "Sync " << std::endl;
   // Device synchronization
   HIP_CHECK(hipDeviceSynchronize());
-  auto stop = std::chrono::high_resolution_clock::now();
-  auto duration =std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
+  
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration =std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  if (DEBUG) {
+    std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
+  }
   HIP_CHECK(hipMemcpy(y.data(), dy, sizeof(double) * m, hipMemcpyDeviceToHost));
-  std::cout << "\t return "  << y.size() << " " << y[0]  << std::endl;
+  if (DEBUG) std::cout << "\t return "  << y.size() << " " << y[0]  << std::endl;
 
   if (DEBUG) std::cout << "Free " << std::endl;
 
@@ -389,7 +408,7 @@ std::vector<double> gemm(int device_id,
 
   rocblas_handle rochandle  = nullptr;
   ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
-  std::cout << "\t BLAS  "  <<  rochandle << std::endl;
+  std::cout << "\t BLAS GEMM  "  <<  rochandle << std::endl;
   rocblas_int m = (int)ha.size()/lda;
   rocblas_int n = ldb;
   rocblas_int k = lda;
@@ -461,6 +480,84 @@ std::vector<double> gemm(int device_id,
   ROCBLAS_CHECK(rocblas_destroy_handle(rochandle));
   rochandle  = nullptr;
   return hc;
+}	   
+std::vector<double> gemv(int device_id,
+			 std::vector<double> ha, int lda, 
+			 std::vector<double> x, 
+			 std::vector<double> y,
+			 double alpha, double beta
+			 ) {
+
+
+  rocblas_handle rochandle  = nullptr;
+  ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
+  std::cout << "\t BLAS GEMV "  <<  rochandle << std::endl;
+  rocblas_int m = (int)y.size();
+  rocblas_int n = (int)x.size();
+
+  
+  
+  auto start = std::chrono::high_resolution_clock::now();
+
+  rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
+  hipDeviceProp_t devProp;
+
+  //HIP_CHECK(hipGetDevice(&device_id));
+  HIP_CHECK(hipSetDevice(device_id));
+  HIP_CHECK(hipGetDeviceProperties(&devProp, device_id));
+  if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
+
+
+  
+  // allocate memory on device
+  double *da, *dx, *dy;
+  HIP_CHECK(hipMalloc(&da, m*n * sizeof(double)));
+  HIP_CHECK(hipMalloc(&dx, n   * sizeof(double)));
+  HIP_CHECK(hipMalloc(&dy, m   * sizeof(double)));
+  
+  // copy matrices from host to device
+  HIP_CHECK(hipMemcpy(da, ha.data(), sizeof(double) * m*n, hipMemcpyHostToDevice));
+  std::cout << "\t A "  << ha[0] << " " << ha[lda-1]  << std::endl;
+  HIP_CHECK(hipMemcpy(dx, x.data(), sizeof(double) * n, hipMemcpyHostToDevice));
+  std::cout << "\t B "  << x[0] << " " <<x[n-1]  << std::endl;
+  HIP_CHECK(hipMemcpy(dy, y.data(), sizeof(double) * m, hipMemcpyHostToDevice));
+  std::cout << "\t C "  << y[0] << " " <<y[n-1]  << std::endl;
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
+  if (DEBUG) std::cout  << "m, n  = " << m << ", " << n << ", " << lda <<", alpha=" << alpha << ", beta=" << beta << std::endl;
+
+  //HIP_CHECK(hipDeviceSynchronizeZ());
+  start = std::chrono::high_resolution_clock::now();
+  ROCBLAS_CHECK(
+       rocblas_dgemv(rochandle, transa,  m, n,  &alpha, da, lda, dx, 1, &beta, dy, 1)
+  );
+  
+  HIP_CHECK(hipDeviceSynchronize());
+
+
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
+  // copy output from device to CPU
+  start = std::chrono::high_resolution_clock::now();
+  HIP_CHECK(hipMemcpy(y.data(), dy, sizeof(double) * m, hipMemcpyDeviceToHost));
+  std::cout << "\t C <- "  << y[0] << " " <<y[n-1]  << std::endl;
+  stop = std::chrono::high_resolution_clock::now();
+  duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+  std::cout << "\t Read data from  Kernel "  << duration.count()/1000000.0 << std::endl;
+  
+
+
+
+  HIP_CHECK(hipFree(da));
+  HIP_CHECK(hipFree(dx));
+  HIP_CHECK(hipFree(dy));
+  
+  
+  ROCBLAS_CHECK(rocblas_destroy_handle(rochandle));
+  rochandle  = nullptr;
+  return y;
 }	   
 std::vector<double> coo_mv(int device_id,
        std::vector<rocsparse_int> hrow,
