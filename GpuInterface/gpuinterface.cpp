@@ -46,7 +46,7 @@
 
 #define GPUS_  8
 
-static int DEBUG = 1;
+static int DEBUG = 0;
 
 
 #define HIP_CHECK(stat)						\
@@ -408,7 +408,7 @@ std::vector<double> gemm(int device_id,
 
   rocblas_handle rochandle  = nullptr;
   ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
-  std::cout << "\t BLAS GEMM  "  <<  rochandle << std::endl;
+  if (DEBUG) std::cout << "\t BLAS GEMM  "  <<  rochandle << std::endl;
   rocblas_int m = lda;  // Fortran format LDA is rows 
   rocblas_int k = ldb;
   rocblas_int n = (int) ha.size()/lda;
@@ -438,14 +438,14 @@ std::vector<double> gemm(int device_id,
   
   // copy matrices from host to device
   HIP_CHECK(hipMemcpy(da, ha.data(), sizeof(double) * size_a, hipMemcpyHostToDevice));
-  std::cout << "\t A "  << ha[0] << " " << ha[lda-1]  << std::endl;
+  if (DEBUG) std::cout << "\t A "  << ha[0] << " " << ha[lda-1]  << std::endl;
   HIP_CHECK(hipMemcpy(db, hb.data(), sizeof(double) * size_b, hipMemcpyHostToDevice));
-  std::cout << "\t B "  << hb[0] << " " <<hb[ldb-1]  << std::endl;
+  if (DEBUG) std::cout << "\t B "  << hb[0] << " " <<hb[ldb-1]  << std::endl;
   HIP_CHECK(hipMemcpy(dc, hc.data(), sizeof(double) * size_c, hipMemcpyHostToDevice));
-  std::cout << "\t C "  << hc[0] << " " <<hc[ldc-1]  << std::endl;
+  if (DEBUG) std::cout << "\t C "  << hc[0] << " " <<hc[ldc-1]  << std::endl;
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
+  if (DEBUG) std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
 
 
   //HIP_CHECK(hipDeviceSynchronize());
@@ -458,14 +458,14 @@ std::vector<double> gemm(int device_id,
 
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
+  if (DEBUG) std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
   // copy output from device to CPU
   start = std::chrono::high_resolution_clock::now();
   HIP_CHECK(hipMemcpy(hc.data(), dc, sizeof(double) * size_c, hipMemcpyDeviceToHost));
-  std::cout << "\t C <- "  << hc[0] << " " <<hc[ldc]  << std::endl;
+  if (DEBUG) std::cout << "\t C <- "  << hc[0] << " " <<hc[ldc]  << std::endl;
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-  std::cout << "\t Read data from  Kernel "  << duration.count()/1000000.0 << std::endl;
+  if (DEBUG) std::cout << "\t Read data from  Kernel "  << duration.count()/1000000.0 << std::endl;
   
 
 

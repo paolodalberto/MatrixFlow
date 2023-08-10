@@ -2177,7 +2177,7 @@ def gen_matrix(X : int , Y : int, random = None):
         A = Matrix(
             numpy.matrix(
                 [
-                    [ (1+i+j+i*j) for i in range(X)] for j in range(Y)
+                    [ (1+i+j+i*j -i*17) for i in range(X)] for j in range(Y)
                 ]
             )
         )
