@@ -4,8 +4,9 @@ GPU   = False
 dense = True
 DEBUG= False
 import os, sys, math
-
+gpu = 0
 if "GPU" in os.environ:
+  gpu = int( os.environ['GPU'])
   GPU = True
 if "SPARSE" in os.environ:
   dense  = False
@@ -28,7 +29,7 @@ import time
 if (dense) :
   def FC(A, x, b):
     if GPU:
-      W = procm.fromsparse_dgemv(0, A,x,b)
+      W = procm.fromsparse_dgemv(gpu, A,x,b)
       return W
     else:
       return  A.toarray()@x + b.toarray() 
@@ -38,7 +39,7 @@ if (dense) :
 else:
   def FC(A, x, b):
     if GPU:
-      W = procm.dgemv_csr(0, A,x,b)
+      W = procm.dgemv_csr(gpu, A,x,b)
     else:
       W = A@x + b
     return W 

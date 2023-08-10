@@ -1,6 +1,7 @@
 import rocmgpu
 import numpy
 import os
+from scipy.sparse import csr_matrix
 
 VERIFY = True if "VERIFY" in os.environ else False
 
@@ -61,8 +62,8 @@ def dgemv(device, C, x, y) :
 ###
 def dgemv_csr(device, C, x, y) :
 
-    W = rocmgpu.csr_mv(0, C.indptr.flatten(),C.indices.flatten(), C.data.flatten(),x.toarray().flatten(),y.toarray().flatten(),1.0,1.0); 
-    W = csr_matrix(np.array(W).reshape(y.shape))
+    W = rocmgpu.csr_mv(device, C.indptr.flatten(),C.indices.flatten(), C.data.flatten(),x.toarray().flatten(),y.toarray().flatten(),1.0,1.0); 
+    W = csr_matrix(numpy.array(W).reshape(y.shape))
     
     if VERIFY:
         Q =  C@x + y

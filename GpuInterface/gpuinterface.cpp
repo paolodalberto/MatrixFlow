@@ -404,7 +404,6 @@ std::vector<double> gemm(int device_id,
 
 
   rocblas_handle rochandle  = nullptr;
-  ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
   if (DEBUG) std::cout << "\t BLAS GEMM  "  <<  rochandle << std::endl;
   rocblas_int m = lda;  // Fortran format LDA is rows 
   rocblas_int k = ldb;
@@ -419,13 +418,16 @@ std::vector<double> gemm(int device_id,
   
   auto start = std::chrono::high_resolution_clock::now();
 
+
   rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
   hipDeviceProp_t devProp;
 
-  HIP_CHECK(hipGetDevice(&device_id));
-  //HIP_CHECK(hipSetDevice(device_id));
+  //HIP_CHECK(hipGetDevice(&device_id));
+  HIP_CHECK(hipSetDevice(device_id));
   HIP_CHECK(hipGetDeviceProperties(&devProp, device_id));
   if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
+
+  ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
 
 
   
@@ -489,7 +491,7 @@ std::vector<double> gemv(int device_id,
 
   rocblas_int    inc =1;
   rocblas_handle rochandle  = nullptr;
-  ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
+  
   if (DEBUG) std::cout << "\t BLAS GEMV "  <<  rochandle << std::endl;
   rocblas_int m = (int)y.size();
   rocblas_int n = (int)x.size();
@@ -505,7 +507,7 @@ std::vector<double> gemv(int device_id,
   HIP_CHECK(hipSetDevice(device_id));
   HIP_CHECK(hipGetDeviceProperties(&devProp, device_id));
   if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
-
+  ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
 
   
   // allocate memory on device
