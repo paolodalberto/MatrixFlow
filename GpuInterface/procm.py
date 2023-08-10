@@ -1,0 +1,114 @@
+import rocmgpu
+import numpy
+import os
+
+VERIFY = True if "VERIFY" in os.environ else False
+
+###
+## rocBLAS style:
+##    C has to be in column major layout
+##    x is a dense vector
+##    b may be not dense 
+## z = 1*Cx + 1*y  
+###
+def fromsparse_dgemv(device, C, x, y) :
+    
+     W = rocmgpu.gemv(device,
+                   C.toarray().flatten(order='F'),C.shape[0],
+                   x,
+                   y.toarray().flatten(),
+                   1.0,1.0);
+     ## from array (shapeless) to vector 
+     W = numpy.array(W).reshape(y.shape)
+
+     if VERIFY:
+         Q = C.toarray()@x + y.toarray() 
+         print("DIFF", numpy.sum(Q-W))
+
+     
+     return W
+###
+## rocBLAS style:
+##    C has to be in column major layout
+##    x is a dense vector
+##    b may be not dense 
+## z = 1*Cx + 1*y  
+###
+def dgemv(device, C, x, y) :
+    
+    W = rocmgpu.gemv(device,
+                     C.flatten(order='F'),C.shape[0],
+                     x,
+                     y,
+                     1.0,1.0);
+    ## from array (shapeless) to vector 
+    W = numpy.array(W).reshape(y.shape)
+    
+    if VERIFY:
+        Q = C@x + y 
+        print("DIFF", numpy.sum(Q-W))
+        
+     
+    return W
+
+
+###
+## rocSPARSE style:
+##    C has to be in column major layout
+##    x is NOT a dense vector
+##    b may be not dense 
+## z = 1*Cx + 1*y  
+###
+def dgemv_csr(device, C, x, y) :
+
+    W = rocmgpu.csr_mv(0, C.indptr.flatten(),C.indices.flatten(), C.data.flatten(),x.toarray().flatten(),y.toarray().flatten(),1.0,1.0); 
+    W = csr_matrix(np.array(W).reshape(y.shape))
+    
+    if VERIFY:
+        Q =  C@x + y
+        print("DIFF", numpy.sum(Q-W))
+        
+        
+        
+    return W
+
+
+###
+## rocBLAS style:
+##    C has to be in column major layout
+##    A is a dense vector
+##    b may be not dense 
+## z = 1*Cx + 1*y  
+###
+def dgemm(device, L, R) :
+    
+    if L.dtype != numpy.float64:
+        LL=L.astype(numpy.float64)
+        RR=R.astype(numpy.float64)
+        #BB=numpy.ones(  LL.shape[0]*RR.shape[1])*0.0
+        
+        V = rocmgpu.gemm(
+            device,
+            LL.A.flatten('F'), LL.shape[0],
+            RR.A.flatten(), RR.shape[1]
+            
+        )
+        B = numpy.matrix(
+            V
+        )
+        B = B.reshape((L.shape[0],R.shape[1]), order='F')
+    else:
+        V =  rocmgpu.gemm(
+            device,L.A.flatten('F'), L.shape[0],
+            R.A.flatten(), R.shape[1]
+        )
+        B = numpy.matrix(
+            V
+        )
+        B = B.reshape((L.shape[0],R.shape[1]), order='F')
+
+    if VERIFY:
+        Q =  L@R
+        print("DIFF", numpy.sum(Q-B))
+        
+    return B

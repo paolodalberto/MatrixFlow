@@ -1,7 +1,7 @@
 import numpy 
 import math
 import os
-import rocmgpu
+import procm
 
 ###
 ## A 2 dimensional matrix represented by a numpy matrix 
@@ -71,40 +71,8 @@ class Matrix:
                B= numpy.matmul(L,R)
             else:
                 gpu = int(os.environ["GPU"])
-                #B1 = numpy.matmul(L,R)
-                Result = numpy.zeros((L.shape[0],R.shape[1])) #B1*0.0
-                
-                if L.dtype != numpy.float64:
-                    LL=L.astype(numpy.float64)
-                    RR=R.astype(numpy.float64)
-                    BB=numpy.ones(  LL.shape[0]*RR.shape[1])*0.0
-                    
-                    V = rocmgpu.gemm(
-                        gpu,
-                        LL.A.flatten('F'), LL.shape[0],
-                        RR.A.flatten(), RR.shape[1],
-                        Result.flatten(),Result.shape[1]
-                    )
-                    B = numpy.matrix(
-                        V
-                    )
-                    B = B.reshape((Result.shape[0],Result.shape[1]), order='F')
-                else:
-                    V =  rocmgpu.gemm(0,L.A.flatten('F'), L.shape[0],
-                                      R.A.flatten(), R.shape[1],
-                                      Result.flatten(),Result.shape[1]
-                    )
-                    B = numpy.matrix(
-                        V
-                    )
-                    B = B.reshape((Result.shape[0],Result.shape[1]), order='C')
+                B = procm.dgemm(gpu,L,R)
 
-
-                #import pdb; pdb.set_trace()
-                #diff = numpy.sum(B-B1)
-                #print(B1.shape,diff)
-                #if diff !=0.0: import pdb; pdb.set_trace()
-                                
             C = Matrix(B)
             C.gpu = True
             return C

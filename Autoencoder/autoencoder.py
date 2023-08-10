@@ -14,6 +14,8 @@ if "DEBUG" in os.environ:
 
   
 import rocmgpu as example
+import procm
+
 import scipy.sparse as sps
 import numpy as np
 from scipy.io import mmread
@@ -26,22 +28,17 @@ import time
 if (dense) :
   def FC(A, x, b):
     if GPU:
-      import pdb; pdb.set_trace()
-      # expect the matrix in column major format, do not ask
-      W = example.gemv(0, A.toarray().flatten(order='F'),A.shape[0],x,b.toarray().flatten(),1.0,1.0); print(W[0])
-      W = np.array(W).reshape(b.shape)
-
+      W = procm.fromsparse_dgemv(0, A,x,b)
       return W
     else:
-        return  A.toarray()@x + b.toarray() 
+      return  A.toarray()@x + b.toarray() 
   def ACT(x):
     y = np.round(np.maximum(x, 0))
     return y
 else:
   def FC(A, x, b):
     if GPU:
-      W = example.csr_mv(0, A.indptr.flatten(),A.indices.flatten(), A.data.flatten(),x.toarray().flatten(),b.toarray().flatten(),1.0,1.0); print(W[0])
-      W = csr_matrix(np.array(W).reshape(b.shape))
+      W = procm.dgemv_csr(0, A,x,b)
     else:
       W = A@x + b
     return W 
