@@ -82,30 +82,14 @@ def dgemv_csr(device, C, x, y) :
 ###
 def dgemm(device, L, R) :
     
-    if L.dtype != numpy.float64:
-        LL=L.astype(numpy.float64)
-        RR=R.astype(numpy.float64)
-        #BB=numpy.ones(  LL.shape[0]*RR.shape[1])*0.0
-        
-        V = rocmgpu.gemm(
-            device,
-            LL.A.flatten('F'), LL.shape[0],
-            RR.A.flatten(), RR.shape[1]
-            
-        )
-        B = numpy.matrix(
-            V
-        )
-        B = B.reshape((L.shape[0],R.shape[1]), order='F')
-    else:
-        V =  rocmgpu.gemm(
-            device,L.A.flatten('F'), L.shape[0],
-            R.A.flatten(), R.shape[1]
-        )
-        B = numpy.matrix(
-            V
-        )
-        B = B.reshape((L.shape[0],R.shape[1]), order='F')
+    V =  rocmgpu.gemm(
+        device,L.A.flatten('F'), L.shape[0],
+        R.A.flatten(), R.shape[1]
+    )
+    B = numpy.matrix(
+        V
+    )
+    B = B.reshape((L.shape[0],R.shape[1]), order='F')
 
     if VERIFY:
         Q =  L@R
