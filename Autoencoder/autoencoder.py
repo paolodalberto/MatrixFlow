@@ -27,8 +27,8 @@ if (dense) :
   def FC(A, x, b):
     if GPU:
       import pdb; pdb.set_trace()
-
-      W = example.gemv(0, A.toarray().flatten(),A.shape[1],x,b.toarray().flatten(),1.0,1.0); print(W[0])
+      # expect the matrix in column major format, do not ask
+      W = example.gemv(0, A.toarray().flatten(order='F'),A.shape[0],x,b.toarray().flatten(),1.0,1.0); print(W[0])
       W = np.array(W).reshape(b.shape)
 
       return W

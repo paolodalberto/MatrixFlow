@@ -321,7 +321,7 @@ std::vector<double> csr_mv(int device_id,
   HIP_CHECK(hipMalloc((void**)&dAval, sizeof(double) * nnz));
   HIP_CHECK(hipMalloc((void**)&dx,    sizeof(double) * n));
   HIP_CHECK(hipMalloc((void**)&dy,    sizeof(double) * m));
-  HIP_CHECK(hipDeviceSynchronize());  
+  //HIP_CHECK(hipDeviceSynchronize());  
   if (DEBUG) std::cout << "Move " << std::endl;
   HIP_CHECK(
 	    hipMemcpy(dAptr, hAptr.data(), sizeof(rocsparse_int) * hAptr.size(), hipMemcpyHostToDevice));
@@ -409,9 +409,9 @@ std::vector<double> gemm(int device_id,
   rocblas_handle rochandle  = nullptr;
   ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
   std::cout << "\t BLAS GEMM  "  <<  rochandle << std::endl;
-  rocblas_int m = (int)ha.size()/lda;
-  rocblas_int n = ldb;
-  rocblas_int k = lda;
+  rocblas_int m = lda;  // Fortran format LDA is rows 
+  rocblas_int k = ldb;
+  rocblas_int n = (int) ha.size()/lda;
 
   int size_a = (int)ha.size();
   int size_b = (int)hb.size();
@@ -423,8 +423,8 @@ std::vector<double> gemm(int device_id,
   rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
   hipDeviceProp_t devProp;
 
-  //HIP_CHECK(hipGetDevice(&device_id));
-  HIP_CHECK(hipSetDevice(device_id));
+  HIP_CHECK(hipGetDevice(&device_id));
+  //HIP_CHECK(hipSetDevice(device_id));
   HIP_CHECK(hipGetDeviceProperties(&devProp, device_id));
   if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
 
@@ -488,7 +488,7 @@ std::vector<double> gemv(int device_id,
 			 double alpha, double beta
 			 ) {
 
-
+  rocblas_int    inc =1;
   rocblas_handle rochandle  = nullptr;
   ROCBLAS_CHECK(rocblas_create_handle(&rochandle));
   std::cout << "\t BLAS GEMV "  <<  rochandle << std::endl;
@@ -526,14 +526,14 @@ std::vector<double> gemv(int device_id,
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
   if (DEBUG) std::cout  << "m, n  = " << m << ", " << n << ", " << lda <<", alpha=" << alpha << ", beta=" << beta << std::endl;
-
+ 
   //HIP_CHECK(hipDeviceSynchronizeZ());
   start = std::chrono::high_resolution_clock::now();
   ROCBLAS_CHECK(
-       rocblas_dgemv(rochandle, transa,  m, n,  &alpha, da, lda, dx, 1, &beta, dy, 1)
+       rocblas_dgemv(rochandle, transa,  m, n,  &alpha, da, lda, dx, inc, &beta, dy, inc)
   );
   
-  HIP_CHECK(hipDeviceSynchronize());
+  //HIP_CHECK(hipDeviceSynchronize());
 
 
   stop = std::chrono::high_resolution_clock::now();
@@ -623,7 +623,7 @@ std::vector<double> coo_mv(int device_id,
   ROCSPARSE_CHECK(rocsparse_create_mat_descr(&local_descrA));
   
   if (DEBUG)   std::cout << "Run " << std::endl;
-  HIP_CHECK(hipDeviceSynchronize());
+  //HIP_CHECK(hipDeviceSynchronize());
   auto start = std::chrono::high_resolution_clock::now();
   ROCSPARSE_CHECK(rocsparse_dcoomv(handle,
 				   rocsparse_operation_none,

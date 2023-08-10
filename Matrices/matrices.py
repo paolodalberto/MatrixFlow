@@ -71,19 +71,30 @@ class Matrix:
             else:
                 B1 = numpy.matmul(L,R)
                 Result = B1*0.0
-
+#                import pdb; pdb.set_trace()
                 if L.dtype != numpy.float64:
                     LL=L.astype(numpy.float64)
                     RR=R.astype(numpy.float64)
                     BB=numpy.ones(  LL.shape[0]*RR.shape[1])*0.0
+                    V = rocmgpu.gemm(0,LL.A.flatten('F'), LL.shape[0],RR.A.flatten('F'), RR.shape[0],Result.A.flatten('F'),Result.shape[0]
+                    )
                     B = numpy.matrix(
-                        rocmgpu.gemm(0,LL.A1, LL.shape[1],
-                                     RR.A1, RR.shape[1],
-                                     BB.data,RR.shape[1]
-                        ))
+                        V
+                    )
+                    B.resize((LL.shape[0],RR.shape[1]))
                 else:
-                    B = numpy.matrix(rocmgpu.gemm(0,L.A1, L.shape[1], R.A1, R.shape[1]))
-                B.resize(B1.shape)
+                    V =  rocmgpu.gemm(0,L.A.flatten('F'), L.shape[0],
+                                      R.A.flatten('F'), R.shape[0],
+                                      Result.flatten(),Result.shape[1]
+                    )
+                    B = numpy.matrix(
+                        V
+                    )
+                    B.resize((LL.shape[0],RR.shape[1]))
+                    
+
+
+
                 diff = numpy.sum(B-B1)
                 print(B1.shape,diff)
                 if diff !=0.0: import pdb; pdb.set_trace()
