@@ -169,6 +169,9 @@ class Operation:
         return "\n".join(Q)
 
     def pretty__C(self, gpu : GPU = ROCBLAS):
+
+        
+
         #print(self)
         #import pdb; 
         #from Hw.hw import GPU
@@ -220,7 +223,7 @@ class Operation:
             ldc = N
             #print(gpu.GEMM_x)
             # rocblas_dgemm( %s, 'n', 'n', %d, %d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d)
-            r = gpu.GEMM_x % ("gpu0",M,N,K, "&"+one,
+            r = gpu.GEMM_x % ("gpu",M,N,K, "&"+one,
                               self.left.tempname,lda,
                               self.right.tempname,ldb,
                               self.M,self.tempname,ldc) 
@@ -277,7 +280,7 @@ class Operation:
             elif self.operation == '-' :
                 two = self.graph.constantlookuptable[-1]
             r = gpu.GEMA_x % (
-                "gpu0",M,N, K,"&"+one,
+                "gpu",M,N, K,"&"+one,
                 l.tempname,lda,
                 r.tempname,ldb,
                 "&"+two, 
@@ -693,7 +696,7 @@ class Data(Operation):
         self.tempname = str(self)
         
         #return str(self)
-    def pretty__(self):
+    def pretty__(self, gpu : GPU = None):
         
         
         if self.left.pointer:
@@ -711,12 +714,21 @@ class Data(Operation):
             type = Graph.numpytoC(self.type_matrix())
             A = self.left
             M, N = A.value().shape
-            d = self.name  + "= " +\
-                "(%s*)malloc (%d*%d*sizeof(%s));" % (
-                    type,
+
+            if gpu is None:
+                d = self.name  + "= " +\
+                    "(%s*)malloc (%d*%d*sizeof(%s));" % (
+                        type,
+                        A.max[0]-A.min[0], A.max[1] -A.min[1],
+                        type
+                    )
+            else:
+                d = gpu.MALLOC % (
+                    self.name,
                     A.max[0]-A.min[0], A.max[1] -A.min[1],
                     type
                 )
+
             return d
         
         
@@ -1123,9 +1135,53 @@ class Graph(Function):
                     free  +=   "free(%s[%d]); " % (name,i)
         
         return red + code + free
+
+
+    
     def pretty__C(self, python_compiler : bool = False ):
         TYP = None
-        red = "// Variables declaration \n"
+        
+        M,K = self.A.value().shape
+        K,N = self.B.value().shape
+        TYP = Graph.numpytoC(self.declarations[0][0].type_matrix())
+
+        F = "void mm_%d_%d_%d(" + \
+            TYP + " *hA,  " + \
+            TYP + " *hB,  " + \
+            TYP + " *hC  ){ \n" 
+
+        H = F % (M,N,K)
+        if not python_compiler:
+            HEADER = """
+        typedef %s MT; 
+        rocblas_int device_id;
+        rocblas_handle gpu  = nullptr;
+        if (DEBUG) std::cout << "\t BLAS GEMM  "  <<  gpu << std::endl;
+        hipDeviceProp_t devProp;
+        //HIP_CHECK(hipSetDevice(device_id));
+        HIP_CHECK(hipGetDevice(&device_id));
+        HIP_CHECK(hipGetDeviceProperties(&devProp, device_id));
+        ROCSPARSE_CHECK(rocsparse_create_handle(&gpu));  
+        if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
+        int M = %d, N = %d, K = %d;
+        int size_a = M*K, size_b = K*N, size_c = M*N;
+        // allocate memory on device
+        MT *A, *B, *C;
+        HIP_CHECK(hipMalloc(&A, M*K* sizeof(MT)));
+        HIP_CHECK(hipMalloc(&B, K*N * sizeof(MT)));
+        HIP_CHECK(hipMalloc(&C, M*N * sizeof(MT)));
+
+         HIP_CHECK(hipMemcpy(A, hA, sizeof(double) * size_a, hipMemcpyHostToDevice));
+         HIP_CHECK(hipMemcpy(B, hB, sizeof(double) * size_b, hipMemcpyHostToDevice));
+         HIP_CHECK(hipMemcpy(C, hC, sizeof(double) * size_c, hipMemcpyHostToDevice));
+         
+"""
+            
+            H += HEADER %(TYP, M,N,K)
+        red = H#.split("\n")
+
+        
+        red += "// Variables declaration \n"
         #import pdb; pdb.set_trace()
         for block  in self.declarations:
             ## either a partition or a definition
@@ -1148,7 +1204,7 @@ class Graph(Function):
 
             for d in block:
                 #print(d)
-                init +=  d.pretty__()
+                init +=  d.pretty__(gpu=ROCBLAS)
             #import pdb; pdb.set_trace()
             #print(init)
             red+= init +"\n" 
@@ -1176,9 +1232,16 @@ class Graph(Function):
                 L = len(block)
                 name = block[0].partition_name()
                 for i in range(L):
-                    free  +=   "free(%s[%d]); " % (name,i)
-        
-        return red + code + free
+                    s = "%s[%d]" % (name,i)
+                    free  +=   ROCBLAS.FREE % (s) + "\n";
+
+
+        free +=   "HIP_CHECK(hipFree(A));\n" 
+        free +=   "HIP_CHECK(hipFree(B));\n" 
+        free +=   "HIP_CHECK(hipFree(C));\n" 
+
+
+        return red + code + free +"}\n"
 
     ## We execute each statement in the V list in order
     def compute(self, verbose = False):

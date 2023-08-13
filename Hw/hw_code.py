@@ -55,13 +55,53 @@ class GPU:
             "%s, %s, %d,  %s, %s, %s,  %s, %d) "
 
 
+        self.MALLOC = "HIP_CHECK(hipMalloc(&%s, %d*%d* sizeof(%s)));"
+        self.FREE   = "HIP_CHECK(hipFree(%s));" 
+        
     def __str__(self):
         return self.GEMM + "\n" + \
             self.GEMA + "\n"  + \
             self.GEMM_x + "\n"  + \
-            self.GEMA_x + "\n"  
+            self.GEMA_x + "\n" + \
+            self.MALLOC + "\n" + \
+            self.FREE + "\n"
+    
             
 
 ROCBLAS = GPU()
 print(ROCBLAS)
 
+class GPUI:
+    def __init__(self):
+
+
+        self.GEMM = """
+        std::vector<double> gemm(int device_id,
+			 std::vector<double> ha, int lda, 
+			 std::vector<double> hb, int ldb
+			 )"""
+
+        ## handle, M, N, K, alpha, A,  LDA=K, B, LDB=N, beta,C, LDC=N 
+        self.GEMM_i = "## handle,  A,  lda, B , ldb "
+        self.GEMM_x = "" + \
+            "gemm( %s, %s %d %s %d) "
+
+        self.GEMA = """
+        std::vector<double> gema(int device_id,
+			 std::vector<double> ha, int lda, 
+			 std::vector<double> hb, int ldb
+			 )
+        """
+
+        ## handle, M, N, K, alpha, A, beta, LDA=K, B, LDB=N, beta,C, LDC=N 
+        self.GEMA_i = "## handle,  A,  lda, B , ldb "
+        
+        self.GEMA_x = "" + \
+            "gema( %s, %s %d %s %d) "
+
+
+    def __str__(self):
+        return self.GEMM + "\n" + \
+            self.GEMA + "\n"  + \
+            self.GEMM_x + "\n"  + \
+            self.GEMA_x + "\n"  
