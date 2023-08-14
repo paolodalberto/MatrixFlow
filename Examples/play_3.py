@@ -52,7 +52,7 @@ if __name__ == "__main__":
     ####
         
     ## Pure Python Interface
-    print("compute")
+    print("compute regular ")
     start = time.time()
     C = A*B
     end = time.time()
@@ -109,12 +109,16 @@ if __name__ == "__main__":
 
     import pdb; pdb.set_trace()
     import one
+    start = time.time()
     H1 = Scalar(0)*C
     H = one.fastgemm(0,A.value().A.flatten(), B.value().A.flatten(), H1.value().A.flatten())
     R = numpy.matrix(
         H
     )
     B1 = R.reshape(C.value().shape)
+    H = Matrix(B1)
+    end = time.time()
+    print("time",end - start)
 
 
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))

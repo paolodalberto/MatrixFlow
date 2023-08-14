@@ -74,13 +74,14 @@ class GPU:
         import os
         import subprocess
         
-
+        
         F = open(d+"codextype.h", "w")
         F.write("#define T 1 \n typedef %s TT; \n" %TYP)
         F.close()
         F = open(d+filename, "w")
         F.write(S)
         F.close()
+        subprocess.Popen("touch %s/*.cpp" % d,shell = True)
         cmd = 'cd %s; python3 setup.py build' % d
         subprocess.Popen(cmd,shell = True)
         

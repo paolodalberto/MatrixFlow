@@ -1,5 +1,12 @@
 # Matrix Flow
 
+If you are here and you want to play with the system
+```sh 
+export PYTHONPATH=$PWD:$PWD/GpuInterface/build/lib.linux-x86_64-cpython-39/:$PWD/GpuInterface:$PWD/JITGpu/build/lib.linux-x86_64-cpython-39/
+pip install networkx matplotlib graphviz seaborn pybind11
+```
+so you will have all the packages for graphical plotting and eventually GPU modules PATH already set.
+
 There is a renaissance of fast matrix multiplication algorithms and we
 need tools (some we tried to build previously in the FastMMW package). In practice, 
 once the tensor encodings are spelled out, any fast algorithm is
@@ -186,3 +193,7 @@ but it is not very clear yet.
 
 The introduction of the case Graph/lu.py (the LU factorization) shows how the linear algebra computation could return multiple "matrices" such as P, L, U ...  but it is not a major concern at this time.
 
+
+## Code Generation: C++ and for GPUs ?
+
+Go to JITGpu
