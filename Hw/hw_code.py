@@ -28,7 +28,7 @@ class GPU:
         self.GEMM_i = "## handle, M, N, K, alpha, A,  LDA=K, B, LDB=N, beta,C, LDC=N "
         self.GEMM_x = "" + \
             "rocblas_dgemm( %s, 'n', 'n', %d, " + \
-            "%d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d) "
+            "%d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d); "
 
         self.GEMA = """
     rocblas_status rocblas_dgema(
@@ -51,8 +51,8 @@ class GPU:
         self.GEMA_i = "## handle, M, N, K, alpha, A, beta, LDA=K, B, LDB=N, beta,C, LDC=N "
         
         self.GEMA_x = "" + \
-            "rocblas_dgema( %s, 'n', 'n', %d, %d, %d  " +\
-            "%s, %s, %d,  %s, %s, %s,  %s, %d) "
+            "rocblas_dgema( %s, 'n', 'n', %d, %d, %d,  " +\
+            "%s, %s, %d,  %s, %s, %s,  %s, %d); "
 
 
         self.MALLOC = "HIP_CHECK(hipMalloc(&%s, %d*%d* sizeof(%s)));"
@@ -66,8 +66,28 @@ class GPU:
             self.MALLOC + "\n" + \
             self.FREE + "\n"
     
-            
+    def compile_and_import(self,S : str, TYP : str, d : str = "JITGpu/",  filename : str = "codex.h"):
 
+        if S is None or filename is None:
+            return None
+        
+        import os
+        import subprocess
+        
+
+        F = open(d+"codextype.h", "w")
+        F.write("#define T 1 \n typedef %s TT; \n" %TYP)
+        F.close()
+        F = open(d+filename, "w")
+        F.write(S)
+        F.close()
+        cmd = 'cd %s; python3 setup.py build' % d
+        subprocess.Popen(cmd,shell = True)
+        
+        
+
+
+        
 ROCBLAS = GPU()
 print(ROCBLAS)
 

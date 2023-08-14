@@ -12,6 +12,8 @@ import sys
 import argparse
 import gc
 from Hw.hw import AbstractHW, PE
+from Hw.hw_code import  ROCBLAS, GPU
+
 
 
 HW =  AbstractHW('Doohm')
@@ -97,9 +99,24 @@ if __name__ == "__main__":
     G3 = bini_mult_example_three_temp(D,ct, A,at,B,bt,1,True)
 
     print(G3.pretty__())
-    import pdb; pdb.set_trace()
-    print(G3.pretty__C())
     
+
+    code = G3.pretty__C(python_compiler = True) 
+    print(code)
+    ROCBLAS.compile_and_import(
+        code,
+        TYP = str(Graph.numpytoC(G3.declarations[0][0].type_matrix())))
+
+    import pdb; pdb.set_trace()
+    import one
+    H1 = Scalar(0)*C
+    H = one.fastgemm(0,A.value().A.flatten(), B.value().A.flatten(), H1.value().A.flatten())
+    R = numpy.matrix(
+        H
+    )
+    B1 = R.reshape(C.value().shape)
+
+
     Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))

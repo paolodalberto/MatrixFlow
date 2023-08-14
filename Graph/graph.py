@@ -223,10 +223,12 @@ class Operation:
             ldc = N
             #print(gpu.GEMM_x)
             # rocblas_dgemm( %s, 'n', 'n', %d, %d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d)
+
+            zero =  self.graph.constantlookuptable[0] 
             r = gpu.GEMM_x % ("gpu",M,N,K, "&"+one,
                               self.left.tempname,lda,
                               self.right.tempname,ldb,
-                              self.M,self.tempname,ldc) 
+                              "&"+zero,self.tempname,ldc) 
             #print(r)
             Q.append(r)
         elif self.operation in ['+','-']  :
@@ -273,7 +275,9 @@ class Operation:
                 ldb = r.left.pointer.value().shape[1]
             t = self.graph.find_decl_by_name(self.tempname)
             _,ldc = t.left.value().shape
-
+            if t.left.pointer:
+                 ldc = t.left.pointer.value().shape[1]
+                 
             ## the result is a temporary matriix
             if scal and self.operation == '-' :
                 two = self.look_const_d(scal)
@@ -1144,13 +1148,21 @@ class Graph(Function):
         M,K = self.A.value().shape
         K,N = self.B.value().shape
         TYP = Graph.numpytoC(self.declarations[0][0].type_matrix())
+        V = "std::vector<%s>" % TYP
+        
+        F = V + "fastgemm(int gpu," + \
+            V + " hA,  " + \
+            V + " hB,  " + \
+            V + " hC  ){ \n" 
+        F += TYP +" *A = hA.data();"
+        F += TYP +" *B = hB.data();"
+        F += TYP +" *C = hC.data();"
+       
+        
 
-        F = "void mm_%d_%d_%d(" + \
-            TYP + " *hA,  " + \
-            TYP + " *hB,  " + \
-            TYP + " *hC  ){ \n" 
-
-        H = F % (M,N,K)
+        
+        H = F
+        
         if not python_compiler:
             HEADER = """
         typedef %s MT; 
@@ -1188,7 +1200,7 @@ class Graph(Function):
             #print(block[0])
             #import pdb; pdb.set_trace()
             partition = block[0].partition()
-            init = ("# " if python_compiler else '') 
+            init = ("# " if False and python_compiler else '') 
             if True : #partition:
                 TYP = str(Graph.numpytoC(block[0].type_matrix()))
                 L = len(block)
@@ -1204,15 +1216,21 @@ class Graph(Function):
 
             for d in block:
                 #print(d)
-                init +=  d.pretty__(gpu=ROCBLAS)
+                init +=  d.pretty__(gpu=ROCBLAS if not python_compiler else None)
             #import pdb; pdb.set_trace()
             #print(init)
             red+= init +"\n" 
 
         red += "// Constant declaration \n"
-        red += TYP+ " " 
-        for k,v in self.lookuptableconstant.items():
-            red += k  +"="+ str(v) +","
+        D = self.lookuptableconstant.items()
+        red += TYP
+        count =0 
+        for k,v in D:
+            if count ==0:
+                count +=1
+                red += " " +k  +"="+ str(v) 
+            else:
+                red += "," +k  +"="+ str(v) 
         red += ";\n"
         
             
@@ -1222,7 +1240,7 @@ class Graph(Function):
             code += "// " + str(n) + "\n"
             code += n.pretty__C()+"\n"
 
-        free = "// free " + ('' if python_compiler else '\n')
+        free = "// free " + ('' if False and python_compiler else '\n')
         ## Free malloc above
         for block  in self.declarations:
             ## either a partition or a definition
@@ -1233,15 +1251,20 @@ class Graph(Function):
                 name = block[0].partition_name()
                 for i in range(L):
                     s = "%s[%d]" % (name,i)
-                    free  +=   ROCBLAS.FREE % (s) + "\n";
+                    if python_compiler:
+                    
+                        free  +=   "free(%s);" % (s) + "\n";
+                        
+                    else:
+                        free  +=   ROCBLAS.FREE % (s) + "\n";
 
+        if not  python_compiler:
+            free +=   "HIP_CHECK(hipFree(A));\n" 
+            free +=   "HIP_CHECK(hipFree(B));\n" 
+            free +=   "HIP_CHECK(hipFree(C));\n" 
 
-        free +=   "HIP_CHECK(hipFree(A));\n" 
-        free +=   "HIP_CHECK(hipFree(B));\n" 
-        free +=   "HIP_CHECK(hipFree(C));\n" 
-
-
-        return red + code + free +"}\n"
+        ret = "return hC;"
+        return red + code + free + ret +"}\n"
 
     ## We execute each statement in the V list in order
     def compute(self, verbose = False):
