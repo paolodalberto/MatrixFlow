@@ -46,7 +46,7 @@
 
 #define GPUS_  8
 
-static int DEBUG = 0;
+static int DEBUG = 1;
 
 
 #define HIP_CHECK(stat)						\
@@ -546,7 +546,7 @@ std::vector<double> gema(int device_id,
   //HIP_CHECK(hipDeviceSynchronize());
   start = std::chrono::high_resolution_clock::now();
   ROCBLAS_CHECK(
-		rocblas_dgema(rochandle, transa, transb, m, n, k, &alpha, da, lda, db, ldb, &beta, dc, ldc));
+		rocblas_dgeam(rochandle, transa, transb, m, n,  &alpha, da, lda, &beta, db, ldb,  dc, ldc));
   
   HIP_CHECK(hipDeviceSynchronize());
 

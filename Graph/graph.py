@@ -189,14 +189,14 @@ class Operation:
             self.right.tempname = self.left.name
             self.right.M = "one" if self.operation =='+=' else "zero"
             
-        L = self.left.pretty__C()
-        R = self.right.pretty__C()
+        L = self.left.pretty__C(gpu)
+        R = self.right.pretty__C(gpu)
          
         Q = []
         if type(L) is list : Q.extend(L)
-        elif L and L.find("gem")>0 : Q.append(L) 
+        elif L and ( L.find("gemm")>0 or L.find("geam")>0): Q.append(L) 
         if type(R) is list : Q.extend(R)
-        elif R and R.find("gem")>0 : Q.append(R)
+        elif R and (R.find("gemm")>0 or R.find("geam")>0) : Q.append(R)
 
         #if self.operation == '+=':
         #    pdb.set_trace()
@@ -225,10 +225,12 @@ class Operation:
             # rocblas_dgemm( %s, 'n', 'n', %d, %d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d)
 
             zero =  self.graph.constantlookuptable[0] 
-            r = gpu.GEMM_x % ("gpu",M,N,K, "&"+one,
-                              self.left.tempname,lda,
-                              self.right.tempname,ldb,
-                              "&"+zero,self.tempname,ldc) 
+            r = gpu.Code(gpu.GEMM_x,
+                         ("gpu",M,N,K, "&"+one,
+                          self.left.tempname,lda,
+                          self.right.tempname,ldb,
+                          "&"+zero,self.tempname,ldc)
+            )
             #print(r)
             Q.append(r)
         elif self.operation in ['+','-']  :
@@ -283,12 +285,10 @@ class Operation:
                 two = self.look_const_d(scal)
             elif self.operation == '-' :
                 two = self.graph.constantlookuptable[-1]
-            r = gpu.GEMA_x % (
-                "gpu",M,N, K,"&"+one,
-                l.tempname,lda,
-                r.tempname,ldb,
-                "&"+two, 
-                t.name,ldc )
+            r = gpu.Code(gpu.GEMA_x,
+                         ("gpu",M,N,"&"+one, l.tempname,lda,
+                          "&"+two,r.tempname,ldb, t.name,ldc )
+            )
 
             #print(r)
             Q.append(r)
@@ -696,7 +696,7 @@ class Data(Operation):
         
         return str(self)
 
-    def pretty__C(self):
+    def pretty__C(self, gpu : GPU = None):
         self.tempname = str(self)
         
         #return str(self)
@@ -1142,7 +1142,9 @@ class Graph(Function):
 
 
     
-    def pretty__C(self, python_compiler : bool = False ):
+    def pretty__C(self, 
+                  python_compiler : bool = False,
+                  gpu : GPU = None ):
         TYP = None
         
         M,K = self.A.value().shape
@@ -1150,13 +1152,12 @@ class Graph(Function):
         TYP = Graph.numpytoC(self.declarations[0][0].type_matrix())
         V = "std::vector<%s>" % TYP
         
-        F = V + "fastgemm(int gpu," + \
-            V + " hA,  " + \
-            V + " hB,  " + \
-            V + " hC  ){ \n" 
-        F += TYP +" *A = hA.data();"
-        F += TYP +" *B = hB.data();"
-        F += TYP +" *C = hC.data();"
+        
+        F = "\n" + V + " fastgemm(int " 
+        F += " gpu_," if not python_compiler else "gpu," 
+        F +=    V + " hA,  " 
+        F +=    V + " hB,  " 
+        F +=    V + " hC  ){ \n" 
        
         
 
@@ -1165,31 +1166,36 @@ class Graph(Function):
         
         if not python_compiler:
             HEADER = """
-        typedef %s MT; 
-        rocblas_int device_id;
-        rocblas_handle gpu  = nullptr;
-        if (DEBUG) std::cout << "\t BLAS GEMM  "  <<  gpu << std::endl;
-        hipDeviceProp_t devProp;
-        //HIP_CHECK(hipSetDevice(device_id));
-        HIP_CHECK(hipGetDevice(&device_id));
-        HIP_CHECK(hipGetDeviceProperties(&devProp, device_id));
-        ROCSPARSE_CHECK(rocsparse_create_handle(&gpu));  
-        if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
-        int M = %d, N = %d, K = %d;
-        int size_a = M*K, size_b = K*N, size_c = M*N;
-        // allocate memory on device
-        MT *A, *B, *C;
-        HIP_CHECK(hipMalloc(&A, M*K* sizeof(MT)));
-        HIP_CHECK(hipMalloc(&B, K*N * sizeof(MT)));
-        HIP_CHECK(hipMalloc(&C, M*N * sizeof(MT)));
-
-         HIP_CHECK(hipMemcpy(A, hA, sizeof(double) * size_a, hipMemcpyHostToDevice));
-         HIP_CHECK(hipMemcpy(B, hB, sizeof(double) * size_b, hipMemcpyHostToDevice));
-         HIP_CHECK(hipMemcpy(C, hC, sizeof(double) * size_c, hipMemcpyHostToDevice));
-         
-"""
+rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
+            rocblas_int device_id;
+            rocblas_handle gpu  = nullptr;
+            if (DEBUG) std::cout << "\t BLAS GEMM  "  <<  gpu << std::endl;
+            hipDeviceProp_t devProp;
+            //HIP_CHECK(hipSetDevice(device_id));
+            HIP_CHECK(hipGetDevice(&gpu_));
+            HIP_CHECK(hipGetDeviceProperties(&devProp, gpu_));
+            ROCBLAS_CHECK(rocblas_create_handle(&gpu));
+            if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
+            int M = %d, N = %d, K = %d;
+            int size_a = M*K, size_b = K*N, size_c = M*N;
+            // allocate memory on device
+            TT *A, *B, *C;
+            HIP_CHECK(hipMalloc(&A, M*K* sizeof(TT)));
+            HIP_CHECK(hipMalloc(&B, K*N * sizeof(TT)));
+            HIP_CHECK(hipMalloc(&C, M*N * sizeof(TT)));
             
-            H += HEADER %(TYP, M,N,K)
+            HIP_CHECK(hipMemcpy(A, hA.data(), sizeof(TT) * size_a, hipMemcpyHostToDevice));
+            HIP_CHECK(hipMemcpy(B, hB.data(), sizeof(TT) * size_b, hipMemcpyHostToDevice));
+            HIP_CHECK(hipMemcpy(C, hC.data(), sizeof(TT) * size_c, hipMemcpyHostToDevice));
+            
+            """
+            
+            H += HEADER %(M,N,K)
+        else:
+            H += "char transa = 'n', transb ='n'; \n" 
+            H += TYP +" *A = hA.data();"
+            H += TYP +" *B = hB.data();"
+            H += TYP +" *C = hC.data();"
         red = H#.split("\n")
 
         
@@ -1238,7 +1244,7 @@ class Graph(Function):
         code = '// code \n'
         for n in self.V:
             code += "// " + str(n) + "\n"
-            code += n.pretty__C()+"\n"
+            code += n.pretty__C(gpu)+"\n"
 
         free = "// free " + ('' if False and python_compiler else '\n')
         ## Free malloc above
@@ -1259,6 +1265,7 @@ class Graph(Function):
                         free  +=   ROCBLAS.FREE % (s) + "\n";
 
         if not  python_compiler:
+            free += "HIP_CHECK(hipMemcpy(hC.data(), C, sizeof(double) * size_c, hipMemcpyDeviceToHost)); \n"
             free +=   "HIP_CHECK(hipFree(A));\n" 
             free +=   "HIP_CHECK(hipFree(B));\n" 
             free +=   "HIP_CHECK(hipFree(C));\n" 

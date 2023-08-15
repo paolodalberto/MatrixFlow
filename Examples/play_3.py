@@ -12,8 +12,8 @@ import sys
 import argparse
 import gc
 from Hw.hw import AbstractHW, PE
-from Hw.hw_code import  ROCBLAS, GPU
-
+from Hw.hw_code import  ROCBLAS, GPU, BLAS
+import os
 
 
 HW =  AbstractHW('Doohm')
@@ -100,21 +100,37 @@ if __name__ == "__main__":
 
     print(G3.pretty__())
     
-
-    code = G3.pretty__C(python_compiler = True) 
-    print(code)
-    ROCBLAS.compile_and_import(
-        code,
-        TYP = str(Graph.numpytoC(G3.declarations[0][0].type_matrix())))
-
+    if "GPU" in os.environ:
+        code = G3.pretty__C(gpu=ROCBLAS) #python_compiler = True) 
+        print(code)
+        ROCBLAS.compile_and_import(
+            code,
+            TYP = str(Graph.numpytoC(G3.declarations[0][0].type_matrix())))
+    else:
+        code = G3.pretty__C(python_compiler=True,gpu=BLAS) #python_compiler = True) 
+        print(code)
+        BLAS.compile_and_import(
+            code,
+            TYP = str(Graph.numpytoC(G3.declarations[0][0].type_matrix())))
+        
     import pdb; pdb.set_trace()
     import one
     start = time.time()
-    H1 = Scalar(0)*C
-    H = one.fastgemm(0,A.value().A.flatten(), B.value().A.flatten(), H1.value().A.flatten())
-    R = numpy.matrix(
-        H
-    )
+    if "GPU" in os.environ:
+        H1 = Scalar(0)*C
+        H = one.fastgemm(0,A.value().A.flatten('F'), B.value().A.flatten(), H1.value().A.flatten())
+        R = numpy.matrix(
+            H
+        )
+            
+            
+    else:
+        H1 = Scalar(0)*C
+        H = one.fastgemm(0,A.value().A.flatten(), B.value().A.flatten(), H1.value().A.flatten())
+        R = numpy.matrix(
+            H
+        )
+        
     B1 = R.reshape(C.value().shape)
     H = Matrix(B1)
     end = time.time()
