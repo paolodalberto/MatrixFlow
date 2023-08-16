@@ -2038,11 +2038,11 @@ def bini_mult_example_three_temp(
         E = G1.compile_graph(True)
         end = time.time()
         print("Compile", end-start)
-        start = time.time()
+        #start = time.time()
         #exec(E)
-        end = time.time()
-        t = end-start
-        print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
+        #end = time.time()
+        #t = end-start
+        #print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
 
         ###
         ## Compute the graph for validation. Yep we can and we should run
