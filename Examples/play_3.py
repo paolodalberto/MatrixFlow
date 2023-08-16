@@ -56,41 +56,30 @@ if __name__ == "__main__":
     start = time.time()
     C = A*B
     end = time.time()
+    
     print("time",end - start)
 
     ## Bilinear using the deepmind format C^t = A*B
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
     at,bt,ct = fact['%d,%d,%d' % (Y,Y,Y)]
-        
-    ## factor X 
-    print(a.shape)
-    D = Scalar(0)*C
-    ## compute and dependency .... 
-    G3 = bini_mult_example(D,c, A,a,B,b,1)
+
 
     if False:
-        Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
-    #import pdb; pdb.set_trace()
-    print(G3.V[1].pretty__q())
-    print(G3.V[1].pretty__C())
-    print(G3.pretty__())
+        ## factor X 
+        print(a.shape)
+        D = Scalar(0)*C
+        ## compute and dependency .... 
+        G3 = bini_mult_example(D,c, A,a,B,b,1)
+        
+        if False:
+            Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+        #import pdb; pdb.set_trace()
+        print(G3.V[1].pretty__q())
+        print(G3.V[1].pretty__C())
+        print(G3.pretty__())
 
-    
-
-    #start = time.time()
-    #HW.compute_graph_by_queue_pool(G3)
-    #end = time.time()
-    #print("time",end - start)
-    #import pdb; pdb.set_trace()
-    
-    #G3.compute()
-    #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
-    ## reduce temporary space
-    #G3.short_temp()
-    #import pdb; pdb.set_trace()
-
-    del G3; gc.collect()
+        del G3; gc.collect()
 
     ## factor X 
     print(a.shape)
@@ -113,15 +102,20 @@ if __name__ == "__main__":
             code,
             TYP = str(Graph.numpytoC(G3.declarations[0][0].type_matrix())))
         
+    del G3; gc.collect()
+
     import pdb; pdb.set_trace()
     import one
     start = time.time()
     if "GPU" in os.environ:
         H1 = Scalar(0)*C
-        H = one.fastgemm(0,A.value().A.flatten('F'), B.value().A.flatten(), H1.value().A.flatten())
+
+        for i in range(4):
+            H = one.fastgemm(0,A.value().A.flatten('F'), B.value().A.flatten('F'), H1.value().A.flatten())
         R = numpy.matrix(
             H
         )
+        B1 = R.reshape((C.value().shape[0],C.value().shape[1]), order='F')
             
             
     else:
@@ -131,18 +125,21 @@ if __name__ == "__main__":
             H
         )
         
-    B1 = R.reshape(C.value().shape)
+        B1 = R.reshape(C.value().shape)
     H = Matrix(B1)
     end = time.time()
     print("time",end - start)
 
-
-    Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    print(numpy.max(numpy.fabs((H-C).value())))
+    ##Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     
 
-    del G3; gc.collect()
+
    
+    start = time.time()
+    for i in range(4): C = A*B
+    end = time.time()
 
     

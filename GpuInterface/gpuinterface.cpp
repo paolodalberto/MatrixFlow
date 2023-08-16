@@ -428,7 +428,7 @@ std::vector<double> gemm(int device_id,
   auto start = std::chrono::high_resolution_clock::now();
 
 
-  rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
+  rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_none;
   hipDeviceProp_t devProp;
 
   //HIP_CHECK(hipGetDevice(&device_id));
@@ -513,7 +513,7 @@ std::vector<double> gema(int device_id,
   auto start = std::chrono::high_resolution_clock::now();
 
 
-  rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
+  rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_none;
   hipDeviceProp_t devProp;
 
   //HIP_CHECK(hipGetDevice(&device_id));
@@ -594,7 +594,7 @@ std::vector<double> gemv(int device_id,
   
   auto start = std::chrono::high_resolution_clock::now();
 
-  rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
+  rocblas_operation transa = rocblas_operation_none;
   hipDeviceProp_t devProp;
 
   //HIP_CHECK(hipGetDevice(&device_id));

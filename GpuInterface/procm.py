@@ -84,8 +84,9 @@ def dgemv_csr(device, C, x, y) :
 def dgemm(device, L, R) :
     
     V =  rocmgpu.gemm(
-        device,L.A.flatten('F'), L.shape[0],
-        R.A.flatten(), R.shape[1]
+         device,
+         L.A.flatten('F'), L.shape[0],
+         R.A.flatten('F'), R.shape[0]
     )
     B = numpy.matrix(
         V

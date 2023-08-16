@@ -68,7 +68,8 @@ class CPU:
 	
 	}
         """
-
+        self.INTRO = ""
+        self.TAIL = ""
 
         self.GEMM = """
     rocblas_status rocblas_dgemm(
@@ -161,6 +162,38 @@ class GPU(CPU):
     def __init__(self):
         self.MAGE = ""
 
+        self.INTRO =    """
+        // standard column layout 
+        rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_none;
+        rocblas_int device_id;  // here is the gpu_ parameter
+        rocblas_handle gpu  = nullptr;
+        
+
+        if (DEBUG) std::cout << "\t ROCBLAS GEMM  "  <<  gpu << std::endl;
+        hipDeviceProp_t devProp;
+        //HIP_CHECK(hipSetDevice(device_id));
+        HIP_CHECK(hipSetDevice(gpu_));
+        HIP_CHECK(hipGetDeviceProperties(&devProp, gpu_));
+        ROCBLAS_CHECK(rocblas_create_handle(&gpu));
+        if (DEBUG) std::cout << gpu_ <<" Device: " << devProp.name << std::endl;
+        int M = %d, N = %d, K = %d;
+        int size_a = M*K, size_b = K*N, size_c = M*N;
+
+        // allocate memory on device
+        TT *A, *B, *C;
+        HIP_CHECK(hipMalloc(&A, M*K* sizeof(TT)));
+        HIP_CHECK(hipMalloc(&B, K*N * sizeof(TT)));
+        HIP_CHECK(hipMalloc(&C, M*N * sizeof(TT)));
+
+        // copy to device
+        HIP_CHECK(hipMemcpy(A, hA.data(), sizeof(TT) * size_a, hipMemcpyHostToDevice));
+        HIP_CHECK(hipMemcpy(B, hB.data(), sizeof(TT) * size_b, hipMemcpyHostToDevice));
+        HIP_CHECK(hipMemcpy(C, hC.data(), sizeof(TT) * size_c, hipMemcpyHostToDevice));
+        auto start = std::chrono::high_resolution_clock::now();
+        """
+
+
+        
         self.GEMM = """
 rocblas_status rocblas_dgemm(
         rocblas_handle handle, 
@@ -184,8 +217,14 @@ rocblas_status rocblas_dgemm(
             "rocblas_dgemm( %s, transa, transb, %d, " + "%d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d); "
 
 
-        
-        
+        self.TAIL = """
+        auto stop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        if (DEBUG) std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
+        HIP_CHECK(hipMemcpy(hC.data(), C, sizeof(double) * size_c, hipMemcpyDeviceToHost));
+        """
+
+
         self.GEMA = """
     rocblas_status rocblas_dgeam(
         rocblas_handle handle, 
@@ -225,6 +264,7 @@ rocblas_status rocblas_dgemm(
     def Code(self, S : str, L : list) -> str :
         compute =  S % tuple(L)
         sync = "HIP_CHECK(hipDeviceSynchronize()); \n" 
+        
         return compute + sync
     
         

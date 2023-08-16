@@ -214,7 +214,7 @@ class Operation:
                 
             ## if it comes from a partition the leading dimension is
             ## different from the logical shape
-            lda = K
+            lda = K 
             if l.left.pointer:
                 lda = l.left.pointer.value().shape[1]
             ldb = N
@@ -708,8 +708,14 @@ class Data(Operation):
             A_original = self.left.pointer
             A = self.left
             M, N = A_original.value().shape
-            d = self.name  + "= " +\
-                self.original  + "+%d*%d +%d;" % (M,A.min[0], A.min[1])
+            if gpu is None:
+                
+                d = self.name  + "= " +\
+                    self.original  + "+%d*%d +%d;" % (M,A.min[0], A.min[1])
+            else:
+                d = self.name  + "= " +\
+                    self.original  + "+%d*%d +%d;" % (N,A.min[1], A.min[0])
+
             return d
         else:
             #import pdb; pdb.set_trace()
@@ -1165,30 +1171,7 @@ class Graph(Function):
         H = F
         
         if not python_compiler:
-            HEADER = """
-rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_transpose;
-            rocblas_int device_id;
-            rocblas_handle gpu  = nullptr;
-            if (DEBUG) std::cout << "\t BLAS GEMM  "  <<  gpu << std::endl;
-            hipDeviceProp_t devProp;
-            //HIP_CHECK(hipSetDevice(device_id));
-            HIP_CHECK(hipGetDevice(&gpu_));
-            HIP_CHECK(hipGetDeviceProperties(&devProp, gpu_));
-            ROCBLAS_CHECK(rocblas_create_handle(&gpu));
-            if (DEBUG) std::cout << device_id <<" Device: " << devProp.name << std::endl;
-            int M = %d, N = %d, K = %d;
-            int size_a = M*K, size_b = K*N, size_c = M*N;
-            // allocate memory on device
-            TT *A, *B, *C;
-            HIP_CHECK(hipMalloc(&A, M*K* sizeof(TT)));
-            HIP_CHECK(hipMalloc(&B, K*N * sizeof(TT)));
-            HIP_CHECK(hipMalloc(&C, M*N * sizeof(TT)));
-            
-            HIP_CHECK(hipMemcpy(A, hA.data(), sizeof(TT) * size_a, hipMemcpyHostToDevice));
-            HIP_CHECK(hipMemcpy(B, hB.data(), sizeof(TT) * size_b, hipMemcpyHostToDevice));
-            HIP_CHECK(hipMemcpy(C, hC.data(), sizeof(TT) * size_c, hipMemcpyHostToDevice));
-            
-            """
+            HEADER = ROCBLAS.INTRO
             
             H += HEADER %(M,N,K)
         else:
@@ -1222,6 +1205,7 @@ rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_tr
 
             for d in block:
                 #print(d)
+                #import pdb; pdb.set_trace()
                 init +=  d.pretty__(gpu=ROCBLAS if not python_compiler else None)
             #import pdb; pdb.set_trace()
             #print(init)
@@ -1265,7 +1249,7 @@ rocblas_operation transa = rocblas_operation_none, transb = rocblas_operation_tr
                         free  +=   ROCBLAS.FREE % (s) + "\n";
 
         if not  python_compiler:
-            free += "HIP_CHECK(hipMemcpy(hC.data(), C, sizeof(double) * size_c, hipMemcpyDeviceToHost)); \n"
+            free +=   gpu.TAIL
             free +=   "HIP_CHECK(hipFree(A));\n" 
             free +=   "HIP_CHECK(hipFree(B));\n" 
             free +=   "HIP_CHECK(hipFree(C));\n" 
@@ -2024,7 +2008,7 @@ def bini_mult_example_three_temp(
         )
         V.append(O)
         try:
-            O.compute()
+            if not comp: O.compute()
         except Exception as e:
             print(e)
             print(O)
@@ -2054,9 +2038,8 @@ def bini_mult_example_three_temp(
         E = G1.compile_graph(True)
         end = time.time()
         print("Compile", end-start)
-        
         start = time.time()
-        exec(E)
+        #exec(E)
         end = time.time()
         t = end-start
         print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
