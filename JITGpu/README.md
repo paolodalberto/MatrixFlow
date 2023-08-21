@@ -175,5 +175,6 @@ if you pass a square matrix problem wih teh proper factors (the size has to be a
 The algorithms are proven correct, the code generation is automatic and most of the problem have been run and tested  (for GPU as yoday). 
 
 
+![Fast algorithm performance](https://github.com/paolodalberto/MatrixFlow/assets/15663156/fca42d9e-3189-458d-ad89-17e837bed454)
 
 
