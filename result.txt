@@ -1,0 +1,151 @@
+k = 2001
+# baseline        Time Kernel 9.1325
+# one     2 24012 no space
+# one     3 24012 Time Kernel 8.075
+# one   2x2 24012 Time Kernel 7.57137
+# one   3x3 24012 Time Kernel 8.88097
+# one   2x3 24012 Time Kernel 8.1674
+# one   3x2 24012 Time Kernel 8.13407
+# one 2x2x3 24012 Time Kernel 10.7001
+# one 2x3x2 24012 Time Kernel 10.7601
+# one 3x2x2 24012 Time Kernel 10.7281
+# baseline 9.15793
+
+k=1500
+# baseline        Time Kernel 3.90162
+# one     2 18000 Time Kernel 3.75099
+# one     3 18000 Time Kernel 3.33758
+# one   2x2 18000 Time Kernel 3.20479
+# one   3x3 18000 Time Kernel 4.08828
+# one   2x3 18000 Time Kernel 3.54534
+# one   3x2 18000 Time Kernel 3.55075
+# one 2x2x3 18000 Time Kernel 5.61917
+# one 2x3x2 18000 Time Kernel 5.64616
+# one 3x2x2 18000 Time Kernel 5.63311
+# baseline                    3.79222
+
+k = 1200    
+# baseline  14400 Time Kernel 1.98362
+# one     2 14400 Time Kernel 1.74927
+# one     3 14400 Time Kernel 1.75086
+# one   2x2 14400 Time Kernel 1.7314
+# one   3x3 14400 Time Kernel 2.44016
+# one   2x3 14400 Time Kernel 1.85501
+# one   3x2 14400 Time Kernel 1.85485
+# one 2x2x3 14400 Time Kernel 3.32567
+# one 2x3x2 14400 Time Kernel 3.32752
+# one 3x2x2 14400 Time Kernel 3.32505
+# baseline  14400 Time Kernel 1.90306 
+
+k = 1002
+
+# baseline         Time Kernel 1.21101
+# one     2 12024  Time Kernel 1.02742
+# one     3 12024  Time Kernel 1.04485
+# one   2x2 12024  Time Kernel 1.05488
+# one   3x3 12024  Time Kernel 1.55285
+# one   2x3 12024  Time Kernel 1.18487
+# one   3x2 12024  Time Kernel 1.18305
+# one 2x2x3 12024  Time Kernel 2.40017
+# one 2x3x2 12024  Time Kernel 2.40251
+# one 3x2x2 12024  Time Kernel 2.53344
+# baseline 	   Time Kernel 1.12207
+
+k = 900
+# base line                   0.898152   
+# one     2 10800 Time Kernel 0.75904  
+# one     3 10800 Time Kernel 0.775107 
+# one   2x2 10800 Time Kernel 0.770565 
+# one   3x3 10800 Time Kernel 1.24986  
+# one   2x3 10800 Time Kernel 0.894301 
+# one   3x2 10800 Time Kernel 0.89444  
+# one 2x2x3 10800 Time Kernel 1.9859   
+# one 2x3x2 10800 Time Kernel 1.97256  
+# one 3x2x2 10800 Time Kernel 1.98156
+# base line                   0.810462
+
+k= 702
+# baseline        Time Kernel 0.472363 	 
+# one     2  8424 Time Kernel 0.364676
+# one     3  8424 Time Kernel 0.37476 
+# one   2x2  8424 Time Kernel 0.388126
+# one   3x3  8424 Time Kernel 0.740781
+# one   2x3  8424 Time Kernel 0.468046
+# one   3x2  8424 Time Kernel 0.468439
+# one 2x2x3  8424 Time Kernel 1.27696 
+# one 2x3x2  8424 Time Kernel 1.2867  
+# one 3x2x2  8424 Time Kernel 1.29018 
+# baseline 	  Time Kernel 0.383117
+	 
+k=666	 
+# baseline        Time Kernel 0.419376	 	 
+# one     2  7992 Time Kernel 0.318254
+# one     3  7992 Time Kernel 0.317311
+# one   2x2  7992 Time Kernel 0.339227
+# one   3x3  7992 Time Kernel 0.681194
+# one   2x3  7992 Time Kernel 0.438464
+# one   3x2  7992 Time Kernel 0.437844
+# one 2x2x3  7992 Time Kernel 1.27936 
+# one 2x3x2  7992 Time Kernel 1.28885 
+# one 3x2x2  7992 Time Kernel 1.27789 
+# baseline        Time Kernel 0.331464 	 	 
+	 
+	 
+k = 600
+# baseline        Time Kernel 0.331344 	 	 
+# one     2  7200 Time Kernel 0.237339
+# one     3  7200 Time Kernel 0.231825
+# one   2x2  7200 Time Kernel 0.25764 
+# one   3x3  7200 Time Kernel 0.514924
+# one   2x3  7200 Time Kernel 0.346914
+# one   3x2  7200 Time Kernel 0.34676 
+# one 2x2x3  7200 Time Kernel 1.10126 
+# one 2x3x2  7200 Time Kernel 1.10055 
+# one 3x2x2  7200 Time Kernel 1.10191 
+# baseline        Time Kernel 0.240292 	  
+	 
+	 
+	 
+	 
+k = 567
+# baseline        Time Kernel 0.293207
+# one     2  6804 Time Kernel 0.202293
+# one     3  6804 Time Kernel 0.206463
+# one   2x2  6804 Time Kernel 0.234354
+# one   3x3  6804 Time Kernel 0.480328
+# one   2x3  6804 Time Kernel 0.281481
+# one   3x2  6804 Time Kernel 0.281481
+# one 2x2x3  6804 Time Kernel 0.969767
+# one 2x3x2  6804 Time Kernel 0.972348
+# one 3x2x2  6804 Time Kernel 0.970029
+# baseline        Time Kernel 0.202883
+
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+
+	 
+	 
+	 
+	 
+	 
+	 
+	 
+
+	 
+	 
+	 
+
+	 
+	 
+	 
+	 
+	 
