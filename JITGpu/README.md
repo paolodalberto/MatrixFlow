@@ -172,7 +172,7 @@ FILE
 
 if you pass a square matrix problem wih teh proper factors (the size has to be a multiple of 2,3,2x2,3x3 ... " and if you set up the export GPU=0 then you can run all the algorithms. 
 
-The algorithms are proven correct, the code generation is automatic and most of the problem have been run and tested  (for GPU as yoday). 
+The algorithms are proven correct, the code generation is automatic and most of the problem have been run and tested  (for GPU as today). 
 
 
 ![Fast algorithm performance](https://github.com/paolodalberto/MatrixFlow/assets/15663156/fca42d9e-3189-458d-ad89-17e837bed454)
