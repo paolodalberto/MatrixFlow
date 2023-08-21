@@ -108,5 +108,72 @@ free(Pss[0]);
 free(Ts[0]);
 free(Ts[1]);
 return hC;}
+```
+
+Finally, I could build the algorithms so that they are not just for a specific problem. In this subdirectory is you build the module with the git copy byt the command 
+```sh python setup.py build``` and you follow the export in the directory above ```sh ``export PYTHONPATH=$PWD:$PWD/GpuInterface/build/lib.linux-x86_64-cpython-39/:$PWD/GpuInterface:$PWD/JITGpu/build/lib.linux-x86_64-cpython-39/``` you will find a single module wher eyou can run any algorithm out of the box
+
+```python
+Help on module one:
+
+NAME
+    one - pybind11 example plugin
+
+FUNCTIONS
+    fastgemm2one(...) method of builtins.PyCapsule instance
+        fastgemm2one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm2x2one(...) method of builtins.PyCapsule instance
+        fastgemm2x2one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm2x2x3one(...) method of builtins.PyCapsule instance
+        fastgemm2x2x3one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm2x3one(...) method of builtins.PyCapsule instance
+        fastgemm2x3one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm2x3x2one(...) method of builtins.PyCapsule instance
+        fastgemm2x3x2one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm3one(...) method of builtins.PyCapsule instance
+        fastgemm3one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm3x2one(...) method of builtins.PyCapsule instance
+        fastgemm3x2one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm3x2x2one(...) method of builtins.PyCapsule instance
+        fastgemm3x2x2one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+    
+    fastgemm3x3one(...) method of builtins.PyCapsule instance
+        fastgemm3x3one(gpu: int, a: List[float], lda: int, b: List[float], ldb: int, c: List[float], ldc: int) -> List[float]
+        
+        GEMM
+
+FILE
+    /matrixflow/JITGpu/build/lib.linux-x86_64-cpython-39/one.cpython-39-x86_64-linux-gnu.so
 
 ```
+
+if you pass a square matrix problem wih teh proper factors (the size has to be a multiple of 2,3,2x2,3x3 ... " and if you set up the export GPU=0 then you can run all the algorithms. 
+
+The algorithms are proven correct, the code generation is automatic and most of the problem have been run and tested  (for GPU as yoday). 
+
+
+
+
