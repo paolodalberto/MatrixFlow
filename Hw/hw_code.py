@@ -1,3 +1,5 @@
+import os
+import subprocess
 
 
 
@@ -21,15 +23,15 @@ class CPU:
 		  int ldc) {
 
 
-        if (DEBUG) std::cout << "GEMA " << M << " " << N << "\\n" ;
-        if (DEBUG) std::cout << "alpha " << *alpha << " beta " << *beta <<"\\n" ;
-        if (DEBUG) Print(A,lda,M,N);
-        if (DEBUG) Print(B,ldb,M,N);
+        if (DEBUG==2) std::cout << "GEMA " << M << " " << N << "\\n" ;
+        if (DEBUG==2) std::cout << "alpha " << *alpha << " beta " << *beta <<"\\n" ;
+        if (DEBUG==2) Print(A,lda,M,N);
+        if (DEBUG==2) Print(B,ldb,M,N);
 
           for (int m=0; m<M; m++)
             for (int n=0; n<N; n++) 
 	      C[m*ldc+n] =  (*alpha) * A[m*lda+n] + (*beta)*B[m*ldb+n];
-	  if (DEBUG) Print(C,ldc,M,N);
+	  if (DEBUG==2) Print(C,ldc,M,N);
 	  return 1;
 	
 	}
@@ -48,12 +50,12 @@ class CPU:
 			  int ldc) {
 	
 	  TT temp =0;
-	  if (DEBUG)  {
+	  if (DEBUG==2)  {
 	    std::cout << "GEMM " << M << " " << N << " " << K << "\\n" ;
 	    std::cout << "alpha " << *alpha << " beta " << *beta <<"\\n" ;
 	  }
-	  if (DEBUG) Print(A,lda,M,K);
-          if (DEBUG) Print(B,ldb,K,N);
+	  if (DEBUG==2) Print(A,lda,M,K);
+          if (DEBUG==2) Print(B,ldb,K,N);
           for (int m=0; m<M; m++)
 	    for (int n=0; n<N; n++) { 
 	      temp = 0;
@@ -61,7 +63,7 @@ class CPU:
 		 temp +=  (*alpha) * A[m*lda+k]*B[k*ldb+n];
 	      C[m*ldc+n] = temp; 
 	    }
-	  if (DEBUG) { 
+	  if (DEBUG==2) { 
 	    Print(C,ldc,M,N);
 	  }
 	  return 1;
@@ -91,7 +93,7 @@ class CPU:
         self.GEMM_i = "## handle, M, N, K, alpha, A,  LDA=K, B, LDB=N, beta,C, LDC=N "
         self.GEMM_x = "" + \
             "rocblas_dgemm( transa, transb, %d, " + \
-            "%d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d); "
+            "%d, %d,  %s, %s, %s, %s, %s,  %s, %s, %s); "
 
         self.GEMA = """
     rocblas_status rocblas_dgeam(
@@ -113,11 +115,11 @@ class CPU:
         
         self.GEMA_x = "" + \
             "rocblas_dgeam( transa, transb, %d, %d,  " +\
-            "%s, %s, %d,   %s, %s, %d,  %s, %d); "
+            "%s, %s, %s, %s, %s, %s,  %s, %s); "
 
 
-        self.MALLOC = "HIP_CHECK(hipMalloc(&%s, %d*%d* sizeof(%s)));"
-        self.FREE   = "HIP_CHECK(hipFree(%s));" 
+        self.MALLOC = "(%s)malloc( %s*%s* sizeof(%s)));"
+        self.FREE   = "free(%s);" 
         
     def __str__(self):
         return self.GEMM + "\n" + \
@@ -134,28 +136,69 @@ class CPU:
 
 
 
-    def compile_and_import(self,S : str, TYP : str, d : str = "JITGpu/",  filename : str = "codex.h"):
+    def compile_and_import(self,S : str, TYP : str,
+                           signature : str = "fastgemm",
+                           append: bool = False, d : str = "JITGpu/",  filename : str = "codex.h",
+                           compile : bool = True):
 
         if S is None or filename is None:
             return None
+
+        
         
         import os
         import subprocess
         
+        #import pdb; pdb.set_trace()
+        if not append:
+            F = open(d+"codextype.h", "w" )
+            F.write("#define T 1 \n typedef %s TT; \n" %TYP)
+            F.close()
+
         
-        F = open(d+"codextype.h", "w")
-        F.write("#define T 1 \n typedef %s TT; \n" %TYP)
+        F = open(d+"codexcinterface.h", "w" if not append else "a")
+        WWW = """
+        std::vector<TT> %s(int gpu,
+			 std::vector<TT> a ,int lda,
+			 std::vector<TT> b, int ldb,
+			 std::vector<TT> c, int ldc
+	);
+        """ % signature
+        F.write(WWW)
         F.close()
-        F = open(d+filename, "w")
-        F.write(self.MAGE)
+
+        F = open(d+"codexpinterface.h", "w" if not append else "a")
+        WWW= """ 
+        m.def("%s", &%s, "GEMM",
+	  py::arg("gpu"),
+	  py::arg("a"), 
+	  py::arg("lda"), 
+	  py::arg("b"),
+	  py::arg("ldb"),
+	  py::arg("c"),
+	  py::arg("ldc")
+	); """ % (signature, signature)
+        F.write(WWW)
+        F.close()
+
+            
+        F = open(d+filename, "w" if not append else "a")
+        if not append: F.write(self.MAGE)
         F.write(S)
         F.close()
-        subprocess.Popen("touch %s/*.cpp" % d,shell = True)
-        cmd = 'cd %s; python3 setup.py build' % d
-        subprocess.Popen(cmd,shell = True)
+
+        if compile:
+            subprocess.Popen("touch %s/*.cpp" % d,shell = True)
+            cmd = 'cd %s; python3 setup.py build' % d
+            p = subprocess.Popen(cmd,shell = True)
+            p.wait()
 
 
-
+    def setup(self,dir_ : str = "JITGpu/"):
+        subprocess.Popen("touch %s/*.cpp" % dir_,shell = True)
+        cmd = 'cd %s; python3 setup.py build' % dir_
+        p = subprocess.Popen(cmd,shell = True)
+        p.wait()
 
 
 class GPU(CPU):
@@ -176,14 +219,13 @@ class GPU(CPU):
         HIP_CHECK(hipGetDeviceProperties(&devProp, gpu_));
         ROCBLAS_CHECK(rocblas_create_handle(&gpu));
         if (DEBUG) std::cout << gpu_ <<" Device: " << devProp.name << std::endl;
-        int M = %d, N = %d, K = %d;
-        int size_a = M*K, size_b = K*N, size_c = M*N;
+        int size_a = hA.size(), size_b = hB.size(), size_c = hC.size();
 
         // allocate memory on device
         TT *A, *B, *C;
-        HIP_CHECK(hipMalloc(&A, M*K* sizeof(TT)));
-        HIP_CHECK(hipMalloc(&B, K*N * sizeof(TT)));
-        HIP_CHECK(hipMalloc(&C, M*N * sizeof(TT)));
+        HIP_CHECK(hipMalloc(&A, size_a* sizeof(TT)));
+        HIP_CHECK(hipMalloc(&B, size_b * sizeof(TT)));
+        HIP_CHECK(hipMalloc(&C, size_c * sizeof(TT)));
 
         // copy to device
         HIP_CHECK(hipMemcpy(A, hA.data(), sizeof(TT) * size_a, hipMemcpyHostToDevice));
@@ -214,13 +256,13 @@ rocblas_status rocblas_dgemm(
         ## handle, M, N, K, alpha, A,  LDA=K, B, LDB=N, beta,C, LDC=N 
         self.GEMM_i = "## handle, M, N, K, alpha, A,  LDA=K, B, LDB=N, beta,C, LDC=N "
         self.GEMM_x = "" + \
-            "rocblas_dgemm( %s, transa, transb, %d, " + "%d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d); "
+            "rocblas_dgemm( %s, transa, transb, %s, " + "%s, %s,  %s, %s, %s, %s, %s,  %s, %s, %s); "
 
 
         self.TAIL = """
         auto stop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-        if (DEBUG) std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
+        if (DEBUG==1) std::cout << "\t Time Kernel "  << duration.count()/1000000.0 << std::endl;
         HIP_CHECK(hipMemcpy(hC.data(), C, sizeof(double) * size_c, hipMemcpyDeviceToHost));
         """
 
@@ -245,11 +287,11 @@ rocblas_status rocblas_dgemm(
         self.GEMA_i = "## handle, M, N, alpha, A, lda, B, LDB=N, beta,C, LDC=N "
         
         self.GEMA_x = "" + \
-            "rocblas_dgeam( %s, transa, transb, %d, %d,  " +\
-            "%s, %s, %d,   %s, %s, %d,  %s, %d); "
+            "rocblas_dgeam( %s, transa, transb, %s, %s,  " +\
+            "%s, %s, %s,   %s, %s, %s,  %s, %s); "
 
 
-        self.MALLOC = "HIP_CHECK(hipMalloc(&%s, %d*%d* sizeof(%s)));"
+        self.MALLOC = "HIP_CHECK(hipMalloc(&%s, %s*%s* sizeof(%s)));"
         self.FREE   = "HIP_CHECK(hipFree(%s));" 
         
     def __str__(self):

@@ -102,7 +102,7 @@ if __name__ == "__main__":
             code,
             TYP = str(Graph.numpytoC(G3.declarations[0][0].type_matrix())))
         
-    del G3; gc.collect()
+    #del G3; gc.collect()
 
     import pdb; pdb.set_trace()
     import one
@@ -110,8 +110,11 @@ if __name__ == "__main__":
     if "GPU" in os.environ:
         H1 = Scalar(0)*C
 
-        for i in range(4):
-            H = one.fastgemm(0,A.value().A.flatten('F'), B.value().A.flatten('F'), H1.value().A.flatten())
+        
+        H = one.fastgemm(0,
+                         A.value().A.flatten('F'), A.value().shape[0],
+                         B.value().A.flatten('F'), B.value().shape[0],
+                         H1.value().A.flatten('F'),H1.value().shape[0])
         R = numpy.matrix(
             H
         )
@@ -120,7 +123,11 @@ if __name__ == "__main__":
             
     else:
         H1 = Scalar(0)*C
-        H = one.fastgemm(0,A.value().A.flatten(), B.value().A.flatten(), H1.value().A.flatten())
+        H = one.fastgemm(0,
+                         A.value().A.flatten(),  A.value().shape[1],
+                         B.value().A.flatten(),  B.value().shape[1],
+                         H1.value().A.flatten(),H1.value().shape[1]
+        )
         R = numpy.matrix(
             H
         )
@@ -130,16 +137,16 @@ if __name__ == "__main__":
     end = time.time()
     print("time",end - start)
 
-    print(numpy.max(numpy.fabs((H-C).value())))
+    print("MAX ERROR", numpy.max(numpy.fabs((H-C).value())))
     ##Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G3.compute()
     #Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     
 
 
-   
+    
     start = time.time()
-    for i in range(4): C = A*B
+    C = A*B
     end = time.time()
 
     

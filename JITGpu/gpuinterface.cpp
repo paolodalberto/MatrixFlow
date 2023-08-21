@@ -164,23 +164,31 @@ namespace py = pybind11;
 typedef TT double
 #endif
 
-std::vector<TT> fastgemm(int gpu,
-	     std::vector<TT> a ,
-	     std::vector<TT> b, 
-	     std::vector<TT> c
-	     );
 
+#include "codexcinterface.h"
+/*std::vector<TT> fastgemm(int gpu,
+			 std::vector<TT> a ,int lda,
+			 std::vector<TT> b, int ldb,
+			 std::vector<TT> c, int ldc
+	     );
+*/
 
 PYBIND11_MODULE(one, m) {
   m.doc() = "pybind11 example plugin"; // optional module docstring
   
-  m.def("fastgemm", &fastgemm, "GEMM",
+  
+  #include "codexpinterface.h"
+  /*
+    m.def("fastgemm", &fastgemm, "GEMM",
 	py::arg("gpu"),
-	py::arg("a"),
+	py::arg("a"), 
+	py::arg("lda"), 
 	py::arg("b"),
-	py::arg("c")
+	py::arg("ldb"),
+	py::arg("c"),
+	py::arg("ldc")
 	);
-
+  */
 }
 
 void Print(const TT* A, int lda, int M, int N) {
@@ -193,70 +201,7 @@ void Print(const TT* A, int lda, int M, int N) {
 }
 
 
-/*
-int rocblas_dgeam(int handle, 
-		  char transA, 
-		  char transB, 
-		  int M, 
-		  int N, 
-		  const TT *alpha, 
-		  const TT *A, 
-		  int lda, 
-		  const TT *B, 
-		  int ldb, 
-		  const TT *beta, 
-		  TT *C, 
-		  int ldc) {
 
-
-  if (DEBUG) std::cout << "GEMA " << M << " " << N << "\n" ;
-  if (DEBUG) std::cout << "alpha " << *alpha << " beta " << *beta <<"\n" ;
-  if (DEBUG) Print(A,lda,M,N);
-  if (DEBUG) Print(B,ldb,M,N);
-
-  for (int m=0; m<M; m++)
-    for (int n=0; n<N; n++) 
-      C[m*ldc+n] =  (*alpha) * A[m*lda+n] + (*beta)*B[m*ldb+n];
-  if (DEBUG) Print(C,ldc,M,N);
-  return 1;
-
-}
-int rocblas_dgemm(int handle,  
-		  char transA, 
-		  char transB, 
-		  int M, 
-		  int N, 
-		  int K, 
-		  const TT *alpha, 
-		  const TT *A, 
-		  int lda, 
-		  const TT *B, 
-		  int ldb, 
-		  const TT *beta, 
-		  TT *C, 
-		  int ldc) {
-
-  TT temp =0;
-  if (DEBUG)  {
-    std::cout << "GEMM " << M << " " << N << " " << K << "\n" ;
-    std::cout << "alpha " << *alpha << " beta " << *beta <<"\n" ;
-  }
-  if (DEBUG) Print(A,lda,M,K);
-  if (DEBUG) Print(B,ldb,K,N);
-  for (int m=0; m<M; m++)
-    for (int n=0; n<N; n++) { 
-      temp = 0;
-      for (int k=0; k<K; k++) 
-	 temp +=  (*alpha) * A[m*lda+k]*B[k*ldb+n];
-      C[m*ldc+n] = temp; 
-    }
-  if (DEBUG) { 
-    Print(C,ldc,M,N);
-  }
-  return 1;
-
-}
-*/
 #include "codex.h"
 
 

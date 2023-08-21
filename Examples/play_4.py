@@ -11,9 +11,13 @@ from  Validation.BiniScheme import  BiniScheme
 import sys
 import argparse
 import gc
-
+import os
+from Hw.hw_code import  ROCBLAS, GPU, BLAS
 Line = "# %s %5s %5d %1.3e %1.5e" 
-
+import one
+from importlib import reload 
+import traceback
+import sys
 
 if __name__ == "__main__":
 
@@ -30,6 +34,8 @@ if __name__ == "__main__":
     parser.add_argument("-v", "--visual", help="pretty display error", type =str, default =None)
     parser.add_argument("-r", "--relative", help="pretty display error", type =str, default =None)
     parser.add_argument("-s", "--minimumspaceonly", help="pretty display error", type =str, default =None)
+    parser.add_argument("-b", "--build", help="buildone", type =str, default =None)
+    parser.add_argument("-B", "--built", help="buildone use", type =str, default =None)
     args = parser.parse_args()
 
     
@@ -70,6 +76,9 @@ if __name__ == "__main__":
     print("# type  alg  size gflops    max err")
     print(Line %("pyt","reg", T,OPS/t/GIGA, 0))
 
+
+
+    
     if False:
         print("compute")
         start = time.time()
@@ -121,16 +130,28 @@ if __name__ == "__main__":
     Parallel = {}
     One      = {}     
     Performance = {
-        'par' : Parallel,
+        #'par' : Parallel,
         'one' : One
     }
     Dimension = {T : Performance}
-
     
+    if args.built:
+        FP = {
+            '2one'       : one.fastgemm2one   ,
+            '3one'       : one.fastgemm3one   ,
+            '2x2one'     : one.fastgemm2x2one ,
+            '2x2x3one'   : one.fastgemm2x2x3one,
+            '2x3one'     : one.fastgemm2x3one ,
+            '2x3x2one'   : one.fastgemm2x3x2one,
+            '3one'       : one.fastgemm3one   ,
+            '3x2one'     : one.fastgemm3x2one ,
+            '3x2x2one'   : one.fastgemm3x2x2one,
+            '3x3one'     : one.fastgemm3x3one 
+        } 
     
     KEYS = list(FA.keys()) if args.minimumspaceonly is None else []
-
-
+    codes = {}
+    #import pdb; pdb.set_trace()
     for ver in Performance.keys():
         if args.minimumspaceonly is not None and ver =='par':
             KEYS = [] 
@@ -141,11 +162,71 @@ if __name__ == "__main__":
             
             D = Scalar(0)*C
             c,a,b = FA[k]
-            if  ver =='par':
-                G3 = bini_mult_example(D,c, A,a,B,b,1)
-            else:
-                G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
+            G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
 
+            if args.built:
+                if "GPU" in os.environ:
+                    H1 = Scalar(0)*C
+
+                    
+                    H = FP[k+ver](0,
+                                    A.value().A.flatten('F'), A.value().shape[0],
+                                    B.value().A.flatten('F'), B.value().shape[0],
+                                    H1.value().A.flatten('F'),H1.value().shape[0]
+                    )
+                    R = numpy.matrix(
+                        H
+                    )
+                    B1 = R.reshape((C.value().shape[0],C.value().shape[1]), order='F')
+            
+            
+                else:
+                    H1 = Scalar(0)*C
+                    H = FP[k+ver](0,
+                                    A.value().A.flatten(),  A.value().shape[1],
+                                    B.value().A.flatten(),  B.value().shape[1],
+                                    H1.value().A.flatten(),H1.value().shape[1]
+                    )
+                    R = numpy.matrix(
+                        H
+                    )
+                    
+                    B1 = R.reshape(C.value().shape)
+                H = Matrix(B1)
+                print("MAX ERROR", numpy.max(numpy.fabs((H-C).value())))
+                #import pdb; pdb.set_trace()
+            if args.build:
+                if "GPU" in os.environ:
+                    code = G3.pretty__C(header=k+ver,gpu=ROCBLAS) #python_compiler = True) 
+                    codes[k+ver] = code
+                    ROCBLAS.compile_and_import(
+                        code,
+                        TYP = str(Graph.numpytoC(G3.declarations[0][0].type_matrix())),
+                        signature = "fastgemm"+k+ver,
+                        append = len(codes)>1, compile = False
+                    )
+                else:
+                    code = G3.pretty__C(header=k+ver,python_compiler=True,
+                                        gpu=BLAS) #python_compiler = True) 
+                
+                    codes[k+ver] = code
+                    try:
+                        #print(code)
+                        BLAS.compile_and_import(
+                            code,
+                            TYP = str(
+                                Graph.numpytoC(G3.declarations[0][0].type_matrix())
+                            ),
+                            signature = "fastgemm"+k+ver,
+                            append = len(codes)>1,
+                            compile = False
+                        )
+                    except Exception as e:
+                        print(e)
+                        print(traceback.format_exc())
+                        import pdb; pdb.set_trace()
+            
+                #
             if args.visual:
                 E = numpy.abs(C.value()-D.value())
                 if args.relative:
@@ -158,13 +239,12 @@ if __name__ == "__main__":
                 
             Dimension[T][ver][k] = {
                 'time'      : G3.time,
-                'gflops'    : OPS/G3.time/GIGA,
+                'gflops'    : OPS/GIGA/(G3.time if G3.time !=0 else 1),
                 'max_error' :  numpy.max(E),
                 'max_rel_error' :  numpy.max(E/numpy.abs(C.value())),
                 'size' : T
             }
             del G3; gc.collect()
-
 
     
     #print(Dimension)
@@ -179,3 +259,9 @@ if __name__ == "__main__":
                              cont['max_error'])
                 )
                                  
+if args.build:
+
+    if "GPU" in os.environ:
+        ROCBLAS.setup()
+    else:
+        BLAS.setup()

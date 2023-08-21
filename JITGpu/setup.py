@@ -19,9 +19,10 @@ ext_modules = [
         # Example: passing in the version to the compiled code
         define_macros = [('VERSION_INFO', __version__)],
         include_dirs=[#'/sparse/build/release/include/',
-                      './',
-                      '/opt/rocm/include/'
+            './',
+            '/opt/rocm/include/'
         ],
+                      extra_compile_args = ["-O0"], 
         libraries = ['hipsparse', 'rocsparse', 'rocblas'],
         library_dirs =[ '/opt/rocm/lib'],
 

@@ -8,7 +8,8 @@ import time
 import seaborn as sns
 from  Validation.BiniScheme import  BiniScheme
 from Hw.hw_code import ROCBLAS, GPU
-
+import traceback
+import sys
 import pdb;
 
 
@@ -119,10 +120,15 @@ class Operation:
         return tmp
 
     def set_temp(self, temp  :str = "T"):
-        if self.operation in ['+','-']:
+        if self.operation in [ '+','-']:
             self.tempname = temp
             if self.right: self.right.set_temp(temp)
             if self.left: self.left.set_temp(temp)
+        elif self.operation in [ '*'] and self.result.operation not in  ['+','-']:
+            scal, mat = self.split_factors()
+            if True or type(scal) is Scalar:
+                #import pdb; pdb.set_trace()
+                self.tempname = temp
             
 
     def pretty__q(self):
@@ -180,9 +186,11 @@ class Operation:
             #pdb.set_trace()
         
         if self.operation in ['*', '/']:
+            
             self.left.set_temp("Ts[0]")
             self.right.set_temp("Ts[1]")
-            
+            #print(self.right)
+            #import pdb; pdb.set_trace()
         if self.operation in ['<<', '+=','=']:
             #import pdb; pdb.set_trace()
             ## ASSIGNMENT
@@ -201,11 +209,13 @@ class Operation:
         #if self.operation == '+=':
         #    pdb.set_trace()
 
+        ratio = self.graph.ratio()
         
         if self.operation in ['*']  and not (type(self.right.left) is Scalar or  type(self.left.left) is Scalar):
             ## GEMM is only for 
             #pdb.set_trace()
             one = self.graph.constantlookuptable[1]
+            # PS = A*B or Ts[0]*Ts[1] 
             
             l = self.graph.find_decl_by_name(self.left.tempname)
             M,K = l.left.value().shape
@@ -224,12 +234,86 @@ class Operation:
             #print(gpu.GEMM_x)
             # rocblas_dgemm( %s, 'n', 'n', %d, %d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d)
 
+            try:
+                if self.tempname[0]  in [ 'C']:
+                    ldc =  'ld' + self.tempname[0].lower()
+                else:
+                    ldc =  'ldc' +"/"+str(ratio['c'])
+                if self.left.name[0]  in ['A']:
+                    lda =  'lda'
+                else:
+                    lda =  'lda'+"/"+str(ratio['a'])
+                if self.right.name[0]  in [ 'B']:
+                    ldb =  'ldb' 
+                else:
+                    ldb =  'ldb' +"/"+str(ratio['b'])
+            except Exception as e:
+                print(e)
+                import pdb; pdb.set_trace()
+                
+            if type(lda) is str and lda.find("/")>0:
+                M = N = K = lda
+            else:
+                M = N = K =  lda+"/"+ str(ratio['a'])
+
             zero =  self.graph.constantlookuptable[0] 
             r = gpu.Code(gpu.GEMM_x,
-                         ("gpu",M,N,K, "&"+one,
+                         ("gpu",
+                          M,N,K,
+                          "&"+one,
                           self.left.tempname,lda,
                           self.right.tempname,ldb,
                           "&"+zero,self.tempname,ldc)
+            )
+            #print(r)
+            Q.append(r)
+        elif self.operation in ['*']  and  self.result.operation not in ['+', '-'] and (type(self.right.left) is Scalar or  type(self.left.left) is Scalar):
+            ## GEMM is only for 
+            #import pdb; pdb.set_trace()
+            one = self.graph.constantlookuptable[1]
+
+            scal, mat = self.split_factors()
+            l = self.graph.find_decl_by_name(mat.tempname)
+            M,K = mat.left.value().shape
+            N = M
+            #one = one+"*" + str(scal.left.value())
+
+            one  = self.look_const(scal)
+            two = self.graph.constantlookuptable[0]
+            
+                
+            ## if it comes from a partition the leading dimension is
+            ## different from the logical shape
+            lda = ldc = K 
+            if l.left.pointer:
+                lda = l.left.pointer.value().shape[1]
+                
+                #print(gpu.GEMM_x)
+            # rocblas_dgemm( %s, 'n', 'n', %d, %d, %d,  %s, %s, %d, %s, %d,  %s, %s, %d)
+
+            opname = self.left.name[0].lower()
+            try:
+                if self.tempname[0]  in ['A', 'B']:
+                    ldc =  'ld' + self.tempname[0].lower()
+                else:
+                    ldc =  'ld' + opname +"/"+str(ratio[opname])
+                if l.name[0]  in ['A', 'B']:
+                    lda =  'ld' + l.name[0].lower()
+                else: 
+                    lda =  'ld' +opname+"/"+str(ratio[opname])
+            except Exception as e:
+                print(e)
+                import pdb; pdb.set_trace()
+            if type(lda) is str and lda.find("/")>0:
+                M = N = lda
+            else:
+                M = N =  lda+"/"+ str(ratio[opname])
+            r = gpu.Code(gpu.GEMA_x,
+                         ("gpu",
+                          M, N,
+                          "&"+one, l.name,lda,
+                          "&"+two, l.name,lda,
+                          self.tempname,ldc )
             )
             #print(r)
             Q.append(r)
@@ -285,9 +369,47 @@ class Operation:
                 two = self.look_const_d(scal)
             elif self.operation == '-' :
                 two = self.graph.constantlookuptable[-1]
+
+            ## TS = A +A  = B+B = Ts +A
+            ## C = C + P
+            
+            
+            opname = r.name[0].lower() if  l.name[0] in ['T', 'P']  else  l.name[0].lower()
+            try:
+                if t.name[0]  in ['A', 'B', 'C']:
+                    ldc =  'ld' + t.name[0].lower()
+                else:
+                    ldc =  'ld' + opname+"/"+str(ratio[opname])
+                if l.name[0]  in ['C', 'A', 'B']:
+                    lda =  'ld' + l.name[0].lower()
+                else:
+                    lda = 'ld' + opname+"/"+str(ratio[opname])
+                if r.name[0]  in ['C', 'A', 'B']:
+                    ldb =  'ld' + r.name[0].lower()
+                else:
+                    ldb =  'ld' + opname+"/"+str(ratio[opname])
+            except Exception as e :
+                print(e)
+                import pdb; pdb.set_trace()
+            #print(    ("gpu",
+            #           lda + "/" +str(ratio[opname]),lda+ "/" + str(ratio[opname]),
+            #           "&"+one, l.tempname,lda,
+            #           "&"+two,r.tempname,ldb,
+            #           t.name,ldc )
+            #)
+            #print(gpu.GEMA_x)
+            if type(lda) is str and lda.find("/")>0:
+                M = N = lda
+            else:
+                M = N =  lda+"/"+ str(ratio[opname])
+
+            #importpdb; pdb.set_trace()
             r = gpu.Code(gpu.GEMA_x,
-                         ("gpu",M,N,"&"+one, l.tempname,lda,
-                          "&"+two,r.tempname,ldb, t.name,ldc )
+                         ("gpu",
+                          M, N, 
+                          "&"+one, l.tempname,lda,
+                          "&"+two,r.tempname,ldb,
+                          t.name,ldc )
             )
 
             #print(r)
@@ -700,42 +822,61 @@ class Data(Operation):
         self.tempname = str(self)
         
         #return str(self)
-    def pretty__(self, gpu : GPU = None):
-        
-        
+    def pretty__(self, gpu : GPU = None, ):
+        print(self)
+        if self.graph :
+            ratio = self.graph.ratio()
+            
+        else:
+            import pdb; pdb.set_trace()
+            ratio = self.result.graph.ratio()
         if self.left.pointer:
             # declaration of pointer (pointer because of a partition) 
             A_original = self.left.pointer
             A = self.left
+            
             M, N = A_original.value().shape
+            M1, N1 = A.value().shape
+            m1,n1  = A.min
+            
+            if (self.name[0] in ['A', 'B','C']):
+                lda = "ld" + self.name[0].lower()
+            else:
+                
+                lda = str(M) if gpu else str(N)
+
+            offset = lda+"/" +str(ratio[self.name[0].lower()])
             if gpu is None:
                 
+            
                 d = self.name  + "= " +\
-                    self.original  + "+%d*%d +%d;" % (M,A.min[0], A.min[1])
+                    self.original  + "+%s*(%s*%d) +(%s*%d);" % (lda,offset, A.min[0]//M1, offset,A.min[1]//N1)
             else:
                 d = self.name  + "= " +\
-                    self.original  + "+%d*%d +%d;" % (N,A.min[1], A.min[0])
+                    self.original  + "+%s*(%s*%d) +(%s*%d);" % (lda,offset,A.min[1]//N1, offset,A.min[0]//M1)
 
             return d
         else:
             #import pdb; pdb.set_trace()
             ## space for temporary: declaration of a matrix
-
+            
+            
+            offset = "(lda"+"/" +str(ratio['a'])+")"
             type = Graph.numpytoC(self.type_matrix())
             A = self.left
             M, N = A.value().shape
-
+            
             if gpu is None:
                 d = self.name  + "= " +\
-                    "(%s*)malloc (%d*%d*sizeof(%s));" % (
+                    "(%s*)malloc (%s*%s*sizeof(%s));" % (
                         type,
-                        A.max[0]-A.min[0], A.max[1] -A.min[1],
+                        offset,offset,
                         type
                     )
             else:
                 d = gpu.MALLOC % (
                     self.name,
-                    A.max[0]-A.min[0], A.max[1] -A.min[1],
+                    offset, offset,
                     type
                 )
 
@@ -874,6 +1015,7 @@ class Graph(Function):
         self.V = V
         #self.E = E
 
+        self._ratio = None
         
         self.CDP = list()
         self.ADP = list()
@@ -902,6 +1044,17 @@ class Graph(Function):
         self.constantlookuptable = None
         self.constant_base="z_"
         
+    def ratio(self):
+
+        if self._ratio is not None: return self._ratio
+        #import pdb; pdb.set_trace()
+        self._ratio  = {}
+        for d in self.declarations[0:3]:
+            r = int(math.sqrt(len(d)))
+            self._ratio[d[0].name[0].lower()] = (d[0].left.pointer.value().shape[1])//d[0].left.value().shape[1]
+        return self._ratio
+            
+        
     def compile_graph(self, TwoOperands : bool = False):
 
         Code = self.pretty__() if TwoOperands else str(self)
@@ -915,7 +1068,9 @@ class Graph(Function):
     def set_graph(self):
         for v in self.V:
             v.set_graph(self)
-
+        for d in self.declarations:
+            for j in d:
+                j.set_graph(self)
 
     def set_bini_matrices(self,
                           ct = numpy.ndarray,
@@ -1148,7 +1303,8 @@ class Graph(Function):
 
 
     
-    def pretty__C(self, 
+    def pretty__C(self,
+                  header : str = "",
                   python_compiler : bool = False,
                   gpu : GPU = None ):
         TYP = None
@@ -1159,11 +1315,11 @@ class Graph(Function):
         V = "std::vector<%s>" % TYP
         
         
-        F = "\n" + V + " fastgemm(int " 
+        F = "\n" + V + " fastgemm%s(int " % header  
         F += " gpu_," if not python_compiler else "gpu," 
-        F +=    V + " hA,  " 
-        F +=    V + " hB,  " 
-        F +=    V + " hC  ){ \n" 
+        F +=    V + " hA, int lda, " 
+        F +=    V + " hB, int ldb, " 
+        F +=    V + " hC, int ldc  ){ \n" 
        
         
 
@@ -1173,7 +1329,7 @@ class Graph(Function):
         if not python_compiler:
             HEADER = ROCBLAS.INTRO
             
-            H += HEADER %(M,N,K)
+            H += HEADER # %(M,N,K)
         else:
             H += "char transa = 'n', transb ='n'; \n" 
             H += TYP +" *A = hA.data();"
@@ -1207,10 +1363,10 @@ class Graph(Function):
                 #print(d)
                 #import pdb; pdb.set_trace()
                 init +=  d.pretty__(gpu=ROCBLAS if not python_compiler else None)
-            #import pdb; pdb.set_trace()
+            #
             #print(init)
             red+= init +"\n" 
-
+        #import pdb; pdb.set_trace()
         red += "// Constant declaration \n"
         D = self.lookuptableconstant.items()
         red += TYP
@@ -1227,8 +1383,14 @@ class Graph(Function):
         
         code = '// code \n'
         for n in self.V:
+            #print(str(n))
             code += "// " + str(n) + "\n"
-            code += n.pretty__C(gpu)+"\n"
+            try:
+                  code += n.pretty__C(gpu)+"\n"
+            except Exception as e:
+                  print(e)
+                  import pdb; pdb.set_trace()
+                  code += n.pretty__C(gpu)+"\n"
 
         free = "// free " + ('' if False and python_compiler else '\n')
         ## Free malloc above
@@ -2008,7 +2170,7 @@ def bini_mult_example_three_temp(
         )
         V.append(O)
         try:
-            if not comp: O.compute()
+            if False and not comp: O.compute()
         except Exception as e:
             print(e)
             print(O)
@@ -2030,10 +2192,10 @@ def bini_mult_example_three_temp(
     G1.space = summ
     G1.set_bini_matrices(CT,AT,BT)
     G1.set_original_matrices(C,A,B)
-
+    
     #import pdb; pdb.set_trace()
     if comp:
-        #import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         start = time.time()
         E = G1.compile_graph(True)
         end = time.time()
@@ -2050,7 +2212,7 @@ def bini_mult_example_three_temp(
         ###
     else: 
         print("Compute")
-        G1.compute()
+        #G1.compute()
 
     ## we create a stmt-by-stm data dependency
     print("Dependency")
