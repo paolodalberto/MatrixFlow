@@ -2200,11 +2200,11 @@ def bini_mult_example_three_temp(
         E = G1.compile_graph(True)
         end = time.time()
         print("Compile", end-start)
-        #start = time.time()
-        #exec(E)
-        #end = time.time()
-        #t = end-start
-        #print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
+        start = time.time()
+        exec(E)
+        end = time.time()
+        t = end-start
+        print("compute_time",t, "GFLOPS",OPS/t/GIGA  )
 
         ###
         ## Compute the graph for validation. Yep we can and we should run
@@ -2212,7 +2212,7 @@ def bini_mult_example_three_temp(
         ###
     else: 
         print("Compute")
-        #G1.compute()
+        G1.compute()
 
     ## we create a stmt-by-stm data dependency
     print("Dependency")

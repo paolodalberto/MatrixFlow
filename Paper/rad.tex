@@ -35,8 +35,8 @@
 %% the commands and values with those provided to you when you
 %% complete the rights form.
 \setcopyright{acmcopyright}
-\copyrightyear{2021}
-\acmYear{2021}
+\copyrightyear{2023}
+\acmYear{2023}
 \acmDOI{}
 
 %% These commands are for a JOURNAL article.
@@ -80,7 +80,7 @@
 \begin{document}
 
 %%%%%%%%%%%---SETME-----%%%%%%%%%%%%%
-\title{Strassen's matrix multiplication algorithm is still faster}
+\title{Strassen's Matrix Multiplication Algorithm Is Still Faster}
 
 \author{Paolo D'Alberto}
 \email{}
@@ -95,36 +95,187 @@
 \renewcommand{\shortauthors}{D'Alberto et al.}
 
 \begin{abstract}
-  Reinforcement algorithms showed there are new algorithms that may
-  replace Strassen's original fast matrix multiplication. Probably
+  Recently, reinforcement algorithms discovered new algorithms that
+  may replace Strassen's original fast matrix multiplication. Likely,
   there are even more hidden gems by way of factoring the operand
   matrices. The discovery really jump-started a wave of excitement and
   a flourishing of publications. However, little work on
   implementations and applications.
 
-  Here, we play with no module-2 algorithms and for square matrices
-  only. We present {\em Matrix Flow}, this is a simple Python project
-  for the automatic formulation, design, implementation, code
-  generation, and execution of fast matrix multiplication algorithms
-  for CPUs and GPUs.
+  We present {\em Matrix Flow}, this is a simple Python project for
+  the automatic formulation, design, implementation, code generation,
+  and execution of fast matrix multiplication algorithms for CPUs and
+  GPUs. We play with no module-2 algorithms, because even less
+  general, and for square matrices, for simplicity.
 
-  In Matrix Flow, we show that we have an original way to combine fast
-  algorithms by means of factorizing the operand matrices and prove
-  them correct. We describe these algorithm as a Data flow and matrix
-  data partitioning: a Directed Acyclic Graph. We show that Strassen's
-  original algorithm is still the top choice for modern GPUs. We also
-  address error analysis in double precision (integer computations are
-  always correct).
+  We have an original way to combine fast algorithms by means of
+  factorizing the operand matrices and prove them correct. We describe
+  these algorithm as a Data flow and matrix data partitioning: a
+  Directed Acyclic Graph. We show that Strassen's original algorithm
+  is still the top choice even for modern GPUs. We also address error
+  analysis in double precision, because integer computations are
+  correct, always.
 \end{abstract}
 
 \maketitle
 
 \section{Introduction} 
 \label{sec:introduction}
-The researcher at DeepMind showed a new methodology to find new and
-faster matrix multiplication \cite{PMID:36198780}. In practice, there
-are already quite a few algorithms for the solution of matrix
-multiplication 
+In practice, there are quite a few algorithms for {\em fast} matrix
+multiplication. We used to have a few pages of references; now
+institutions are actually stepping in and providing a complete
+list. Although the list of algorithms is long, the list of
+implementation for old and new architectures is limited (if not
+existent). We are interested in the computation with matrices, not
+just a single element, and we compare the trade matrix multiplication
+for pre and post matrix additions. This could be important when we
+tray to translate fast algorithms into practical implementations.
+
+
+The researchers at DeepMind presented a new methodology to find new
+and faster matrix multiplications \cite{PMID:36198780}. They provide
+the algorithms in matrix forms and, easily, we can generate, and
+execute element-wise algorithms.  There are new algorithms and They
+show the relative advantage performance with respect to the classic
+matrix multiplication for GPUs and TPUs. 
+
+Here, we show that Strassen's algorithm \cite{STRASSEN1969} is still
+king of the hill.  We explore a comparison across several algorithms
+using the standard arithmetic and in particular double precision
+matrices (no $\Z_2$ modular arithmetic because Strassen's algorithm
+does not have equivalent). In this scenario, we can determine a priori
+the relative advantages of all algorithms (7\% improvement per
+recursion we shall expand). More interesting, we can show that {\em
+  deeper} algorithms such as the one recently discovered do not have
+all the advantages (they are cranked up to have) when other
+constraints are present.
+
+In the following, we present a python project that we call {\em Matrix
+  Flow}. Here, you can take any of the algorithms for square matrices,
+we use the DeepMind's algorithms as repository, and create complex
+implementations you can run in CPU, GPU and in principle extend to any
+accelerator using the appropriate interface. 
+
+We have a few goals in mind for this work. First, we want to make
+available algorithms and Python implementations: both proven
+correct. Second, we want to provide tools for the implementation of
+these algorithms for highly efficient systems. Python is flexible,
+with such a nice abstraction level that writing code for matrix
+algorithms is a breeze. Efficiency and performance is not always
+Python forte, however writing interfaces for C/C++ is relatively
+simple. Interfaces are not a very good solution either and they are
+more a nice intermediary solution. So we provide tools to build entire
+algorithms in C/C++ for CPU and GPUs and still prove them correct and
+validate them easily.
+
+So this is a research paper and a software project
+introduction. Eventually, we would like any one to play with the
+project and we would like to squeeze into the presentation and share a
+few lessons learned that are not trivial, sometime original, and
+currently important for other applications where compiler tools are
+designed to optimize artificial intelligence applications.
+
+
+\section{Matrices and Partitions.}
+We start by describing the basic components of our algebra: Matrices,
+operations, and sometimes underrated Partition of Matrices. This will
+help understand fast matrix multiplications constructively.
+
+In this work we work mostly with matrices and scalar, but vector are
+easily added. A matrix $\Vc{A}$, this is a square matrix of size
+$\R^{n\times n}$. Every element of the matrix is identified by a row
+$i$ and a column $j$ as $\Vc{A}_{i,j}$. A scalar $\alpha$ is number in
+$\R$.
+\begin{itemize}
+  \item $\Vc{B} = \alpha\Vc{A} = \Vc{A}\alpha$ so that $\Vc{B}_{i,j}
+    = \alpha\Vc{A}_{i,j}$ and the real multiplication.
+  \item $\Vc{B} = \alpha\Vc{B} + \beta\Vc{C}= \beta\Vc{C} +
+    \alpha\Vc{B}$ is matrix addition and $\Vc{B}_{i,j} =
+    \alpha\Vc{B}_{i,j} + \beta\Vc{C}_{i,j}$
+  \item $\Vc{B} = \alpha(\Vc{B} + \Vc{C}) = \alpha\Vc{B} +
+    \alpha\Vc{C}$
+  \item $\Vc{C}= \Vc{A}\Vc{B}$ is matrix multiplication and $\Vc{C}_{i,j}=$ 
+    $\sum_{k=1}^n \Vc{A}_{i,k}\Vc{B}_{k,j}$
+  \item $\Vc{y}= \alpha\Vc{A}\Vc{x}$ is matrix by vector
+    multiplication and $\Vc{y}_{i}=\alpha \sum_{k=1}^n
+    \Vc{A}_{i,k}\Vc{b}_{k}$ (you may find this in the software
+    package).
+\end{itemize}
+
+Great, we have the operands and the operations. Let us introduce the
+last component for the description of our algorithms: Partitions.  The
+double subscript for the definition of elements it is for exposition
+purpose and we do not use element operation any where. We introduce
+here the single subscript that we use a lot. Consider a matrix $\Vc{A}
+\in \R^{n\times n}$, we can consider the matrix as a composition of
+$\Vc{A}_i \in \R^{\frac{n}{2}\times \frac{n}{2}}$ sub-matrices.
+\begin{equation} 
+  \Vc{A} =
+  \begin{pmatrix}
+    \Vc{A}_0 & \Vc{A}_1 \\
+    \Vc{A}_2 & \Vc{A}_3 \\
+  \end{pmatrix} = \{ \Vc{A}_0 , \Vc{A}_1, \Vc{A}_2 , \Vc{A}_3  \}
+\end{equation}
+The property is that $\Vc{A}_i$ are non overlapping matrices and this
+is easily generalized to any factor of $n$ for example $p$ so that $n
+= k*p$. For $n=p=3$ and $\Vc{A}_i \in \R^{\frac{n}{3}\times
+  \frac{n}{3}}$ and $0\leq i\leq p^2 -1$:
+\begin{equation} 
+  \Vc{A} =
+  \begin{pmatrix}
+    \Vc{A}_0 & \Vc{A}_1 & \Vc{A}_2 \\
+    \Vc{A}_3 & \Vc{A}_4 & \Vc{A}_{5} \\
+    \Vc{A}_6 & \Vc{A}_7 & \Vc{A}_8 \\
+  \end{pmatrix}\\
+  = \{ \Vc{A}_0 , \Vc{A}_1, \Vc{A}_2 , \Vc{A}_3 ,\Vc{A}_4 , \Vc{A}_5, \Vc{A}_6 , \Vc{A}_7, \Vc{A}_8   \}
+\end{equation}
+
+In practice, if we have a partition $\{ \Vc{A}_i \}$ and we know the
+factor $p$, we know the matrix $\Vc{A}$ completely.
+
+Let us represent the simplest matrix multiplication using $2x2$ partition:
+
+\begin{equation} 
+  \begin{pmatrix}
+    \Vc{C}_0 & \Vc{C}_1 \\
+    \Vc{C}_2 & \Vc{C}_3 \\
+  \end{pmatrix} =
+  \begin{pmatrix}
+    \Vc{A}_0 & \Vc{A}_1 \\
+    \Vc{A}_2 & \Vc{A}_3 \\
+  \end{pmatrix} *
+  \begin{pmatrix}
+    \Vc{B}_0 & \Vc{B}_1 \\
+    \Vc{B}_2 & \Vc{B}_3 \\
+  \end{pmatrix} 
+\end{equation}
+Using the factor $p=2$, we have in general
+\begin{equation}
+  \label{eq:recusion}
+  \begin{pmatrix} 
+    \Vc{C}_0 = \sum_{k=0}^{1}\Vc{A}_k    \Vc{B}_{2k} &
+    \Vc{C}_1 = \sum_{k=0}^{1}\Vc{A}_k    \Vc{B}_{2k+1} \\
+    \Vc{C}_2 = \sum_{k=0}^{1}\Vc{A}_{2+k} \Vc{B}_{2k} &
+    \Vc{C}_3 = \sum_{k=0}^{1}\Vc{A}_{2+k} \Vc{B}_{2k+1} \\
+  \end{pmatrix}
+\end{equation}
+The single subscript is the original format in fast algorithms
+describing a matrix operand as partitioned into smaller matrices. The
+authors in \cite{PMID:36198780} use a double subscript because the
+intend to identify a single element. Strangely enough, the single
+subscript has an implementation advantage.
+
+Equation \ref{eq:recusion}, as matrix computation, represent naturally
+a recursive computation 
+
+
+
+
+
+
+
+
+
 
 
 %\input{conclusion.tex}
