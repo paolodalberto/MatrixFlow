@@ -230,15 +230,15 @@ if __name__ == "__main__":
     DD = Scalar(0) * C
     G1 = algorithm_mult_example(DD, alpha,A,B,X)
     G1.heatmap_diff(Matrix(numpy.abs(C.value()-DD.value())))
-    #import pdb; pdb.set_trace()    
+    import pdb; pdb.set_trace()    
     
     #import pdb; pdb.set_trace()    
     #del G1
     #gc.collect()
 
-    #S = Schedule(G1)
-    #print(S.fit_hw_memory())
-    #S.naive_distribute_computation()
+    S = Schedule(G1)
+    print(S.fit_hw_memory())
+    S.naive_distribute_computation()
 
     ## Bilinear using the deepmind format C^t = A*B
     #import pdb; pdb.set_trace()    

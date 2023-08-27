@@ -59,7 +59,8 @@ if __name__ == "__main__":
     D = Scalar(0)*C
     G1 = algorithm_mult_example(D, Scalar(1),A,B,X)
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
-
+    #G1.data_dependency()
+    import pdb; pdb.set_trace()
 
     del G1; gc.collect()
 

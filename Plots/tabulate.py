@@ -33,15 +33,15 @@ def initialize():
 
     KEYS = [ 
         '#pytreg',
-        '#par2',
-        '#par3',
-        '#par2x2',
-        '#par3x3',
-        '#par2x3',
-        '#par3x2',            
-        '#par2x2x3',
-        '#par2x3x2',
-        '#par3x2x2',
+        #'#par2',
+        #'#par3',
+        #'#par2x2',
+        #'#par3x3',
+        #'#par2x3',
+        #'#par3x2',            
+        #'#par2x2x3',
+        #'#par2x3x2',
+        #'#par3x2x2',
         '#one2',
         '#one3',
         '#one2x2',
@@ -69,10 +69,10 @@ def parse_row(line : str, D):
         size = int(items[3])
         gflops = float(items[4])
         max_err = float(items[5])
-        
-        D[alg]['size'].append(size)
-        D[alg]['gflops'].append(gflops)
-        D[alg]['max_err'].append(max_err)
+        if alg in D:
+            D[alg]['size'].append(size)
+            D[alg]['gflops'].append(gflops)
+            D[alg]['max_err'].append(max_err)
 
 
 
@@ -103,14 +103,21 @@ def plotting(D : dict,title : str = ""):
     plt.ylabel("Standarized GFLOPS")
     
     for k in Algs:
-        x = D[k]['size']
+        x = D[k]['size'] 
         y = D[k]['gflops']
+
+        #x1 = []
+        #for e in x: x1.insert(0,e)
+        
+        #y1 = [];
+        #for e in y: y1.insert(0,e)
+        
         if k == '#pytreg':
             plt.plot(x,y, label=k, linestyle = 'dotted', linewidth=3)
         else:
             plt.plot(x,y, label=k)
 
-
+    plt.gca().invert_xaxis()
     plt.grid()
     plt.legend(loc='lower left')
     plt.show()

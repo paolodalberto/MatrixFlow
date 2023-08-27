@@ -410,7 +410,6 @@ factors: recursively if you like by a factor of 2
 If we use the definition of matrix multiplication to perform the
 computation, we can build a sequence of instructions as follows:
 \begin{verbatim}
-
     ## Declarations AD partition of A, BD of B, CD of C 
     decls = [[alphai],      AD ,        BD,          CD ]     
 
@@ -432,7 +431,130 @@ computation, we can build a sequence of instructions as follows:
 and $+$, we have only binary computations plus a constant
 multiplication. Such a format is basic form in BLAS libraries. In
 practice, the declarations and the instruction sequence define the
-computation completely. In matrix flow this is a graph.
+computation completely. In matrix flow this is a {\em Graph}. A Graph
+is an extension of a {\em function} where there can be multiple inputs
+and outputs. A Function is an extension of an operation: one output
+and two operands.
+
+The idea behind a graph is simple: we have clearly spelled out inputs
+and ouputs, we can build a clear declaration of the matrix partitions
+partition and constants, we have a list of operations. The computation
+is summarized by a directed acyclic graph and the schedule by the
+sequence of instructions.
+
+In the last ten years, the compiler technology for data flows
+computations and DAGs has had great incentives because it is the
+foundations artificial intelligence applications for CPU but
+especially for custom accelerators (among them GPUs).
+
+The main features of a graph at the time of this writing are the
+following.
+\begin{enumerate} 
+\item The self description of the graph is a readable code. If we
+  create a graph using Equation \ref{basic:2} and the classic
+  algorithm to write the computation operations, the print of the
+  graph is literally
+\begin{verbatim}
+(Pdb) print(G1)
+CDP[0] << (ADP[0]) * (BDP[0]) + (ADP[1]) * (BDP[2])
+CDP[1] << (ADP[0]) * (BDP[1]) + (ADP[1]) * (BDP[3])
+CDP[2] << (ADP[2]) * (BDP[0]) + (ADP[3]) * (BDP[2])
+CDP[3] << (ADP[2]) * (BDP[1]) + (ADP[3]) * (BDP[3])
+\end{verbatim}
+
+\item We can compute the graph by executing the list of operation in
+  sequence. So the graph is a computational data structure.
+
+\item The self description is valid Python code and it can be compiled
+  and executed.
+\end{enumerate}
+
+The Graph is a self contained structure that can be used to execute
+the algorithm, to compile it, and thus validate easily.
+
+Our goal here is to describe how this could be used to validate
+correctness and relative performance of any fast algorithms and to
+show that by customizing the description of the graphs as code we can
+generate native codes for CPU and GPU that can be easily compiled and
+validated in the same environment. Part of Matrix Flow but not
+presented here: Data dependency, scheduling rewrite for single
+accelerator or multiple accelerators. We want to focus on how we can
+build efficient codes for GPUs.
+
+\subsection{CPU and Python performance and validation}
+
+We have a systematic way to retrieve fast algorithms by factors, we
+can create computational graphs, for a specific problem size, and we
+can execute them. The first thing it is to get a feel of the
+performance, like in Figure \ref{fig:perf1}.
+
+\doublefigure{0.80}{CORES1S.png}{CORES16S.png}{Performance with 1 CORE
+  and 16 cores from GEMM}{fig:perf1}
+
+There is a lot to unpack. There are two plots, the matrix sizes go
+from the largest to the smallest so we can highlight the maximum speed
+up as the first spot in the graph.  This is a Thread-ripper CPU with
+16 cores. We can afford to give one core to the base line GEMM (and
+for all fast algorithms) and we can give them 16. The first plot show
+the performance when we use 1 core.  The Base line is steady at 30
+GFLOPS. It is clear that Strassen 2 and 2x2 is faster for any problem
+size 2500 and above. All algorithms with three or more factors are
+behind and they never break even but the trajectory is promising. 
+
+The situation get worse as soon as the GEMM get more efficient: In the
+second plot no fast algorithm can hold a candle to the base line. The
+main reason is that the base line does not have a sharp increasing
+and, then, steady performance. In practice, the additions are
+constantly bad performing and the multiplications we save are small
+and inefficient, we are better off solving a large problem using the
+standard GEMM.
+
+Of course, the 16 core example is skewed towards the single call GEMM
+algorithm, which is never slower down by the several function call for
+each operations.
+
+\subsection{GPUs}
+Matrix Flow can use the same methodology to create C++ code using
+rocBLAS interface. In practice, we create rocBLAS calls into a single
+C++ package that we can compile and import in Python. Again, the
+interface and module idea is not efficient, it is not meant to replace
+any of the current implementations in C/C++/Fortran. It is just so
+mach easier to compare and validate the correctness of the computation
+and report the numerical stability of the code
+
+\singlefigure{0.80}{GPUVII.png}{Performance with VII Radeon 3.5TFLOPS
+  DGEMM}{fig:perf2}
+
+
+The GPU we use here is a Vega20 known as VII Radeon. The performance
+is for double precision and the peak performance is 3.5TFLOPS (tera =
+$10^{12}$ floating point per second). This GPU has a 16GB of HBM2 main
+memory with 1TB/s bandwidth, top of the class.  In Figure
+\ref{fig:perf2}, we show the performance again from the largest to the
+smallest: so we can appreciate better the maximum speed up for the
+fast algorithms. We report kernel wall clock time that is the
+computation of only GEMM and GEMA without any CPU device compaction
+and transmission.
+
+
+The good news is that the GPU performance is identical to the 1CORE
+plots (instead of the 16). Once again three factors algorithm are
+behind but the trajectory is pretty good they are close to break even
+(we did not investigate if they do because the largest problem we can
+execute is about 26000x26000 without leaving any space to the GEMM
+kernel). The 2-factor algorithms go above the baseline and Strassen 2
+and 2x2 are safely in the lead.
+
+
+Two caveats: the sizes we test are designed so that all algorithms have
+the proper factors but this does not mean that are suitable for the
+GEMM kernel. For the last problem size, 24012, the problem size is
+about 13GB (which was measured at about 80\% of teh VRAM
+available). Due to the temporary space, Strassen with factor 2, does
+not fit into the device (requiring about extra 3GB).  
+
+
+  
 
 
 
