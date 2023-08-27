@@ -57,7 +57,7 @@ if __name__ == "__main__":
     
     ## C_ij = sum_k A_ik B_kj
     D = Scalar(0)*C
-    G1 = algorithm_mult_example(D, 1,A,B,X)
+    G1 = algorithm_mult_example(D, Scalar(1),A,B,X)
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
 
 

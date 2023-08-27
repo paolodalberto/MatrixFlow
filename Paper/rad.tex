@@ -177,6 +177,7 @@ designed to optimize artificial intelligence applications.
 
 
 \section{Matrices and Partitions.}
+\label{sec:matrices}
 We start by describing the basic components of our algebra: matrices,
 operations, and matrix partitions . This will help us understand and
 describe fast matrix multiplications constructively.
@@ -379,9 +380,60 @@ practice, if we use a factor 3 and we have $\Vc{a}_3, \Vc{b}_3,
 then the algorithm with factor 6 is completely defined succinctly as
 $\Vc{a}_3 \otimes \Vc{a}_2, \Vc{b}_3 \otimes \Vc{b}_2, \Vc{c}_3
 \otimes \Vc{c}_2$. Where $\otimes$ is the Kronecker product (used also
-in \cite{PMID:36198780}).
+in \cite{PMID:36198780}). This factorization and algorithm generation
+is really neat: If we have a problem size that can be factorized
+exactly with the set of fast algorithms, then the fast algorithm
+require just constant temporary space (last factor squared). We shall
+show application of this idea in the experimental results.
 
 \section{Matrix Flow}
+\label{sec:matrixflow}
+
+Take a matrix operation such as $\Vc{C} = \alpha \Vc{A}\Vc{B}$, and
+describe this computation by means of the matrix partitions by
+factors: recursively if you like by a factor of 2
+\begin{equation}
+  \label{basic_2}
+  \begin{pmatrix}
+    \Vc{C}_0 & \Vc{C}_1 \\
+    \Vc{C}_2 & \Vc{C}_3 \\
+  \end{pmatrix} = \alpha
+  \begin{pmatrix}
+    \Vc{A}_0 & \Vc{A}_1 \\
+    \Vc{A}_2 & \Vc{A}_3 \\
+  \end{pmatrix} *
+  \begin{pmatrix}
+    \Vc{B}_0 & \Vc{B}_1 \\
+    \Vc{B}_2 & \Vc{B}_3 \\
+  \end{pmatrix} 
+\end{equation}
+If we use the definition of matrix multiplication to perform the
+computation, we can build a sequence of instructions as follows:
+\begin{verbatim}
+
+    ## Declarations AD partition of A, BD of B, CD of C 
+    decls = [[alphai],      AD ,        BD,          CD ]     
+
+    ###
+    ## Computation as a sequence of assignment statements
+    ## and binary operations.  
+    ###
+    V = []
+    for i in range(Row=2):
+        for j in range(Col=2):
+            T = Operation("p0", "*", AD[i*Col] ,BD[j])
+            for k in range(1,K=2):
+                T1 = Operation("p%d"%k, "*", AD[i*Col+k],BD[k*Col+j])
+                T  = Operation('c','+',T,T1)
+            R = Operation("s0", '<<',CD[i*Col+j],T)
+            V.append(R)
+\end{verbatim}
+{\em Operation} is simply an abstraction of the matrix operations $*$
+and $+$, we have only binary computations plus a constant
+multiplication. Such a format is basic form in BLAS libraries. In
+practice, the declarations and the instruction sequence define the
+computation completely. In matrix flow this is a graph.
+
 
 
 

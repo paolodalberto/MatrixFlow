@@ -1070,6 +1070,7 @@ class Graph(Function):
             v.set_graph(self)
         for d in self.declarations:
             for j in d:
+                
                 j.set_graph(self)
 
     def set_bini_matrices(self,
@@ -1715,7 +1716,7 @@ def algorithm_mult_example(
 
     
     
-    decls = [alphai,      AD ,        BD,          CD ] 
+    decls = [[alphai],      AD ,        BD,          CD ] 
     
     ###
     ## Computation as a sequence of assignment statements
