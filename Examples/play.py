@@ -56,7 +56,8 @@ if __name__ == "__main__":
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     a,b,c = fact['%d,%d,%d' % (X,X,X)]
     at,bt,ct = fact['%d,%d,%d' % (Y,Y,Y)]
-        
+
+    import pdb; pdb.set_trace()
     ## factor X 
     print(a.shape)
     D = Scalar(0)*C
@@ -92,6 +93,7 @@ if __name__ == "__main__":
     ## X and Y 
     c1,a1,b1 = bini_matrices_2(c,a,b, ct,at,bt,validate=c.shape[1]*ct.shape[1]<250)
     print(a1.shape)
+    import pdb; pdb.set_trace()
     D = Scalar(0)*C
     start = time.time()
     D = bini(D,c1,A,a1,B,b1,recursion=1)

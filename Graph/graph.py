@@ -1059,7 +1059,7 @@ class Graph(Function):
 
         Code = self.pretty__() if TwoOperands else str(self)
         
-        
+        #print(Code); import pdb;  pdb.set_trace()
         E = compile(Code,'test','exec')
 
         return E
