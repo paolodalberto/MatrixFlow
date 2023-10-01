@@ -61,7 +61,7 @@ if __name__ == "__main__":
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G1.data_dependency()
     import pdb; pdb.set_trace()
-
+    print(G1)
     del G1; gc.collect()
 
     
@@ -76,8 +76,9 @@ if __name__ == "__main__":
     ## compute and dependency .... 
     G3 = bini_mult_example(D,c, A,a,B,b,1)
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
+    print(G3)
+    import pdb; pdb.set_trace()
     del G3; gc.collect()
-    
 
     ## Factor Y
     D = Scalar(0)*C

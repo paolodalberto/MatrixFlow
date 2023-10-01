@@ -91,7 +91,7 @@ if __name__ == "__main__":
 
 
 
-    fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
+    fact =dict(numpy.load('factorizations_f2.npz', allow_pickle=True))
     FA = {}
     for f in F:
         ## Bilinear using the deepmind format C^t = A*B

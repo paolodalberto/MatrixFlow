@@ -98,15 +98,17 @@
   Recently, reinforcement algorithms discovered new algorithms that
   may replace Strassen's original fast matrix multiplication. Likely,
   there are even more hidden gems by way of factoring the operand
-  matrices. The discovery really jump-started a wave of excitement and
-  a flourishing of publications. However, little work on
-  implementations and applications.
+  matrices. This recent discovery really jump-started a wave of
+  excitement and a flourishing of publications. However, little work
+  on implementations and applications. We shall expand.
 
   We present {\em Matrix Flow}, this is a simple Python project for
   the automatic formulation, design, implementation, code generation,
   and execution of fast matrix multiplication algorithms for CPUs and
-  GPUs. We play with no module-2 algorithms, because even less
-  general, and for square matrices, for simplicity.
+  GPUs (using BLAS interface). We play with no module-2 algorithms
+  and, for simplicity, we present only square matrices (previously and
+  with a proper matrix addition generalization we had extended to any
+  shapes).
 
   We have an original way to combine fast algorithms by means of
   factorizing the operand matrices and prove them correct. We describe
@@ -122,22 +124,25 @@
 \section{Introduction} 
 \label{sec:introduction}
 In practice, there are quite a few algorithms for {\em fast} matrix
-multiplication. We used to have a few pages of references; now
-institutions are actually stepping in and providing a complete
-list. Although the list of algorithms is long, the list of
-implementation for old and new architectures is limited (if not
-existent). We are interested in the computation with matrices, not
-just a single element, and we compare the trade matrix multiplication
-for pre and post matrix additions. This could be important when we
-tray to translate fast algorithms into practical implementations.
+multiplication. We used to have a few pages of references showing the
+rich literature. Now institutions and companies are actually stepping
+in and providing a complete list. Although the list of algorithms is
+long, the list of implementation for old and new architectures is
+limited (if not existent) considering the sheer amount. Here and
+always, we are interested in the computation with matrices, not a
+single elements or scalar arithmetic, and we compare the trade between
+matrix multiplications for {\em pre} and {\em post} matrix additions.
+This is important when we translate fast algorithms into practical
+implementations. The temporary spaces required is also an interesting
+aspect of the algorithm performance.
 
 
 The researchers at DeepMind presented a new methodology to find new
 and faster matrix multiplications \cite{PMID:36198780}. They provide
 the algorithms in matrix forms and, easily, we can generate, and
-execute element-wise algorithms.  There are new algorithms and They
-show the relative advantage performance with respect to the classic
-matrix multiplication for GPUs and TPUs. 
+execute element-wise algorithms.  There are new algorithms and the
+authors show the relative advantage performance with respect to the
+classic matrix multiplication for GPUs and TPUs (using XLA).
 
 Here, we show that Strassen's algorithm \cite{STRASSEN1969} is still
 king of the hill.  We explore a comparison across several algorithms
@@ -154,7 +159,9 @@ In the following, we present a python project that we call {\em Matrix
   Flow}. Here, you can take any of the algorithms for square matrices,
 we use the DeepMind's algorithms as repository, and create complex
 implementations you can run in CPU, GPU and in principle extend to any
-accelerator using the appropriate interface. 
+accelerator using the appropriate interface: we use BLAS GEMM $*$ and
+GEMA $+$, these are the minimum for the computation in a semi-ring if
+you use graph operations.
 
 We have a few goals in mind for this work. First, we want to make
 available algorithms and Python implementations: both proven
@@ -166,7 +173,8 @@ Python forte, however writing interfaces for C/C++ is relatively
 simple. Interfaces are not a very good solution either and they are
 more a nice intermediary solution. So we provide tools to build entire
 algorithms in C/C++ for CPU and GPUs and still prove them correct and
-validate them easily.
+validate them easily. Last, we provide tools for the validation of
+algorithms.
 
 So this is a research paper and a software project
 introduction. Eventually, we would like any one to play with the
@@ -178,9 +186,10 @@ designed to optimize artificial intelligence applications.
 
 \section{Matrices and Partitions.}
 \label{sec:matrices}
-We start by describing the basic components of our algebra: matrices,
-operations, and matrix partitions . This will help us understand and
-describe fast matrix multiplications constructively.
+We start by describing the non commutative ring, non commutative
+multiplication: matrices, operations, and matrix partitions . This
+will help us understand and describe fast matrix multiplications
+constructively.
 
 In this work we work mostly with matrices and scalar, but vector are
 easily added. A matrix $\Vc{A}$, this is a square matrix of size
@@ -192,11 +201,11 @@ $\R$.
     = \alpha\Vc{A}_{i,j}$ and the real multiplication.
   \item $\Vc{B} = \alpha\Vc{B} + \beta\Vc{C}= \beta\Vc{C} +
     \alpha\Vc{B}$ is matrix addition and $\Vc{B}_{i,j} =
-    \alpha\Vc{B}_{i,j} + \beta\Vc{C}_{i,j}$
+    \alpha\Vc{B}_{i,j} + \beta\Vc{C}_{i,j}$ and it is commutative.
   \item $\Vc{B} = \alpha(\Vc{B} + \Vc{C}) = \alpha\Vc{B} +
-    \alpha\Vc{C}$
+    \alpha\Vc{C}$. 
   \item $\Vc{C}= \Vc{A}\Vc{B}$ is matrix multiplication and $\Vc{C}_{i,j}=$ 
-    $\sum_{k=1}^n \Vc{A}_{i,k}\Vc{B}_{k,j}$
+    $\sum_{k=1}^n \Vc{A}_{i,k}\Vc{B}_{k,j}$, it is not commutative.
   \item $\Vc{y}= \alpha\Vc{A}\Vc{x}$ is matrix by vector
     multiplication and $\Vc{y}_{i}=\alpha \sum_{k=1}^n
     \Vc{A}_{i,k}\Vc{b}_{k}$ (you may find this in the software
@@ -205,11 +214,12 @@ $\R$.
 
 Great, we have the operands and the operations. Let us introduce the
 last component for the description of our algorithms: Partitions.  The
-double subscript for the definition of elements it is for exposition
-purpose and we do not use element operation any where. We introduce
-here the single subscript that we use a lot. Consider a matrix $\Vc{A}
-\in \R^{n\times n}$, we can consider the matrix as a composition of
-$\Vc{A}_i \in \R^{\frac{n}{2}\times \frac{n}{2}}$ sub-matrices.
+double subscript for the definition of elements is for exposition
+purpose only. Here, we introduce the single subscript that in the
+original literature is used a lot (if not exclusively). Consider a
+matrix $\Vc{A} \in \R^{n\times n}$, we can consider the matrix as a
+composition of $\Vc{A}_i \in \R^{\frac{n}{2}\times \frac{n}{2}}$
+sub-matrices.
 \begin{equation} 
   \Vc{A} =
   \begin{pmatrix}
@@ -219,7 +229,7 @@ $\Vc{A}_i \in \R^{\frac{n}{2}\times \frac{n}{2}}$ sub-matrices.
 \end{equation}
 The property is that $\Vc{A}_i$ are non overlapping matrices and this
 is easily generalized to any factor of $n$ for example $p$ so that $n
-= k*p$. For $n=p=3$ and $\Vc{A}_i \in \R^{\frac{n}{3}\times
+= k*p$. For $p=3$ and $n=3k$ and $\Vc{A}_i \in \R^{\frac{n}{3}\times
   \frac{n}{3}}$ and $0\leq i\leq p^2 -1$:
 \begin{equation} 
   \Vc{A} =
@@ -230,11 +240,10 @@ is easily generalized to any factor of $n$ for example $p$ so that $n
   \end{pmatrix}\\
   = \{ \Vc{A}_0 , \Vc{A}_1, \Vc{A}_2 , \Vc{A}_3 ,\Vc{A}_4 , \Vc{A}_5, \Vc{A}_6 , \Vc{A}_7, \Vc{A}_8   \}
 \end{equation}
-
-In practice, if we have a partition $\{ \Vc{A}_i \}$ and we know the
-factor $p$, we know the matrix $\Vc{A}$ completely.
-
-Let us represent the simplest matrix multiplication using $2x2$ partition:
+Note, when we have a partition $\{ \Vc{A}_i \}$ and we know the factor
+$p$, we know the matrix $\Vc{A}$ completely. A partition recursively
+applied reduces to a list of scalar elements. Let us represent the
+simplest matrix multiplication using $2x2$ partition:
 
 \begin{equation}
   \label{basic}
@@ -261,12 +270,6 @@ Using the factor $p=2$, we have in general
     \Vc{C}_3 = \sum_{k=0}^{1}\Vc{A}_{2+k} \Vc{B}_{2k+1} \\
   \end{pmatrix}
 \end{equation}
-The single subscript is the original format in fast algorithms
-describing a matrix operand as partitioned into smaller matrices. The
-authors in \cite{PMID:36198780} use a double subscript because the
-intend to identify a single element. Strangely enough, the single
-subscript has an implementation advantage.
-
 Equation \ref{eq:recursion}, as matrix computation, represent naturally
 a recursive computation.
 
@@ -411,7 +414,7 @@ If we use the definition of matrix multiplication to perform the
 computation, we can build a sequence of instructions as follows:
 \begin{verbatim}
     ## Declarations AD partition of A, BD of B, CD of C 
-    decls = [[alphai],      AD ,        BD,          CD ]     
+    decls = [[alphai],    AD ,        BD,          CD ]     
 
     ###
     ## Computation as a sequence of assignment statements
@@ -433,18 +436,19 @@ multiplication. Such a format is basic form in BLAS libraries. In
 practice, the declarations and the instruction sequence define the
 computation completely. In matrix flow this is a {\em Graph}. A Graph
 is an extension of a {\em function} where there can be multiple inputs
-and outputs. A Function is an extension of an operation: one output
-and two operands.
+and outputs.  Think about the factorization of a matrix into two
+components $\Vc{L},\Vc{U} = lu(\Vc{A})$. A function is an extension of
+an matrix {\em operation}: one output and two operands.
 
 The idea behind a graph is simple: we have clearly spelled out inputs
 and ouputs, we can build a clear declaration of the matrix partitions
-partition and constants, we have a list of operations. The computation
-is summarized by a directed acyclic graph and the schedule by the
+and constants, we have a list of operations. The computation is
+summarized by a directed acyclic graph and the schedule by the
 sequence of instructions.
 
 In the last ten years, the compiler technology for data flows
 computations and DAGs has had great incentives because it is the
-foundations artificial intelligence applications for CPU but
+foundations of artificial intelligence applications for CPU but
 especially for custom accelerators (among them GPUs).
 
 The main features of a graph at the time of this writing are the
@@ -461,25 +465,32 @@ CDP[1] << (ADP[0]) * (BDP[1]) + (ADP[1]) * (BDP[3])
 CDP[2] << (ADP[2]) * (BDP[0]) + (ADP[3]) * (BDP[2])
 CDP[3] << (ADP[2]) * (BDP[1]) + (ADP[3]) * (BDP[3])
 \end{verbatim}
+The symbol \verb2<<2 is the assignment operation and it is overwritten
+instead of the Python shift operation (better than overwriting the
+assignment itself).
 
 \item We can compute the graph by executing the list of operation in
   sequence. So the graph is a computational data structure.
 
 \item The self description is valid Python code and it can be compiled
-  and executed.
+  and executed. So this is completely similar to LLVM where the graph
+  can be explicitly encoded, there code is human readable, and it can
+  be modified and {\em executed}.
+
 \end{enumerate}
 
-The Graph is a self contained structure that can be used to execute
-the algorithm, to compile it, and thus validate easily.
+In summary, the graph is a self contained structure that can be used
+to execute the algorithm, to compile it, and thus validate easily. Our
+goal is to describe how we use this to validate correctness and
+relative performance of any fast algorithms and to show that by
+customizing the description of the graphs as code, we can generate
+native codes for CPU and GPU that can be easily compiled and validated
+in the same environment.  Thus can be validated theoretically and
+practically.
 
-Our goal here is to describe how this could be used to validate
-correctness and relative performance of any fast algorithms and to
-show that by customizing the description of the graphs as code we can
-generate native codes for CPU and GPU that can be easily compiled and
-validated in the same environment. Part of Matrix Flow but not
-presented here: Data dependency, scheduling rewrite for single
-accelerator or multiple accelerators. We want to focus on how we can
-build efficient codes for GPUs.
+Part of Matrix Flow but not presented here: Data dependency,
+scheduling rewrite for single accelerator or multiple accelerators. We
+want to focus on how we can build efficient codes for GPUs.
 
 \subsection{CPU and Python performance and validation}
 
@@ -497,21 +508,24 @@ up as the first spot in the graph.  This is a Thread-ripper CPU with
 16 cores. We can afford to give one core to the base line GEMM (and
 for all fast algorithms) and we can give them 16. The first plot show
 the performance when we use 1 core.  The Base line is steady at 30
-GFLOPS. It is clear that Strassen 2 and 2x2 is faster for any problem
-size 2500 and above. All algorithms with three or more factors are
-behind and they never break even but the trajectory is promising. 
+GFLOPS. It is clear that Strassen 2 and 2x2 (respectively,
+\verb3#one23 and \verb3#one2x23) is faster for any problem size 2500
+and above. All algorithms with three or more factors are behind and
+they never break even but the trajectory is promising ( \verb4#one3x2x24).
 
-The situation get worse as soon as the GEMM get more efficient: In the
-second plot no fast algorithm can hold a candle to the base line. The
-main reason is that the base line does not have a sharp increasing
-and, then, steady performance. In practice, the additions are
-constantly bad performing and the multiplications we save are small
-and inefficient, we are better off solving a large problem using the
-standard GEMM.
+The situation is different as soon as the GEMM gets more cores: In the
+second plot no algorithm is faster than the base line. The reason is
+the base line does not have a sharp increasing and, then, steady
+performance; that is, the performance knee between sizes 0 and
+5000. In practice, the additions are constantly bad performing and the
+multiplications we save are small and inefficient, we are better off
+solving a large problem using the standard GEMM. Also, in practice,
+all fast algorithms seems having slopes for which there will be no
+intersection or crossing for no foreseeable size.
 
 Of course, the 16 core example is skewed towards the single call GEMM
-algorithm, which is never slower down by the several function call for
-each operations.
+algorithm, which is never slowed down by the several function calls
+for each operations.
 
 \subsection{GPUs}
 Matrix Flow can use the same methodology to create C++ code using
@@ -519,7 +533,7 @@ rocBLAS interface. In practice, we create rocBLAS calls into a single
 C++ package that we can compile and import in Python. Again, the
 interface and module idea is not efficient, it is not meant to replace
 any of the current implementations in C/C++/Fortran. It is just so
-mach easier to compare and validate the correctness of the computation
+much easier to compare and validate the correctness of the computation
 and report the numerical stability of the code
 
 \singlefigure{0.80}{GPUVII.png}{Performance with VII Radeon 3.5TFLOPS
