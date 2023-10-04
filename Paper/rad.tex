@@ -96,27 +96,23 @@
 
 \begin{abstract}
   Recently, reinforcement algorithms discovered new algorithms that
-  may replace Strassen's original fast matrix multiplication. Likely,
-  there are even more hidden gems by way of factoring the operand
-  matrices. This recent discovery really jump-started a wave of
-  excitement and a flourishing of publications. However, little work
-  on implementations and applications. We shall expand.
-
-  We present {\em Matrix Flow}, this is a simple Python project for
-  the automatic formulation, design, implementation, code generation,
-  and execution of fast matrix multiplication algorithms for CPUs and
-  GPUs (using BLAS interface). We play with no module-2 algorithms
-  and, for simplicity, we present only square matrices (previously and
-  with a proper matrix addition generalization we had extended to any
-  shapes).
-
-  We have an original way to combine fast algorithms by means of
-  factorizing the operand matrices and prove them correct. We describe
-  these algorithm as a Data flow and matrix data partitioning: a
-  Directed Acyclic Graph. We show that Strassen's original algorithm
-  is still the top choice even for modern GPUs. We also address error
-  analysis in double precision, because integer computations are
-  correct, always.
+  really jump-started a wave of excitement and a flourishing of
+  publications. However, there is little on implementations,
+  applications, and, especially, no absolute performance and, we show
+  here they will not replace Strassen's original fast matrix
+  multiplication.  We present {\em Matrix Flow}, this is a simple
+  Python project for the automatic formulation, design,
+  implementation, code generation, and execution of fast matrix
+  multiplication algorithms for CPUs, using BLAS interface GPUs and in
+  the future other accelerators. We shall not play with module-2
+  ($\Z_2$) algorithms and, for simplicity, we present only square
+  matrices, but not limited to. By means of factorizing the operand
+  matrices we can express many algorithms and prove them
+  correct. These algorithms are represented by Data flow and matrix
+  data partitions: a Directed Acyclic Graph. We show that Strassen's
+  original algorithm is still the top choice even for modern GPUs. We
+  also address error analysis in double precision, because integer
+  computations are correct, always.
 \end{abstract}
 
 \maketitle
@@ -127,14 +123,13 @@ In practice, there are quite a few algorithms for {\em fast} matrix
 multiplication. We used to have a few pages of references showing the
 rich literature. Now institutions and companies are actually stepping
 in and providing a complete list. Although the list of algorithms is
-long, the list of implementation for old and new architectures is
-limited (if not existent) considering the sheer amount. Here and
-always, we are interested in the computation with matrices, not a
-single elements or scalar arithmetic, and we compare the trade between
-matrix multiplications for {\em pre} and {\em post} matrix additions.
-This is important when we translate fast algorithms into practical
-implementations. The temporary spaces required is also an interesting
-aspect of the algorithm performance.
+long, the list of implementations for old and new architectures is
+limited in absolute terms. Here and always, we are interested in the
+computation with matrices, not a single elements or scalar arithmetic,
+and we compare the trade between matrix multiplications for {\em pre}
+and {\em post} matrix additions.  This is important when we translate
+fast algorithms into practical implementations. The temporary spaces
+required is also an interesting aspect of the algorithm performance.
 
 
 The researchers at DeepMind presented a new methodology to find new
@@ -146,22 +141,24 @@ classic matrix multiplication for GPUs and TPUs (using XLA).
 
 Here, we show that Strassen's algorithm \cite{STRASSEN1969} is still
 king of the hill.  We explore a comparison across several algorithms
-using the standard arithmetic and in particular double precision
-matrices (no $\Z_2$ modular arithmetic because Strassen's algorithm
-does not have equivalent). In this scenario, we can determine a priori
-the relative advantages of all algorithms (7\% improvement per
-recursion we shall expand). More interesting, we can show that {\em
-  deeper} algorithms such as the one recently discovered do not have
-all the advantages (they are cranked up to have) when other
-constraints are present.
+using the standard arithmetic: double precision matrices and no $\Z_2$
+modular arithmetic because it is the default in Python. Half, single
+and double precision, single and double complex, and also integer
+8-bit can be deployed when the BLAS interface defines it for an
+architecture. In this scenario, we can determine a priori the relative
+advantages of all algorithms (i.e., 7\% improvement per
+recursion). More interesting, we can show that {\em deeper} algorithms
+such as the one recently discovered do not have all the advantages
+when other constraints are present.
 
-In the following, we present a python project that we call {\em Matrix
+In the following, we present a Python project: {\em Matrix
   Flow}. Here, you can take any of the algorithms for square matrices,
 we use the DeepMind's algorithms as repository, and create complex
 implementations you can run in CPU, GPU and in principle extend to any
 accelerator using the appropriate interface: we use BLAS GEMM $*$ and
-GEMA $+$, these are the minimum for the computation in a semi-ring if
-you use graph operations.
+GEMA $+$, these are the minimum operations for the computation in a
+non commutative ring. We can use also Bini's format for the
+representation of the algorithms.
 
 We have a few goals in mind for this work. First, we want to make
 available algorithms and Python implementations: both proven
@@ -178,10 +175,10 @@ algorithms.
 
 So this is a research paper and a software project
 introduction. Eventually, we would like any one to play with the
-project and we would like to squeeze into the presentation and share a
-few lessons learned that are not trivial, sometime original, and
-currently important for other applications where compiler tools are
-designed to optimize artificial intelligence applications.
+project and we would like to share a few lessons learned that are not
+trivial, sometime original, and important for other applications where
+compiler tools are designed to optimize artificial intelligence
+applications.
 
 
 \section{Matrices and Partitions.}
@@ -197,8 +194,8 @@ $\R^{n\times n}$. Every element of the matrix is identified by a row
 $i$ and a column $j$ as $\Vc{A}_{i,j}$. A scalar $\alpha$ is number in
 $\R$.
 \begin{itemize}
-  \item $\Vc{B} = \alpha\Vc{A} = \Vc{A}\alpha$ so that $\Vc{B}_{i,j}
-    = \alpha\Vc{A}_{i,j}$ and the real multiplication.
+  \item $\Vc{B} = \alpha\Vc{A} = \Vc{A}\alpha$ so that $\Vc{B}_{i,j} =
+    \alpha\Vc{A}_{i,j}$ and these are multiplications in $\R$.
   \item $\Vc{B} = \alpha\Vc{B} + \beta\Vc{C}= \beta\Vc{C} +
     \alpha\Vc{B}$ is matrix addition and $\Vc{B}_{i,j} =
     \alpha\Vc{B}_{i,j} + \beta\Vc{C}_{i,j}$ and it is commutative.
@@ -208,8 +205,8 @@ $\R$.
     $\sum_{k=1}^n \Vc{A}_{i,k}\Vc{B}_{k,j}$, it is not commutative.
   \item $\Vc{y}= \alpha\Vc{A}\Vc{x}$ is matrix by vector
     multiplication and $\Vc{y}_{i}=\alpha \sum_{k=1}^n
-    \Vc{A}_{i,k}\Vc{b}_{k}$ (you may find this in the software
-    package).
+    \Vc{A}_{i,k}\Vc{b}_{k}$ (you may find this in the software package
+    but it is not really necessary).
 \end{itemize}
 
 Great, we have the operands and the operations. Let us introduce the
@@ -365,7 +362,7 @@ different from the sequence 3 and 2.  The space requirement is
 different: literally if we take a 6x6 matrix, if we split the matrices
 by 2, the temporary space to hold $T_i$ and $S_i$ are two matrices of
 size 3x3. The recursive call will use temporary space of size
-1x1. Ohterwise, if we split by 3, we need a temporary space of size
+1x1. Otherwise, if we split by 3, we need a temporary space of size
 2x2. The computation order is different and (in double precision)
 there is a computational difference.
 
@@ -386,7 +383,7 @@ $\Vc{a}_3 \otimes \Vc{a}_2, \Vc{b}_3 \otimes \Vc{b}_2, \Vc{c}_3
 in \cite{PMID:36198780}). This factorization and algorithm generation
 is really neat: If we have a problem size that can be factorized
 exactly with the set of fast algorithms, then the fast algorithm
-require just constant temporary space (last factor squared). We shall
+requires just constant temporary space (last factor squared). We shall
 show application of this idea in the experimental results.
 
 \section{Matrix Flow}
@@ -412,15 +409,13 @@ factors: recursively if you like by a factor of 2
 \end{equation}
 If we use the definition of matrix multiplication to perform the
 computation, we can build a sequence of instructions as follows:
-\begin{verbatim}
-    ## Declarations AD partition of A, BD of B, CD of C 
+{\small \begin{verbatim}
+    ## Declarations AD single index partition of A, BD of B, CD of C 
     decls = [[alphai],    AD ,        BD,          CD ]     
-
     ###
-    ## Computation as a sequence of assignment statements
-    ## and binary operations.  
+    ## Computation as a sequence of assignment statements and binary operations.  
     ###
-    V = []
+    V = []  ## operation list  
     for i in range(Row=2):
         for j in range(Col=2):
             T = Operation("p0", "*", AD[i*Col] ,BD[j])
@@ -429,16 +424,17 @@ computation, we can build a sequence of instructions as follows:
                 T  = Operation('c','+',T,T1)
             R = Operation("s0", '<<',CD[i*Col+j],T)
             V.append(R)
-\end{verbatim}
+\end{verbatim}}
 {\em Operation} is simply an abstraction of the matrix operations $*$
 and $+$, we have only binary computations plus a constant
-multiplication. Such a format is basic form in BLAS libraries. In
-practice, the declarations and the instruction sequence define the
-computation completely. In matrix flow this is a {\em Graph}. A Graph
-is an extension of a {\em function} where there can be multiple inputs
-and outputs.  Think about the factorization of a matrix into two
-components $\Vc{L},\Vc{U} = lu(\Vc{A})$. A function is an extension of
-an matrix {\em operation}: one output and two operands.
+multiplication. Such a format is standard in BLAS libraries. In
+practice, the declarations and the instruction sequence (i.e., V)
+define the computation completely. In matrix flow this is a {\em
+  Graph}. A Graph is an extension of a {\em function} where there can
+be multiple inputs and outputs.  Think about the factorization of a
+matrix into two components $\Vc{L},\Vc{U} = lu(\Vc{A})$. A function is
+an extension of an matrix {\em operation}: one output and two
+operands.
 
 The idea behind a graph is simple: we have clearly spelled out inputs
 and ouputs, we can build a clear declaration of the matrix partitions
@@ -474,8 +470,8 @@ assignment itself).
 
 \item The self description is valid Python code and it can be compiled
   and executed. So this is completely similar to LLVM where the graph
-  can be explicitly encoded, there code is human readable, and it can
-  be modified and {\em executed}.
+  can be explicitly encoded, the code is human readable, and it can be
+  modified and {\em executed}.
 
 \end{enumerate}
 
@@ -486,11 +482,8 @@ relative performance of any fast algorithms and to show that by
 customizing the description of the graphs as code, we can generate
 native codes for CPU and GPU that can be easily compiled and validated
 in the same environment.  Thus can be validated theoretically and
-practically.
-
-Part of Matrix Flow but not presented here: Data dependency,
-scheduling rewrite for single accelerator or multiple accelerators. We
-want to focus on how we can build efficient codes for GPUs.
+practically. We want to focus on how we can build efficient codes
+especially for GPUs.
 
 \subsection{CPU and Python performance and validation}
 
@@ -560,12 +553,12 @@ kernel). The 2-factor algorithms go above the baseline and Strassen 2
 and 2x2 are safely in the lead.
 
 
-Two caveats: the sizes we test are designed so that all algorithms have
-the proper factors but this does not mean that are suitable for the
-GEMM kernel. For the last problem size, 24012, the problem size is
-about 13GB (which was measured at about 80\% of teh VRAM
+Two caveats: the sizes we test are designed so that all algorithms
+have the proper factors but this does not mean that are suitable for
+the GEMM kernel. For the last problem size, 24012, the problem size is
+about 13GB (which was measured at about 80\% of the VRAM
 available). Due to the temporary space, Strassen with factor 2, does
-not fit into the device (requiring about extra 3GB).  
+not fit into the device (requiring about extra 3GB). 
 
 
   
