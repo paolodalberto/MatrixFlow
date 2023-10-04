@@ -558,7 +558,12 @@ have the proper factors but this does not mean that are suitable for
 the GEMM kernel. For the last problem size, 24012, the problem size is
 about 13GB (which was measured at about 80\% of the VRAM
 available). Due to the temporary space, Strassen with factor 2, does
-not fit into the device (requiring about extra 3GB). 
+not fit into the device (requiring about extra 3GB).
+
+As short conclusion, in $\R$ and with {\em optimal} implementation of
+GEMM and GEMA, deeper algorithms like the one recently found by
+DeepMind do not have the edge against the classic Strassen's
+algorithm. If you think about it, Strassen is still pretty good.
 
 
   
