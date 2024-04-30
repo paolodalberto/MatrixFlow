@@ -453,14 +453,14 @@ class Operation:
     
     def compute(self):
         #print(self)
-        #import pdb; pdb.set_trace()
+        #import pdb; 
         if type(self.left) is list: ## this is for the LU
             L =  [ i.compute() for i in self.left]
         else:    
             L =  self.left.compute()
 
         R =  self.right.compute()
-
+        
         temp_result = None
         if self.operation == '+':
             temp_result = L + R
@@ -468,6 +468,10 @@ class Operation:
             #import pdb; pdb.set_trace()
             temp_result = L - R
         elif self.operation == '*':
+            #pdb.set_trace()
+            #print(self)
+            #print(self.left)
+            #print(self.right)
             temp_result = L * R
         elif self.operation == '/':
             temp_result = L / R
@@ -631,6 +635,40 @@ class Function(Operation):
         inps = [ o.compute().value() for o in self.left]
         outs = self.operation(*inps)
         self.temp_result = [ Matrix(o) for o in outs]
+        return self.temp_result
+
+    def dependantOperands(self):
+        return self.left
+
+
+class Loop(Operation):
+    def __init__(
+            self,
+            name : str,
+            Ops  : list,
+            ranges : list,
+            Parts  : list
+    ):
+        ## here the operation is actually a function
+        Operation.__init__(self,name,None,Ops,None, None)
+        self.ranges = ranges
+        self.parts  = Parts
+    def count(self,
+              operation : str = '*',
+              operands_type = [Matrix, Matrix]):
+        return 0
+    def __str__(self):
+        #pdb.set_trace()
+        L = "" if self.left is None else str(self.left[0])
+        R = "" if self.right is None else str(self.right)
+        tmp = self.name+"["+str(self.ranges) +"] { \n"+"(" +(str(len( self.left)))+L+")"
+        
+        return tmp
+    def compute(self):
+        #import pdb; pdb.set_trace()
+        self.temp_result = [ o.compute().value() for o in self.left]
+        #outs = self.operation(*inps)
+        # = [ Matrix(o) for o in outs]
         return self.temp_result
 
     def dependantOperands(self):
@@ -919,6 +957,19 @@ class Data(Operation):
                 R.append(L)
             AD.append(R)
         return AD
+    def data_factory_2d(name : str , A = PartitionMatrix, original : str = None):
+        AD = []
+        Ashape = (len(A.value()), len(A.value()[0]))
+        for i in range(Ashape[0]):
+            R = [] 
+            for j in range(Ashape[1]):
+                #print(i*Ashape[1] + j)
+                L = Data('%s[%d,%d]' %(name, i, j),
+                         A.value()[i][j])
+                L.original = original
+                R.append(L)
+            AD.append(R)
+        return AD
     def data_factory_transpose(name : str , A = PartitionMatrix, original : str = None):
         AD = []
         Ashape = (len(A.value()[0]), len(A.value()))
@@ -1043,7 +1094,12 @@ class Graph(Function):
         self.lookuptable = None
         self.constantlookuptable = None
         self.constant_base="z_"
-        
+
+
+    def proportions(self):
+        return ['A: '+ str(self.ADP),
+                'B: '+str(self.BDP),
+                'C: '+str(self.CDP)]
     def ratio(self):
 
         if self._ratio is not None: return self._ratio
@@ -1238,7 +1294,8 @@ class Graph(Function):
     def next(self, N): return N.next()
     def prev(self, N): return N.prev()
     def __str__(self):
-        red = ""
+        
+        red = " " + str(self.proportions()) +"\n" 
         for n in self.V:
             red += str(n)+"\n"
         return red
@@ -1657,6 +1714,7 @@ class Graph(Function):
         self.adj = adj
         #self.visgraph.view()
         self.visgraph.render()
+        
 #        u.render()
         #import pdb; pdb.set_trace()
 
@@ -2416,7 +2474,7 @@ def gen_matrix(X : int , Y : int, random = None):
         A = Matrix(
             numpy.matrix(
                 [
-                    [ (1+i+j+i*j -i*17) for i in range(X)] for j in range(Y)
+                    [ (1+i+j+i*j -i*17) for i in range(Y)] for j in range(X)
                 ]
             )
         )

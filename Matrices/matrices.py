@@ -1,7 +1,7 @@
 import numpy 
 import math
 import os
-import procm
+#import GpuInterface.procm
 
 ###
 ## A 2 dimensional matrix represented by a numpy matrix 
@@ -63,8 +63,10 @@ class Matrix:
             return Matrix(A*self.value())
         elif type(A) is Matrix :
             ## SELF  * A (multiplication)
+
             L = self.value()
             R = A.value()
+            #print(L.shape); print(R.shape)
             #import pdb; pdb.set_trace()
 
             if not "GPU" in os.environ:
@@ -128,6 +130,134 @@ class PartitionMatrix:
         
         
         matrix = A.matrix #value()
+        shape  = [ A.max[i] -A.min[i] for i in range(2)]
+        minloc = A.min
+        
+        m= [ (0,shape[0] %  self.logicalshape[0]),
+             (0,shape[1] %  self.logicalshape[1])]
+
+
+        ## yep, we pad the matrix to make sure that the fast
+        ## algorithms can be applied without worries. There are better
+        ## solution and Paolo should be alble to do better
+
+        if shape[0] %  self.logicalshape[0] > 0 or \
+           shape[1] %  self.logicalshape[1]:
+            A.padded = True
+            matrix = numpy.pad(matrix, m)
+            
+            shape  = matrix.shape
+        
+        for i in range(math.ceil(shape[0]/logicalShape[0])):
+            row = []
+            for j in range(math.ceil(shape[1]/logicalShape[1])):
+                A = Matrix(matrix)
+                
+                A.min = (minloc[0] + i*logicalShape[0],minloc[1]+j*logicalShape[1])
+                A.max = (
+                    min(minloc[0]+(i+1)*logicalShape[0],shape[0]),
+                    min(minloc[1]+(j+1)*logicalShape[1],shape[1]))
+                A.pointer = self.original
+                row.append(A)
+                A.logicalshape =  self.logicalshape
+            self.l.append(row)
+
+        #for row in self.l:
+        #    print([a.logicalshape for a in row ])
+        #import pdb; pdb.set_trace()
+
+
+    def __str__(self):
+            R = len(self.l)
+            C = len(self.l[0])
+            return "Partitions  [%d,%d] of size [%d,%d]" % (R,C, self.logicalshape[0], self.logicalshape[1])
+    ###
+    ## Because DeepMind store the "gamma" matrix in a transpose format
+    ## and the computation for C_12 is actually for C_21 ... do not
+    ## ask.
+    ###
+    
+    def transpose(self):
+        
+        L = [ ]
+        for j in range(len(self.l[0])):
+            W = []
+            for i in range(len(self.l)):
+                W.append(self.l[i][j])
+            L.append(W)
+            
+        self.l = L
+        return self
+    def transpose_l(self):
+        
+        L = [ ]
+        for j in range(len(self.l[0])):
+            for i in range(len(self.l)):
+                L.append(self.l[i][j])
+        
+        return L
+            
+    def value(self): return self.l
+
+    ###
+    ## would you like to consider if this partion is a real parition ?
+    ## Disjoint set of matrices covering the original ?
+    ## Ask.
+    ###
+    def partition(self):
+        MM = self.value()
+
+        cover = self.original.min == MM[0][0].min and \
+                self.original.max == MM[-1][-1].max
+        disjoint = True
+        MM = [ item for sublist in MM for item in sublist]
+        while len(MM)>1:
+            m = MM.pop()
+            for n in MM:
+                if not m.disjoint(n,self.original.value().shape):
+                    return False
+        return cover
+
+
+    def flatten(self):
+        r = []
+        for i in self.l:
+            for j in i:
+                r.append(j)
+        return r
+###
+## A partitions A_ij of A so that A_i /\ A_j = 0 and \/A_i = A. The
+## main goal is to create disjoint matrices covering the original
+## submatrices. This is like a concat from the combination of matrices
+## to a larger one and viceversa.
+###
+    
+class PartitionPartition:
+    def __init__(self,
+                 A : PartitionMatrix,
+                 logicalShape : list = None
+                 
+    ) :
+        #import pdb; pdb.set_trace()
+        self.original = A.original
+        self.logicalshape = logicalShape
+
+        if logicalShape is None:
+            self.logicalshape =  tuple(
+                [int(math.ceil(i/2)) for i in A.value().shape]
+            )
+            logicalShape = self.logicalshape
+
+        
+        #print(A, self.logicalshape)
+        #import pdb; pdb.set_trace()
+        
+        # we partition the matrix A in disjoint sub-matrices with up
+        # to logical shape size and the union is the original matrix
+        self.l = []
+        
+        
+        matrix = A.matrix #value()
         shape  = matrix.shape
         
         m= [ (0,shape[0] %  self.logicalshape[0]),
@@ -163,6 +293,10 @@ class PartitionMatrix:
         #import pdb; pdb.set_trace()
 
 
+    def __str__(self):
+            R = len(self.l)
+            C = len(self.l[0])
+            return "Partitions  [%d,%d] of size [%d,%d]" % (R,C, self.logicalshape[0], self.logicalshape[1])
     ###
     ## Because DeepMind store the "gamma" matrix in a transpose format
     ## and the computation for C_12 is actually for C_21 ... do not
