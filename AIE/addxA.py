@@ -226,3 +226,5 @@ if __name__ == "__main__":
     L.compute()
     for i in L.temp_result:
         print(i[0])
+
+    

@@ -1095,6 +1095,7 @@ class Graph(Function):
         self.constantlookuptable = None
         self.constant_base="z_"
 
+        self.tiled = False
 
     def proportions(self):
         return ['A: '+ str(self.ADP),

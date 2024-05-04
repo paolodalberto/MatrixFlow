@@ -4,6 +4,8 @@ import numpy
 import math
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, read_alpha
 from Graph.graph import Graph, bini, bini_matrices_2,bini_mult_example, Data, Operation,gen_matrix,algorithm_mult_example, Loop
+
+
 import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
@@ -14,6 +16,7 @@ import sys
 import argparse
 import gc
 import pdb
+import AIE.conn as tiling  
 
 #####
 ## We start a conversation how to represent the computation of matrix
@@ -24,113 +27,7 @@ import pdb
 ###
 
 
-###
-##  Partition(A)*Partition(B) -> Partition(C) we return declarations
-##  and assignements for the classic matrix multiplication. We give
-##  partitions as inputs 
-def Addition_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix) -> list:
 
-    ## we create Data type for each elements and this is the leaves of
-    ## the basic computation
-    AD = Data.data_factory_2d('ADP', A); ADT = Data.data_factory_flat(AD) 
-    for i in ADT: i.inputs = True
-    BD = Data.data_factory_2d('BDP', B); BDT = Data.data_factory_flat(BD)
-    for i in BDT: i.inputs = True
-    CD = Data.data_factory_2d('CDP', C) 
-    CDT = Data.data_factory_flat(CD)
-    for i in CDT: i.outputs = True
-
-    Row = len(C.l)    # of the output partition
-    Col = len(C.l[0])    # of the output partition
-    BRow   = len(B.l)
-    BCol   = len(B.l[0])
-    ACol = len(A.l[0])
-    ARow = len(A.l)
-
-    
-    
-    print("Add", Row,Col,ACol,K, K==ACol)
-    decls = [      ADT ,        BDT,          CDT ] 
-    
-    ###
-    ## Computation as a sequence of assignment statements
-    ## and binary operations. 
-    ###
-    V = []
-    for i in range(min(Row,BRow,ARow)):  ## parallem in M
-        for j in range(min(Col,BCol,ACol)):  ## parallel in N 
-            T = Operation("p0", "+", AD[i][0] ,BD[0][j])
-            R = Operation("s0", '<<', CD[i][j],T )
-            #print(R)
-            R.parallel = True
-            V.append(R)
-            
-    #for v in V:
-    #    print(v)
-    
-    return decls, V
-
-def Addition_2(A : Matrix, B: Matrix, C: Matrix,
-              MT : list,
-              CT : list
-    ) -> list:
-
-    M,N,K = MT
-
-
-    ## this describes the decomposition of the L3 matrix into L2 sub
-    ## matrix without overlap:  partition at memtile.
-    
-    CPT = PartitionMatrix(C,[M,N])
-    BPT = PartitionMatrix(B,[K,N])
-    APT = PartitionMatrix(A,[M,K])
-
-    
-    Row = len(C.l)    # of the output partition
-    Col = len(C.l[0])    # of the output partition
-    BRow   = len(B.l)
-    BCol   = len(B.l[0])
-    ACol = len(A.l[0])
-    ARow = len(A.l)
-
-
-
-    M,N,K = CT
-    
-    ###
-    ## Computation as a sequence of assignment statements
-    ## and binary operations  
-    ###
-    V = []
-    for i in range(min(Row,BRow,ARow)):  ## parallel M 
-        for j in range(min(Col,BCol,ACol)):  ## Parallel N 
-            
-                
-                ## Partition of a partition ( is it working? )
-                CPC = PartitionMatrix(CPT.value()[i][j],[M,N])
-                BPC = PartitionMatrix(BPT.value()[i][j],[M,N])
-                APC = PartitionMatrix(APT.value()[i][j],[M,K])
-                decl, vs = Addition_t(APC,BPC,CPC)
-                gr = Graph("C = alpha*A*B", vs,decl,C)
-                ## bookkeeping to remember the partition shape and format
-                gr.CDP = CPC
-                gr.ADP = APC
-                gr.BDP = BPC
-                V.append(gr)
-
-    ###
-    ## create a graph
-    ###
-    pdb.set_trace()
-    L = Loop(
-        "T",   ## You got to have a name
-        V,
-        [list(range(Row)),list(range(Col)), list(range(K1))],
-        [APT, BPT, CPT] ## book keeping for this parition 
-    )
-
-    
-    return  L
 
 ###
 ##  Partition(A)*Partition(B) -> Partition(C) we return declarations
@@ -198,20 +95,22 @@ def Product_2(A : Matrix, B: Matrix, C: Matrix,
     BPT = PartitionMatrix(B,[K,N])
     APT = PartitionMatrix(A,[M,K])
 
-    
-    #AD = Data.data_factory_flat(Data.data_factory('ADP', APT)) 
-    #for i in AD: i.inputs = True
-    #BD = Data.data_factory_flat(Data.data_factory('BDP', BPT))
-    #for i in BD: i.inputs = True
-    #CD = Data.data_factory_flat(Data.data_factory('CDP', CPT)) 
-    #for i in CD: i.outputs = True
+    ## we create Data type for each elements and this is the leaves of
+    ## the basic computation
+    AD = Data.data_factory_2d('ADP', APT); ADF = Data.data_factory_flat(AD) 
+    for i in ADF: i.inputs = True
+    BD = Data.data_factory_2d('BDP', BPT); BDF = Data.data_factory_flat(BD)
+    for i in BDF: i.inputs = True
+    CD = Data.data_factory_2d('CDP', CPT) 
+    CDF = Data.data_factory_flat(CD)
+    for i in CDF: i.outputs = True
 
     
     Row = len(CPT.l)       # of the output partition
     Col = len(CPT.l[0])    # of the output partition
     K1   = len(BPT.l)      # K partition
 
-
+    decls = [      ADF ,        BDF,          CDF ] 
 
     M,N,K = CT
     
@@ -247,8 +146,16 @@ def Product_2(A : Matrix, B: Matrix, C: Matrix,
         [APT, BPT, CPT] ## book keeping for this parition 
     )
 
+
+
     
-    return  L
+    G =  Graph("Tiled C = alpha*A*B", [L],decls,C)
+    G.tiled = True
+    G.CDP = CPT
+    G.ADP = APT
+    G.BDP = BPT
+  
+    return G 
 
 if __name__ == "__main__":
 
@@ -324,12 +231,25 @@ if __name__ == "__main__":
     print(G2)
 
     pdb.set_trace()
+    H = tiling.MemoryHierarchTensors("A_L3", APT)
+    
+    Ts = H.read_tiling_by_parts(0,tiling.L3,1)
+    for t in Ts: print(t)
+    pdb.set_trace()
+    H = tiling.MemoryHierarchTensors("A_L3", BPT)
+    Ts = H.read_tiling_by_parts(0,tiling.L3,2)
+    for t in Ts: print(t)
+    
+
+    
+    pdb.set_trace()
     G1.compute()
     print(G1.temp_result.matrix[0])
 
     G2.compute()
-    print(G1.temp_result.matrix[0])
+    print(G2.temp_result.matrix[0])
 
+    
 
 
     ## Now we build an operation LOOP that is a composition of graphs
@@ -344,5 +264,6 @@ if __name__ == "__main__":
 #        print(v)
 
     L.compute()
-    for i in L.temp_result:
-        print(i[0])
+    print(L.temp_result.matrix[0])
+
+
