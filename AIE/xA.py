@@ -157,6 +157,56 @@ def Product_2(A : Matrix, B: Matrix, C: Matrix,
   
     return G 
 
+
+def croshet(
+        G : Graph,
+        L3: tiling.Level,
+        L2: tiling.Level,
+        L1: tiling.Level
+        
+):
+
+    if not G.tiled: return None
+
+    HA = tiling.MemoryHierarchTensors("A_L3", G.ADP)
+    HB = tiling.MemoryHierarchTensors("B_L3", G.BDP)
+    HC = tiling.MemoryHierarchTensors("C_L3", G.CDP)
+
+    print(L3)
+    print(G.ADP)
+    TAs = HA.read_tiling_by_parts(0,L3,1)
+    for t in TAs: print(t)
+    print(G.BDP)
+    TBs = HB.read_tiling_by_parts(0,L3,2)
+    for t in TBs: print(t)
+    print(G.CDP)
+    TCs = HC.read_tiling_by_parts(0,L3,2)
+    for t in TCs: print(t)
+
+
+    HA = tiling.MemoryHierarchTensors("A_L2", G.V[0].parts[0])
+    HB = tiling.MemoryHierarchTensors("B_L2", G.V[0].parts[1])
+    HC = tiling.MemoryHierarchTensors("C_L2", G.V[0].parts[2])
+
+    
+    print(L2)
+    print(G.V[0].parts[0])
+    TAs = HA.read_tiling_by_parts(0,L2,1)
+    for t in TAs: print(t)
+    print(G.V[0].parts[1])
+    TBs = HB.read_tiling_by_parts(0,L2,1)
+    for t in TBs: print(t)
+    print(G.V[0].parts[2])
+    TCs = HC.read_tiling_by_parts(0,L2,1)
+    for t in TCs: print(t)
+
+    return G
+    
+
+
+
+
+
 if __name__ == "__main__":
 
 
@@ -173,7 +223,7 @@ if __name__ == "__main__":
     parser.add_argument("-k", "--K",  help="Factor of A MxK @ L3", type=int, default=2048)
     parser.add_argument("-mt","--MT", help="Factor of A MTxKT @ L2", type=int, default=8)
     parser.add_argument("-nt","--NT", help="Factor of B KTxNT @ L2", type=int, default=64*4)
-    parser.add_argument("-kt","--KT", help="Factor of A MTxKT @ L2", type=int, default=256*4)
+    parser.add_argument("-kt","--KT", help="Factor of A MTxKT @ L2", type=int, default=512*4)
     parser.add_argument("-mc","--MC", help="Factor of A MCxKC @ L1", type=int, default=8)
     parser.add_argument("-nc","--NC", help="Factor of B KCxNC @ L1", type=int, default=64)
     parser.add_argument("-kc","--KC", help="Factor of A MCxKC @ L1", type=int, default=512)
@@ -230,19 +280,22 @@ if __name__ == "__main__":
     G2.BDP = BPT
     print(G2)
 
-    pdb.set_trace()
+    #    pdb.set_trace()
     H = tiling.MemoryHierarchTensors("A_L3", APT)
-    
+
+    print("Level Memory", tiling.L3)
+    print(APT)
     Ts = H.read_tiling_by_parts(0,tiling.L3,1)
     for t in Ts: print(t)
-    pdb.set_trace()
+    #pdb.set_trace()
+    print(BPT)
     H = tiling.MemoryHierarchTensors("A_L3", BPT)
     Ts = H.read_tiling_by_parts(0,tiling.L3,2)
     for t in Ts: print(t)
     
 
     
-    pdb.set_trace()
+    #pdb.set_trace()
     G1.compute()
     print(G1.temp_result.matrix[0])
 
@@ -260,10 +313,15 @@ if __name__ == "__main__":
     D1 = Scalar(0)*C
     L  = Product_2(A, B, D1, [args.MT, args.NT, args.KT],[args.MC, args.NC, args.KC])
     print(L)    
-#    for v in L.left:
-#        print(v)
+    #    for v in L.left:
+    #        print(v)
+
+    croshet(L,tiling.L3,tiling.L2, tiling.L1)
+
 
     L.compute()
+
+    
     print(L.temp_result.matrix[0])
 
 

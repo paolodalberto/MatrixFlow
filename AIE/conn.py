@@ -106,10 +106,6 @@ Tiling    = namedtuple(
     ]
 )
 
-        
-        
-
-
 
 
 class Level:
@@ -128,7 +124,11 @@ class Level:
         self.mem = [ size_per_part for i in range(parts) ]
         self.inp = [ [{} for i in range(input_channels)  ] for i in range(parts) ]   
         self.out = [ [{} for i in range(output_channels) ] for i in range(parts) ]   
-        
+
+    def __str__(self):
+        return self.name+ (" L: %d " % self.level) +str(self.mem)
+    
+    
     def parts_number(self) : return len(self.mem)
 
     def strides(self, shapes:list )-> list:
@@ -227,16 +227,22 @@ class MemoryHierarchTensors:
         tiling_dimension = matshape
         offset           = level.offsets(dim,  Shape, channels)
         tile_traversal   = level.traversal(buffer_dimension,matshape)
+
+        R = [] 
+        for i in range(len(level.mem)*channels):
+            if i%channels==0:
+                R.append("##### %d" % (i//channels))
+            R.append(     
+                Tiling(
+                    buffer_dimension,
+                    tiling_dimension,
+                    offset[i],
+                    tile_traversal,
+                    -1,
+                    repetition)
+            )
         
-        R = [
-            Tiling(
-                buffer_dimension,
-                tiling_dimension,
-                offset[i],
-                tile_traversal,
-                -1,
-                repetition)
-            for i in range(len(level.mem)*channels)
-        ]  
 
         return R
+
+
