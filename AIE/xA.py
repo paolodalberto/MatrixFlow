@@ -82,7 +82,8 @@ def Product_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix) -> l
 
 def Product_2(A : Matrix, B: Matrix, C: Matrix,
               MT : list,
-              CT : list
+              CT : list,
+              
     ) -> list:
 
     M,N,K = MT
@@ -162,44 +163,87 @@ def croshet(
         G : Graph,
         L3: tiling.Level,
         L2: tiling.Level,
-        L1: tiling.Level
-        
+        L1: tiling.Level,
+        ROWS : int = 4 ,
+        COLS : int = 4  
 ):
 
+    
     if not G.tiled: return None
+    
 
+    ## L3 Tiling read tiling 
     HA = tiling.MemoryHierarchTensors("A_L3", G.ADP)
     HB = tiling.MemoryHierarchTensors("B_L3", G.BDP)
     HC = tiling.MemoryHierarchTensors("C_L3", G.CDP)
 
     print(L3)
     print(G.ADP)
-    TAs = HA.read_tiling_by_parts(0,L3,1)
+    L3A = L3.copy("A")
+    L3B = L3.copy("B")
+    L3C = L3.copy("C")
+    ## tiling is physical and thus the dimensions are in reverse order
+    TAs = HA.read_tiling_by_parts(0,L3A,1)
     for t in TAs: print(t)
     print(G.BDP)
-    TBs = HB.read_tiling_by_parts(0,L3,2)
+    
+    TBs = HB.read_tiling_by_parts(0,L3B,2)
     for t in TBs: print(t)
     print(G.CDP)
-    TCs = HC.read_tiling_by_parts(0,L3,2)
+    TCs = HC.read_tiling_by_parts(0,L3C,2)
     for t in TCs: print(t)
 
 
-    HA = tiling.MemoryHierarchTensors("A_L2", G.V[0].parts[0])
-    HB = tiling.MemoryHierarchTensors("B_L2", G.V[0].parts[1])
-    HC = tiling.MemoryHierarchTensors("C_L2", G.V[0].parts[2])
+    HAT = tiling.MemoryHierarchTensors("A_L2", G.V[0].left[0].ADP)
+    HBT = tiling.MemoryHierarchTensors("B_L2", G.V[0].left[0].BDP)
+    HCT = tiling.MemoryHierarchTensors("C_L2", G.V[0].left[0].CDP)
 
-    
+
+    L2A = L2.copy("A")
+    L2B = L2.copy("B")
+    L2C = L2.copy("C")
+
+    ## L2 Tiling read tiling 
     print(L2)
     print(G.V[0].parts[0])
-    TAs = HA.read_tiling_by_parts(0,L2,1)
+    TAs = HAT.read_tiling_by_parts(0,L2A,1)
     for t in TAs: print(t)
     print(G.V[0].parts[1])
-    TBs = HB.read_tiling_by_parts(0,L2,1)
+    TBs = HBT.read_tiling_by_parts(0,L2B,1)
     for t in TBs: print(t)
     print(G.V[0].parts[2])
-    TCs = HC.read_tiling_by_parts(0,L2,1)
+    TCs = HCT.read_tiling_by_parts(0,L2C,1)
     for t in TCs: print(t)
 
+    # cascade reduction or local reduction?
+    CL2Partition = G.V[0].left[0].ADP
+    tc = [len(CL2Partition.l), len(CL2Partition.l[0])]
+    AL2Partition = G.V[0].left[0].CDP
+    ta = [len(AL2Partition.l), len(AL2Partition.l[0])]
+    we = [ROWS,COLS]
+
+    pdb.set_trace()
+    if tc!=we and ta[1] > 1:
+        G.Factotum['reduction'] = 'cascade'
+    
+    
+    
+    ## L1 Tiling for write in L1
+    L1A = L1.copy("A")
+    L1B = L1.copy("B")
+    L1C = L1.copy("C")
+
+    PA = PartitionMatrix(G.V[0].parts[0][0][0], G.V[0].parts[0].logicalshape)
+    HAC = tiling.MemoryHierarchTensors("A_L1", PA)
+    PB = PartitionMatrix(G.V[0].parts[1][0][0], G.V[0].parts[1].logicalshape)
+    HBC = tiling.MemoryHierarchTensors("B_L1", PB)
+    PC = PartitionMatrix(G.V[0].parts[2][0][0], G.V[0].parts[2].logicalshape)
+    HCC = tiling.MemoryHierarchTensors("C_L1", PC)
+    
+
+    
+    
+    
     return G
     
 
@@ -311,7 +355,11 @@ if __name__ == "__main__":
     ## factorization of the matrix factorization
     
     D1 = Scalar(0)*C
-    L  = Product_2(A, B, D1, [args.MT, args.NT, args.KT],[args.MC, args.NC, args.KC])
+    L  = Product_2(
+        A, B, D1,
+        [args.MT, args.NT, args.KT],  ## L2 tiling 
+        [args.MC, args.NC, args.KC]   ## L1 tiling 
+    )
     print(L)    
     #    for v in L.left:
     #        print(v)

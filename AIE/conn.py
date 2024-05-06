@@ -127,7 +127,11 @@ class Level:
 
     def __str__(self):
         return self.name+ (" L: %d " % self.level) +str(self.mem)
-    
+
+    def copy(self, extra:str='x'):
+        R = Level(self.name,self.level)
+        R.mem = [ i for i in self.mem]
+        return R
     
     def parts_number(self) : return len(self.mem)
 
@@ -175,7 +179,7 @@ class Level:
                
 L3 = Level("DDR", 3)   
 L2 = Level("MemTile", 2, 512*1024, 4) # 4 MemTiles 2MB   
-L1 = Level("DDR", 1, 64*1024,1)   
+L1 = Level("DDR", 1, 16*1024,2)   
     
 
 
