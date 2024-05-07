@@ -18,6 +18,7 @@ import gc
 import pdb
 import AIE.conn as tiling  
 
+
 #####
 ## We start a conversation how to represent the computation of matrix
 ## multiplicationfor for a sistolic architecture 
@@ -32,17 +33,17 @@ import AIE.conn as tiling
 ###
 ##  Partition(A)*Partition(B) -> Partition(C) we return declarations
 ##  and assignements for the classic matrix multiplication. We give
-##  partitions as inputs 
-def Product_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix) -> list:
+##  partitions as inputs. Of course the partitions describe the
+##  computation fully. is it funny enough ?
+def Product_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix, reduction: str = None ) -> list:
 
     ## we create Data type for each elements and this is the leaves of
     ## the basic computation
-    AD = Data.data_factory_2d('ADP', A); ADT = Data.data_factory_flat(AD) 
+    AD = Data.data_factory_2d('ADP', A);    ADT = Data.data_factory_flat(AD) 
     for i in ADT: i.inputs = True
-    BD = Data.data_factory_2d('BDP', B); BDT = Data.data_factory_flat(BD)
+    BD = Data.data_factory_2d('BDP', B);    BDT = Data.data_factory_flat(BD)
     for i in BDT: i.inputs = True
-    CD = Data.data_factory_2d('CDP', C) 
-    CDT = Data.data_factory_flat(CD)
+    CD  = Data.data_factory_2d('CDP', C) ;  CDT = Data.data_factory_flat(CD)
     for i in CDT: i.outputs = True
 
     Row = len(C.l)    # of the output partition
@@ -61,12 +62,15 @@ def Product_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix) -> l
     ###
     V = []
     for i in range(Row):  ## parallem in M
-        for j in range(Col):  ## parallel in N 
+        for j in range(Col):  ## parallel in N
+            
             T = Operation("p0", "*", AD[i][0] ,BD[0][j])
             for k in range(1,K):  ## reduction in K
                 T1 = Operation("p%d"%k, "*", AD[i][k],BD[k][j])
                 T = Operation('c','+',T,T1)
-            R = Operation("s0", '<<',
+
+            
+            R = Operation("s0", '<<' if reduction is None else '+=',
                           CD[i][j],
                           T
             )
@@ -79,14 +83,16 @@ def Product_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix) -> l
     
     return decls, V
 
-
-def Product_2(A : Matrix, B: Matrix, C: Matrix,
-              MT : list,
-              CT : list,
+## We create a partitions of the matrices and then create a product of
+## the partitions. This is a two level L3-> L2 -> L1 Tiling
+def Product_2(
+        A : Matrix, B: Matrix, C: Matrix,
+        MT : list,  ## L3-L2  tiling
+        CT : list,  ## L2-L1  tiling 
               
     ) -> list:
 
-    M,N,K = MT
+    M,N,K = MT  ## L2/Memtile tile sizes
 
 
     ## this describes the decomposition of the L3 matrix into L2 sub
@@ -96,6 +102,13 @@ def Product_2(A : Matrix, B: Matrix, C: Matrix,
     BPT = PartitionMatrix(B,[K,N])
     APT = PartitionMatrix(A,[M,K])
 
+    decl, vs = Product_t(APT,BPT,CPT)
+    grt = Graph("Mem Tile C = alpha*A*B", vs,decl,C)
+    grt.CDP = CPT
+    grt.ADP = APT
+    grt.BDP = BPT
+
+    
     ## we create Data type for each elements and this is the leaves of
     ## the basic computation
     AD = Data.data_factory_2d('ADP', APT); ADF = Data.data_factory_flat(AD) 
@@ -113,7 +126,7 @@ def Product_2(A : Matrix, B: Matrix, C: Matrix,
 
     decls = [      ADF ,        BDF,          CDF ] 
 
-    M,N,K = CT
+    M,N,K = CT  ## L1/Core memory tile 
     
     ###
     ## Computation as a sequence of assignment statements
@@ -126,18 +139,38 @@ def Product_2(A : Matrix, B: Matrix, C: Matrix,
                 
                 ## Partition of a partition ( is it working? )
                 CPC = PartitionMatrix(CPT.value()[i][j],[M,N])
-                BPC = PartitionMatrix(BPT.value()[k][j],[K,N])
+                
                 APC = PartitionMatrix(APT.value()[i][k],[M,K])
-                decl, vs = Product_t(APC,BPC,CPC)
+                BPC = PartitionMatrix(BPT.value()[k][j],[K,N])
+
+                ## each memtile computation the original
+                ##
+                ## CPT[i][j] =  APT[i][k]*BPT[k][j]
+                ##
+                ## it is split into core partitions and thus we
+                ## describe the computation L2-L1-L2. Each operation
+                ## in the list is a graph. Declaration and instruction
+                ## list
+                ##
+                #print(k)
+                #pdb.set_trace()
+                decl, vs = Product_t(APC,BPC,CPC, None if k<1 else '+')
                 gr = Graph("C = alpha*A*B", vs,decl,C)
-                ## bookkeeping to remember the partition shape and format
+
+
+                ## bookkeeping to remember the partition shape and
+                ## format I should introduce these into the init
+                ## interface
                 gr.CDP = CPC
                 gr.ADP = APC
                 gr.BDP = BPC
                 V.append(gr)
 
     ###
-    ## create a graph
+    ## create a graph Loop so we can summarize the computation by a
+    ## single loop instead of a sequence of instructions (still is a
+    ## sequence of instructions) but when we print it out or we will
+    ## generate code it will look pretty
     ###
     pdb.set_trace()
     L = Loop(
@@ -147,16 +180,18 @@ def Product_2(A : Matrix, B: Matrix, C: Matrix,
         [APT, BPT, CPT] ## book keeping for this parition 
     )
 
-
-
-    
+    ## And we make the loop a Graph .... 
     G =  Graph("Tiled C = alpha*A*B", [L],decls,C)
     G.tiled = True
     G.CDP = CPT
     G.ADP = APT
     G.BDP = BPT
-  
-    return G 
+    G.Factotum['Tiled'] = grt
+    
+    
+    return G
+
+
 
 
 def croshet(
@@ -172,31 +207,48 @@ def croshet(
     if not G.tiled: return None
     
 
-    ## L3 Tiling read tiling 
+
+    
+    ## L3 Tiling read tiling
+    ## L2 tile is written into L2 from L3
+    L3A = L3.copy("A")
+    L3B = L3.copy("B")
+    L3C = L3.copy("C")
+
     HA = tiling.MemoryHierarchTensors("A_L3", G.ADP)
     HB = tiling.MemoryHierarchTensors("B_L3", G.BDP)
     HC = tiling.MemoryHierarchTensors("C_L3", G.CDP)
 
-    print(L3)
-    print(G.ADP)
-    L3A = L3.copy("A")
-    L3B = L3.copy("B")
-    L3C = L3.copy("C")
+    print(L3A)
+    print("A", G.ADP)
+    pdb.set_trace()
     ## tiling is physical and thus the dimensions are in reverse order
-    TAs = HA.read_tiling_by_parts(0,L3A,1)
+    #pdb.set_trace()
+
+
+    ###
+    ## We split matrices by columns and by 'memory' columns so we tile
+    ## physically by the second physical dimension on a column major
+    ## matrix, yeah it is not really straightforward
+    ## 
+    TAs = HA.read_tiling_by_parts(1,L3A,1);
     for t in TAs: print(t)
-    print(G.BDP)
-    
-    TBs = HB.read_tiling_by_parts(0,L3B,2)
+
+    print("B", G.BDP)
+    TBs = HB.read_tiling_by_parts(1,L3B,2)
     for t in TBs: print(t)
-    print(G.CDP)
-    TCs = HC.read_tiling_by_parts(0,L3C,2)
+
+    print("C", G.CDP)
+    TCs = HC.read_tiling_by_parts(1,L3C,2)
     for t in TCs: print(t)
 
 
-    HAT = tiling.MemoryHierarchTensors("A_L2", G.V[0].left[0].ADP)
-    HBT = tiling.MemoryHierarchTensors("B_L2", G.V[0].left[0].BDP)
-    HCT = tiling.MemoryHierarchTensors("C_L2", G.V[0].left[0].CDP)
+    CL2Partition = G.V[0].left[0].CDP
+    AL2Partition = G.V[0].left[0].ADP
+    BL2Partition = G.V[0].left[0].BDP
+    HAT = tiling.MemoryHierarchTensors("A_L2",AL2Partition)
+    HBT = tiling.MemoryHierarchTensors("B_L2",BL2Partition)
+    HCT = tiling.MemoryHierarchTensors("C_L2",CL2Partition)
 
 
     L2A = L2.copy("A")
@@ -205,22 +257,26 @@ def croshet(
 
     ## L2 Tiling read tiling 
     print(L2)
-    print(G.V[0].parts[0])
-    TAs = HAT.read_tiling_by_parts(0,L2A,1)
+    print("A", AL2Partition)
+    pdb.set_trace()
+    TAs = HAT.read_tiling_by_parts(0,L2A,1,colmajor=False,broadcast=True)
     for t in TAs: print(t)
-    print(G.V[0].parts[1])
-    TBs = HBT.read_tiling_by_parts(0,L2B,1)
+    pdb.set_trace()
+    print("B", BL2Partition)
+    TBs = HBT.read_tiling_by_parts(1,L2B,1)
     for t in TBs: print(t)
-    print(G.V[0].parts[2])
-    TCs = HCT.read_tiling_by_parts(0,L2C,1)
+    pdb.set_trace()
+    print("C", CL2Partition)
+    TCs = HCT.read_tiling_by_parts(1,L2C,1)
     for t in TCs: print(t)
-
+    pdb.set_trace()
     # cascade reduction or local reduction?
-    CL2Partition = G.V[0].left[0].ADP
+
+
     tc = [len(CL2Partition.l), len(CL2Partition.l[0])]
-    AL2Partition = G.V[0].left[0].CDP
     ta = [len(AL2Partition.l), len(AL2Partition.l[0])]
     we = [ROWS,COLS]
+
 
     pdb.set_trace()
     if tc!=we and ta[1] > 1:
@@ -233,15 +289,15 @@ def croshet(
     L1B = L1.copy("B")
     L1C = L1.copy("C")
 
-    PA = PartitionMatrix(G.V[0].parts[0][0][0], G.V[0].parts[0].logicalshape)
+    PA = PartitionMatrix(AL2Partition.value()[0][0], AL2Partition.logicalshape)
     HAC = tiling.MemoryHierarchTensors("A_L1", PA)
-    PB = PartitionMatrix(G.V[0].parts[1][0][0], G.V[0].parts[1].logicalshape)
+    PB = PartitionMatrix(BL2Partition.value()[0][0], BL2Partition.logicalshape)
     HBC = tiling.MemoryHierarchTensors("B_L1", PB)
-    PC = PartitionMatrix(G.V[0].parts[2][0][0], G.V[0].parts[2].logicalshape)
+    PC = PartitionMatrix(CL2Partition.value()[0][0], CL2Partition.logicalshape)
     HCC = tiling.MemoryHierarchTensors("C_L1", PC)
     
 
-    
+    pdb.set_trace()
     
     
     return G
@@ -266,12 +322,12 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--N",  help="Factor of B KxN @ L3 ", type=int, default=2048)
     parser.add_argument("-k", "--K",  help="Factor of A MxK @ L3", type=int, default=2048)
     parser.add_argument("-mt","--MT", help="Factor of A MTxKT @ L2", type=int, default=8)
-    parser.add_argument("-nt","--NT", help="Factor of B KTxNT @ L2", type=int, default=64*4)
-    parser.add_argument("-kt","--KT", help="Factor of A MTxKT @ L2", type=int, default=512*4)
+    parser.add_argument("-nt","--NT", help="Factor of B KTxNT @ L2", type=int, default=512)
+    parser.add_argument("-kt","--KT", help="Factor of A MTxKT @ L2", type=int, default=512)
     parser.add_argument("-mc","--MC", help="Factor of A MCxKC @ L1", type=int, default=8)
     parser.add_argument("-nc","--NC", help="Factor of B KCxNC @ L1", type=int, default=64)
-    parser.add_argument("-kc","--KC", help="Factor of A MCxKC @ L1", type=int, default=512)
-    parser.add_argument("-e", "--error", help="pretty display error", type =str, default =None)
+    parser.add_argument("-kc","--KC", help="Factor of A MCxKC @ L1", type=int, default=128)
+    parser.add_argument("-e", "--error", help="pretty cdisplay error", type =str, default =None)
     args = parser.parse_args()
 
     

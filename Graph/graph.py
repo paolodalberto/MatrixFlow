@@ -44,6 +44,7 @@ class Operation:
         self.tempname = ""
         self.graph = None
         self.M = None
+        self.Factotum = {}
         try:
             if self.left:
                 if type(self.left) is list:
@@ -661,7 +662,7 @@ class Loop(Operation):
         #pdb.set_trace()
         L = "" if self.left is None else str(self.left[0])
         R = "" if self.right is None else str(self.right)
-        tmp = self.name+"["+str(self.ranges) +"] { \n"+"(" +(str(len( self.left)))+L+")"
+        tmp = self.name+"[\n"+str(self.ranges) +"\n] { \n"+"(" +(str(len( self.left)))+"\n"+L+")"
         
         return tmp
     def compute(self):
@@ -1295,8 +1296,15 @@ class Graph(Function):
     def next(self, N): return N.next()
     def prev(self, N): return N.prev()
     def __str__(self):
+
+        red = ""
+        if self.tiled and 'Tiled' in self.Factotum:
+            red +="This is the L3-L2 computation \n"  
+            red +=str(self.Factotum['Tiled']) +"\n"
+            red +="Then L2-L1 computation"+"\n"  
         
-        red = " " + str(self.proportions()) +"\n" 
+            
+        red += " " + str(self.proportions()) +"\n" 
         for n in self.V:
             red += str(n)+"\n"
         return red

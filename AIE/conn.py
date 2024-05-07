@@ -146,16 +146,20 @@ class Level:
         return R
     def offsets(self, dim, shapes:list, full: int =2 )-> list:
         S = self.strides(shapes)
+        OFF = [0 for i in shapes]
         R = []
         B=1
         for b in range(dim):
             B*=S[b]
+        
         D = shapes[dim]
-
+        
         Os = full*(len(self.mem))
         Qs = math.ceil(D/Os)
         for i in range(Os):
-            R.append(B*i*Qs)
+            OFF = [0 for i in shapes]
+            OFF[dim] = B*i*Qs
+            R.append(OFF)
         
         return R
     ## 
@@ -189,14 +193,22 @@ class MemoryHierarchTensors:
             name : str,
             MP : PartitionMatrix, ## this is a logical partition 
     ):
+        ## this is a partition of a matrix the shapes at this level
+        ## are physical in column major layout (think rocblas or
+        ## fortran) thus we may have to transpose something ... (A)
+        
         self.name = name
         self.MP = MP
-        
+
+        ## reverse is because of the physical layout
         matshape = [ i for i in reversed(MP.logicalshape)] 
         dimensions = len(matshape)
         A = MP.original
         Shape = [ A.max[i] -A.min[i] for i in reversed(range(dimensions))]
-        
+
+        ## that given the original matrix we move a 'partition' and we
+        ## define how we read the matrix we will need also how to
+        ## write this same partition ... 
         buffer_dimension = Shape
         repetition       = len(MP.l)*len(MP.l[0]) 
         tiling_dimension = matshape
@@ -211,25 +223,55 @@ class MemoryHierarchTensors:
             self,
             dim : int,           # dimension we split into parts
             level : Level,       # Level memory 
-            channels : int = 2   # all channnels 
+            channels : int = 2,   # all channnels
+            colmajor : bool = True,
+            alignment : int = 1,
+            broadcast : bool = False
     ) -> Tiling:
+
+
+        ## We move a partition "read" from a memory level
         
-        matshape =  [ i for i in reversed(self.MP.logicalshape)]
+
+        if not colmajor:
+            ## row major the last dimension is the first inner
+            ## dimension we must reverse the order
+            matshape =  [ i for i in reversed(self.MP.logicalshape)]
+        else:
+            ## column major the inner dimension is the first
+            matshape =  [ i for i in self.MP.logicalshape]
+
         dimensions = len(matshape)
         parts = level.parts_number()
         A = self.MP.original
-        Shape = [ A.max[i] -A.min[i] for i in reversed(range(dimensions))]
 
-        matshape[dim] //= parts
+        if not colmajor:
+            Shape = [ A.max[i] -A.min[i] for i in reversed(range(dimensions))]
+        else:
+            Shape = [ A.max[i] -A.min[i] for i in range(dimensions)]
+
+        if level.level<3:
+            import pdb;pdb.set_trace()
+            Shape[dim] //=parts 
+        
+        #import pdb; pdb.set_trace()
+        if not broadcast :
+            
+            matshape[dim] //= parts
         
         
         buffer_dimension = [i for i in Shape]
-        buffer_dimension[dim] //= parts
+        #buffer_dimension[dim] //= parts
 
                
         repetition       = len(self.MP.l)*len(self.MP.l[0]) 
         tiling_dimension = matshape
+        
         offset           = level.offsets(dim,  Shape, channels)
+        if broadcast :
+            for f in offset:
+                for i in range(len(f)):
+                    f[i] = 0
         tile_traversal   = level.traversal(buffer_dimension,matshape)
 
         R = [] 
