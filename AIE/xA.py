@@ -193,6 +193,40 @@ def Product_2(
 
 
 
+"""
+This is the L3-L2 computation 
+ ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
+CDP[0,0] << (ADP[0,0]) * (BDP[0,0])
+CDP[0,1] << (ADP[0,0]) * (BDP[0,1])
+CDP[0,2] << (ADP[0,0]) * (BDP[0,2])
+CDP[0,3] << (ADP[0,0]) * (BDP[0,3])
+CDP[0,4] << (ADP[0,0]) * (BDP[0,4])
+CDP[0,5] << (ADP[0,0]) * (BDP[0,5])
+CDP[0,6] << (ADP[0,0]) * (BDP[0,6])
+CDP[0,7] << (ADP[0,0]) * (BDP[0,7])
+
+Then L2-L1 computation
+ ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
+T[
+[[0], [0, 1, 2, 3, 4, 5, 6, 7], [0]]
+] { 
+(8
+ ['A: Partitions  [1,16] of size [8,128]', 'B: Partitions  [16,4] of size [128,64]', 'C: Partitions  [1,4] of size [8,64]']
+CDP[0,0] << (ADP[0,0]) * (BDP[0,0]) + (ADP[0,1]) * (BDP[1,0]) + (ADP[0,2]) * (BDP[2,0]) + (ADP[0,3]) * (BDP[3,0]) + (ADP[0,4]) * (BDP[4,0]) + (ADP[0,5]) * (BDP[5,0]) + (ADP[0,6]) * (BDP[6,0])\ 
+	 + (ADP[0,7]) * (BDP[7,0]) + (ADP[0,8]) * (BDP[8,0]) + (ADP[0,9]) * (BDP[9,0]) + (ADP[0,10]) * (BDP[10,0]) + (ADP[0,11]) * (BDP[11,0])\ 
+	 + (ADP[0,12]) * (BDP[12,0]) + (ADP[0,13]) * (BDP[13,0]) + (ADP[0,14]) * (BDP[14,0]) + (ADP[0,15]) * (BDP[15,0])
+CDP[0,1] << (ADP[0,0]) * (BDP[0,1]) + (ADP[0,1]) * (BDP[1,1]) + (ADP[0,2]) * (BDP[2,1]) + (ADP[0,3]) * (BDP[3,1]) + (ADP[0,4]) * (BDP[4,1]) + (ADP[0,5]) * (BDP[5,1]) + (ADP[0,6]) * (BDP[6,1])\ 
+	 + (ADP[0,7]) * (BDP[7,1]) + (ADP[0,8]) * (BDP[8,1]) + (ADP[0,9]) * (BDP[9,1]) + (ADP[0,10]) * (BDP[10,1]) + (ADP[0,11]) * (BDP[11,1])\ 
+	 + (ADP[0,12]) * (BDP[12,1]) + (ADP[0,13]) * (BDP[13,1]) + (ADP[0,14]) * (BDP[14,1]) + (ADP[0,15]) * (BDP[15,1])
+CDP[0,2] << (ADP[0,0]) * (BDP[0,2]) + (ADP[0,1]) * (BDP[1,2]) + (ADP[0,2]) * (BDP[2,2]) + (ADP[0,3]) * (BDP[3,2]) + (ADP[0,4]) * (BDP[4,2]) + (ADP[0,5]) * (BDP[5,2]) + (ADP[0,6]) * (BDP[6,2])\ 
+	 + (ADP[0,7]) * (BDP[7,2]) + (ADP[0,8]) * (BDP[8,2]) + (ADP[0,9]) * (BDP[9,2]) + (ADP[0,10]) * (BDP[10,2]) + (ADP[0,11]) * (BDP[11,2])\ 
+	 + (ADP[0,12]) * (BDP[12,2]) + (ADP[0,13]) * (BDP[13,2]) + (ADP[0,14]) * (BDP[14,2]) + (ADP[0,15]) * (BDP[15,2])
+CDP[0,3] << (ADP[0,0]) * (BDP[0,3]) + (ADP[0,1]) * (BDP[1,3]) + (ADP[0,2]) * (BDP[2,3]) + (ADP[0,3]) * (BDP[3,3]) + (ADP[0,4]) * (BDP[4,3]) + (ADP[0,5]) * (BDP[5,3]) + (ADP[0,6]) * (BDP[6,3])\ 
+	 + (ADP[0,7]) * (BDP[7,3]) + (ADP[0,8]) * (BDP[8,3]) + (ADP[0,9]) * (BDP[9,3]) + (ADP[0,10]) * (BDP[10,3]) + (ADP[0,11]) * (BDP[11,3])\ 
+	 + (ADP[0,12]) * (BDP[12,3]) + (ADP[0,13]) * (BDP[13,3]) + (ADP[0,14]) * (BDP[14,3]) + (ADP[0,15]) * (BDP[15,3])
+)
+"""
+
 
 def croshet(
         G : Graph,
@@ -206,6 +240,20 @@ def croshet(
     
     if not G.tiled: return None
     
+
+    ## this should be the L3 - L2 computation for example.
+    """
+    This is the L3-L2 computation 
+    ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
+    CDP[0,0] << (ADP[0,0]) * (BDP[0,0])
+    CDP[0,1] << (ADP[0,0]) * (BDP[0,1])
+    CDP[0,2] << (ADP[0,0]) * (BDP[0,2])
+    CDP[0,3] << (ADP[0,0]) * (BDP[0,3])
+    CDP[0,4] << (ADP[0,0]) * (BDP[0,4])
+    CDP[0,5] << (ADP[0,0]) * (BDP[0,5])
+    CDP[0,6] << (ADP[0,0]) * (BDP[0,6])
+    CDP[0,7] << (ADP[0,0]) * (BDP[0,7])
+    """
 
 
     
@@ -226,11 +274,17 @@ def croshet(
     #pdb.set_trace()
 
 
+
+    
     ###
     ## We split matrices by columns and by 'memory' columns so we tile
     ## physically by the second physical dimension on a column major
     ## matrix, yeah it is not really straightforward
-    ## 
+    ##
+    ## The trick here is to understand that the tensor in L3 and L2
+    ## are distributed. Think in your head that the blocks these are
+    ## composed are 
+    ### 
     TAs = HA.read_tiling_by_parts(1,L3A,1);
     for t in TAs: print(t)
 
@@ -239,10 +293,95 @@ def croshet(
     for t in TBs: print(t)
 
     print("C", G.CDP)
-    TCs = HC.read_tiling_by_parts(1,L3C,2)
+    TCs = HC.read_tiling_by_parts(1,L3C,1)
     for t in TCs: print(t)
 
 
+    """
+    DDR L: 3 [549755813888, 549755813888, 549755813888, 549755813888]
+    
+    
+    A Partitions  [1,1] of size [8,2048]
+    ##### 0
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 0], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
+    ##### 1
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 512], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
+    ##### 2
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 1024], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
+    ##### 3
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 1536], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
+    
+
+    B Partitions  [1,8] of size [2048,256]
+    ##### 0
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 0], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 32], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    ##### 1
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 64], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 96], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    ##### 2
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 128], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 160], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    ##### 3
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 192], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 224], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    
+
+    C Partitions  [1,8] of size [8,256]
+    ##### 0
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 0], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 32], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    ##### 1
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 64], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 96], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    ##### 2
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 128], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 160], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    ##### 3
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 192], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 224], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
+MemTile L: 2 [524288, 524288, 524288, 524288]
+    """
+
+
+
+    
+    """    
+    Then L2-L1 computation
+    ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
+    T[
+    [[0], [0, 1, 2, 3, 4, 5, 6, 7], [0]]
+    ] { 
+    (8
+    ['A: Partitions  [1,16] of size [8,128]', 'B: Partitions  [16,4] of size [128,64]', 'C: Partitions  [1,4] of size [8,64]']
+    CDP[0,0] << (ADP[0,0]) * (BDP[0,0]) + (ADP[0,1]) * (BDP[1,0]) + (ADP[0,2]) * (BDP[2,0]) + (ADP[0,3]) * (BDP[3,0]) + (ADP[0,4]) * (BDP[4,0]) + (ADP[0,5]) * (BDP[5,0]) + (ADP[0,6]) * (BDP[6,0])\ 
+	 + (ADP[0,7]) * (BDP[7,0]) + (ADP[0,8]) * (BDP[8,0]) + (ADP[0,9]) * (BDP[9,0]) + (ADP[0,10]) * (BDP[10,0]) + (ADP[0,11]) * (BDP[11,0])\ 
+	 + (ADP[0,12]) * (BDP[12,0]) + (ADP[0,13]) * (BDP[13,0]) + (ADP[0,14]) * (BDP[14,0]) + (ADP[0,15]) * (BDP[15,0])
+    CDP[0,1] << (ADP[0,0]) * (BDP[0,1]) + (ADP[0,1]) * (BDP[1,1]) + (ADP[0,2]) * (BDP[2,1]) + (ADP[0,3]) * (BDP[3,1]) + (ADP[0,4]) * (BDP[4,1]) + (ADP[0,5]) * (BDP[5,1]) + (ADP[0,6]) * (BDP[6,1])\ 
+	 + (ADP[0,7]) * (BDP[7,1]) + (ADP[0,8]) * (BDP[8,1]) + (ADP[0,9]) * (BDP[9,1]) + (ADP[0,10]) * (BDP[10,1]) + (ADP[0,11]) * (BDP[11,1])\ 
+	 + (ADP[0,12]) * (BDP[12,1]) + (ADP[0,13]) * (BDP[13,1]) + (ADP[0,14]) * (BDP[14,1]) + (ADP[0,15]) * (BDP[15,1])
+    CDP[0,2] << (ADP[0,0]) * (BDP[0,2]) + (ADP[0,1]) * (BDP[1,2]) + (ADP[0,2]) * (BDP[2,2]) + (ADP[0,3]) * (BDP[3,2]) + (ADP[0,4]) * (BDP[4,2]) + (ADP[0,5]) * (BDP[5,2]) + (ADP[0,6]) * (BDP[6,2])\ 
+	 + (ADP[0,7]) * (BDP[7,2]) + (ADP[0,8]) * (BDP[8,2]) + (ADP[0,9]) * (BDP[9,2]) + (ADP[0,10]) * (BDP[10,2]) + (ADP[0,11]) * (BDP[11,2])\ 
+	 + (ADP[0,12]) * (BDP[12,2]) + (ADP[0,13]) * (BDP[13,2]) + (ADP[0,14]) * (BDP[14,2]) + (ADP[0,15]) * (BDP[15,2])
+    CDP[0,3] << (ADP[0,0]) * (BDP[0,3]) + (ADP[0,1]) * (BDP[1,3]) + (ADP[0,2]) * (BDP[2,3]) + (ADP[0,3]) * (BDP[3,3]) + (ADP[0,4]) * (BDP[4,3]) + (ADP[0,5]) * (BDP[5,3]) + (ADP[0,6]) * (BDP[6,3])\ 
+	 + (ADP[0,7]) * (BDP[7,3]) + (ADP[0,8]) * (BDP[8,3]) + (ADP[0,9]) * (BDP[9,3]) + (ADP[0,10]) * (BDP[10,3]) + (ADP[0,11]) * (BDP[11,3])\ 
+	 + (ADP[0,12]) * (BDP[12,3]) + (ADP[0,13]) * (BDP[13,3]) + (ADP[0,14]) * (BDP[14,3]) + (ADP[0,15]) * (BDP[15,3])
+    )
+    """
+
+    ###
+    ##  Now the partitions are in shape for the cores so the partition
+    ##  is a composition of core data and it may require multiple
+    ##  passes.
+    ##
+    ##  How ever, we see from the prospective of a single Memtile
+    ##  distributing to a single column or a row. So when you think at
+    ##  the communication we are actually send a core block as broad
+    ##  cast to the same row: for example A00 goes to Row 0 or a
+    ##  column [B00, B10, B20, B30] is sent to a column and each block
+    ##  to a core ... we will figure out how to manage this.
+    ##
+    ###
     CL2Partition = G.V[0].left[0].CDP
     AL2Partition = G.V[0].left[0].ADP
     BL2Partition = G.V[0].left[0].BDP
@@ -259,7 +398,7 @@ def croshet(
     print(L2)
     print("A", AL2Partition)
     pdb.set_trace()
-    TAs = HAT.read_tiling_by_parts(0,L2A,1,colmajor=False,broadcast=True)
+    TAs = HAT.read_tiling_by_parts(0,L2A,1,colmajor=False)
     for t in TAs: print(t)
     pdb.set_trace()
     print("B", BL2Partition)
@@ -272,6 +411,7 @@ def croshet(
     pdb.set_trace()
     # cascade reduction or local reduction?
 
+    
 
     tc = [len(CL2Partition.l), len(CL2Partition.l[0])]
     ta = [len(AL2Partition.l), len(AL2Partition.l[0])]
@@ -322,7 +462,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--N",  help="Factor of B KxN @ L3 ", type=int, default=2048)
     parser.add_argument("-k", "--K",  help="Factor of A MxK @ L3", type=int, default=2048)
     parser.add_argument("-mt","--MT", help="Factor of A MTxKT @ L2", type=int, default=8)
-    parser.add_argument("-nt","--NT", help="Factor of B KTxNT @ L2", type=int, default=256)
+    parser.add_argument("-nt","--NT", help="Factor of B KTxNT @ L2", type=int, default=512)
     parser.add_argument("-kt","--KT", help="Factor of A MTxKT @ L2", type=int, default=2048)
     parser.add_argument("-mc","--MC", help="Factor of A MCxKC @ L1", type=int, default=8)
     parser.add_argument("-nc","--NC", help="Factor of B KCxNC @ L1", type=int, default=64)

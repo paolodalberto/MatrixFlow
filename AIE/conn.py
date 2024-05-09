@@ -232,7 +232,6 @@ class MemoryHierarchTensors:
             channels : int = 2,   # all channnels
             colmajor : bool = True,
             alignment : int = 1,
-            broadcast : bool = False,
             dim_time  : list = None,           # dimension we split into parts
             
     ) -> Tiling:
