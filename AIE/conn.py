@@ -117,6 +117,7 @@ class Level:
             parts           : int = 4 ,
             input_channels  : int = 2 ,
             output_channels : int = 2,
+            alignments      : list = [8,8]
              
     ):
         self.name = name
@@ -124,7 +125,8 @@ class Level:
         self.mem = [ size_per_part for i in range(parts) ]
         self.inp = [ [{} for i in range(input_channels)  ] for i in range(parts) ]   
         self.out = [ [{} for i in range(output_channels) ] for i in range(parts) ]   
-
+        self.alignments = [a for a in alignments]
+        
     def __str__(self):
         return self.name+ (" L: %d " % self.level) +str(self.mem)
 
@@ -145,20 +147,14 @@ class Level:
         
         return R
     def offsets(self, dim, shapes:list, full: int =2 )-> list:
-        S = self.strides(shapes)
-        OFF = [0 for i in shapes]
-        R = []
-        B=1
-        for b in range(dim):
-            B*=S[b]
-        
-        D = shapes[dim]
         
         Os = full*(len(self.mem))
-        Qs = math.ceil(D/Os)
+        B =  max(self.alignments[dim],math.ceil(shapes[dim]/Os))
+        R = []
         for i in range(Os):
+            
             OFF = [0 for i in shapes]
-            OFF[dim] = B*i*Qs
+            OFF[dim] = B*i
             R.append(OFF)
         
         return R
@@ -221,7 +217,7 @@ class MemoryHierarchTensors:
     ## this means that one partition will be split by parts in the 
     def read_tiling_by_parts(
             self,
-            dim : int,           # dimension we split into parts
+            dim : int ,           # dimension we split into parts
             level : Level,       # Level memory 
             channels : int = 2,   # all channnels
             colmajor : bool = True,
@@ -230,9 +226,8 @@ class MemoryHierarchTensors:
     ) -> Tiling:
 
 
-        ## We move a partition "read" from a memory level
         
-
+        ## this is the partition we want to read 
         if not colmajor:
             ## row major the last dimension is the first inner
             ## dimension we must reverse the order
@@ -242,37 +237,32 @@ class MemoryHierarchTensors:
             matshape =  [ i for i in self.MP.logicalshape]
 
         dimensions = len(matshape)
-        parts = level.parts_number()
         A = self.MP.original
 
+        ## from this original shape 
         if not colmajor:
             Shape = [ A.max[i] -A.min[i] for i in reversed(range(dimensions))]
         else:
             Shape = [ A.max[i] -A.min[i] for i in range(dimensions)]
 
-        if level.level<3:
-            import pdb;pdb.set_trace()
-            Shape[dim] //=parts 
         
-        #import pdb; pdb.set_trace()
-        if not broadcast :
-            
-            matshape[dim] //= parts
-        
-        
-        buffer_dimension = [i for i in Shape]
-        #buffer_dimension[dim] //= parts
 
-               
-        repetition       = len(self.MP.l)*len(self.MP.l[0]) 
-        tiling_dimension = matshape
+
+        repetition       = len(self.MP.l)*len(self.MP.l[0])
+        repetition = max(1,repetition)
+
+        matshape[dim]//= (level.parts_number()*channels)
         
-        offset           = level.offsets(dim,  Shape, channels)
+        
+        offset           =  [ [ 0 for i in matshape] for i in range((level.parts_number()*channels))]
+        for i in range(len(offset)):
+            offset[i][dim] = i*matshape[dim]
+            
         if broadcast :
             for f in offset:
                 for i in range(len(f)):
                     f[i] = 0
-        tile_traversal   = level.traversal(buffer_dimension,matshape)
+        tile_traversal   = level.traversal(Shape,matshape)
 
         R = [] 
         for i in range(len(level.mem)*channels):
@@ -280,8 +270,8 @@ class MemoryHierarchTensors:
                 R.append("##### %d" % (i//channels))
             R.append(     
                 Tiling(
-                    buffer_dimension,
-                    tiling_dimension,
+                    Shape,
+                    matshape,
                     offset[i],
                     tile_traversal,
                     -1,

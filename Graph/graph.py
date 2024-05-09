@@ -116,7 +116,10 @@ class Operation:
         R = "" if self.right is None else str(self.right)
         if self.operation in  ['*', '/']:
             return "("+L +")" +" "+self.operation+" "+ "("+ R+")"
-        tmp = L  +" "+self.operation+" "+ R
+                    
+        count = L.count(self.operation) 
+        #print("count", count, self.operation,L )
+        tmp = L  +" "+self.operation+" "+  R + ("\ \n\t" if count%5 ==0 and count>0 else "" ) 
         
         return tmp
 
