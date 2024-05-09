@@ -117,15 +117,25 @@ class Level:
             parts           : int = 4 ,
             input_channels  : int = 2 ,
             output_channels : int = 2,
-            alignments      : list = [8,8]
+            alignments      : list = [8,8],
+            rows  : int = 4,
+            cols  : int =4
              
     ):
+
+        ## parts and cols are the same 
+        self.rows = rows
+        self.cols = cols
+
+        
         self.name = name
         self.level = level
         self.mem = [ size_per_part for i in range(parts) ]
         self.inp = [ [{} for i in range(input_channels)  ] for i in range(parts) ]   
         self.out = [ [{} for i in range(output_channels) ] for i in range(parts) ]   
         self.alignments = [a for a in alignments]
+
+
         
     def __str__(self):
         return self.name+ (" L: %d " % self.level) +str(self.mem)
@@ -222,11 +232,16 @@ class MemoryHierarchTensors:
             channels : int = 2,   # all channnels
             colmajor : bool = True,
             alignment : int = 1,
-            broadcast : bool = False
+            broadcast : bool = False,
+            dim_time  : list = None,           # dimension we split into parts
+            
     ) -> Tiling:
 
 
-        
+        order =  [len(self.MP.l), len(self.MP.l[0])]
+        if not colmajor :
+            order =  [ o for o in reversed(order)] 
+
         ## this is the partition we want to read 
         if not colmajor:
             ## row major the last dimension is the first inner
@@ -238,6 +253,7 @@ class MemoryHierarchTensors:
 
         dimensions = len(matshape)
         A = self.MP.original
+        Matshape = [i for i in matshape]
 
         ## from this original shape 
         if not colmajor:
@@ -245,40 +261,68 @@ class MemoryHierarchTensors:
         else:
             Shape = [ A.max[i] -A.min[i] for i in range(dimensions)]
 
-        
+        R = []         
+        if level.level ==3 :
+            ## multiple shims multiple channels, multiple memtiles 
 
+            repetition       = len(self.MP.l)*len(self.MP.l[0])
+            repetition = max(1,repetition)
 
-        repetition       = len(self.MP.l)*len(self.MP.l[0])
-        repetition = max(1,repetition)
-
-        matshape[dim]//= (level.parts_number()*channels)
+            matshape[dim] = math.ceil(matshape[dim]/(level.parts_number()*channels))
         
-        
-        offset           =  [ [ 0 for i in matshape] for i in range((level.parts_number()*channels))]
-        for i in range(len(offset)):
-            offset[i][dim] = i*matshape[dim]
             
-        if broadcast :
-            for f in offset:
-                for i in range(len(f)):
-                    f[i] = 0
-        tile_traversal   = level.traversal(Shape,matshape)
+            offset           =  [ [ 0 for i in matshape] for i in range((level.parts_number()*channels))]
+            for i in range(len(offset)):
+                offset[i][dim] = i*matshape[dim]
+            
+            tile_traversal   = level.traversal(Shape,matshape)
 
-        R = [] 
-        for i in range(len(level.mem)*channels):
-            if i%channels==0:
-                R.append("##### %d" % (i//channels))
-            R.append(     
-                Tiling(
-                    Shape,
-                    matshape,
-                    offset[i],
-                    tile_traversal,
-                    -1,
-                    repetition)
-            )
+
+            for i in range(len(level.mem)*channels):
+                if i%channels==0:
+                    R.append("##### %d" % (i//channels))
+                R.append(     
+                    Tiling(
+                        Shape,
+                        matshape,
+                        offset[i],
+                        tile_traversal,
+                        -1,
+                        repetition)
+                )
         
+        elif level.level ==2:
+            ## This is a single partition sent to cores this is one
+            ## memtile multiple cores the core partition is teh one
+            ## read
+            warps = [1,1]
+            repetition = math.ceil(order[dim]/level.parts_number())
+            offset           =  [ [ 0 for i in matshape] for i in range((level.parts_number()*channels))]
+            tile_traversal   = level.traversal(Matshape,matshape)
+            if dim_time is not None and dim_time[0]!=dim:
+                repetition = math.ceil(order[dim_time[0]]/dim_time[1])
+                w = dim_time[1]
+                print(type(tile_traversal[dim_time[0]]), tile_traversal[dim_time[0]])
+                tile_traversal[dim_time[0]] = tile_traversal[dim_time[0]]._replace(wrap=w)
+            
 
+            for i in range(channels):
+                if i%channels==0:
+                    R.append("##### %d" % (i//channels))
+                R.append(     
+                    Tiling(
+                        Matshape,
+                        matshape,
+                        offset[i],
+                        tile_traversal,
+                        -1,
+                        repetition)
+                )
+                
+        else:
+            pdb.set_trace()
+            
+            
         return R
 
 

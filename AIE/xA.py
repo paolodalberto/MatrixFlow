@@ -221,7 +221,7 @@ def croshet(
 
     print(L3A)
     print("A", G.ADP)
-    pdb.set_trace()
+    #
     ## tiling is physical and thus the dimensions are in reverse order
     #pdb.set_trace()
 
@@ -263,7 +263,7 @@ def croshet(
     for t in TAs: print(t)
     pdb.set_trace()
     print("B", BL2Partition)
-    TBs = HBT.read_tiling_by_parts(1,L2B,1)
+    TBs = HBT.read_tiling_by_parts(1,L2B,1,dim_time=[0,ROWS])
     for t in TBs: print(t)
     pdb.set_trace()
     print("C", CL2Partition)
@@ -326,7 +326,7 @@ if __name__ == "__main__":
     parser.add_argument("-kt","--KT", help="Factor of A MTxKT @ L2", type=int, default=2048)
     parser.add_argument("-mc","--MC", help="Factor of A MCxKC @ L1", type=int, default=8)
     parser.add_argument("-nc","--NC", help="Factor of B KCxNC @ L1", type=int, default=64)
-    parser.add_argument("-kc","--KC", help="Factor of A MCxKC @ L1", type=int, default=512)
+    parser.add_argument("-kc","--KC", help="Factor of A MCxKC @ L1", type=int, default=128)
     parser.add_argument("-e", "--error", help="pretty cdisplay error", type =str, default =None)
     args = parser.parse_args()
 
