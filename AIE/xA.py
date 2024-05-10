@@ -233,15 +233,15 @@ def Product_3(
     ## this is a logical and physical division by columns
     DDRCPC = PartitionMatrix(C,[M,NC])
     DDRBPC = PartitionMatrix(B,[K,NC])
-    DDRAPC = PartitionMatrix(A,[M,K])
+    DDRAPC = PartitionMatrix(A,[M,K])  ## this should be by row but it is actually distributed 
 
 
     # Column wise computation 
     decl, vs = Product_t(DDRAPC,DDRBPC,DDRCPC)
     grt = Graph("DDR column wise C = A*B", vs,decl,C)
-    grt.CDP = CPT
-    grt.ADP = APT
-    grt.BDP = BPT
+    grt.CDP = DDRCPC
+    grt.ADP = DDRAPC
+    grt.BDP = DDRBPC
 
 
     print(grt.compute())
@@ -268,13 +268,55 @@ def Product_3(
         pdb.set_trace()
 
     
-    M = vs[0]
-    print(M.compute())
+    #M = vs[0]
+    #print(M.compute())
+
+
+    L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])
+    L2BPC = PartitionMatrix(DDRBPC.value()[0][0],[KtR,NtC])
+    L2APC = PartitionMatrix(DDRAPC.value()[0][0],[MtR,KtR])
+
+    
+    # Column wise computation 
+    pdb.set_trace()
+    print(L2APC,L2BPC,L2CPC)
+    decl, vs = Product_t(L2APC,L2BPC,L2CPC)
+    gl2 = Graph("L2 column wise C = A*B", vs,decl,C)
+    gl2.CDP = L2CPC
+    gl2.ADP = L2APC
+    gl2.BDP = L2BPC
+    
+    
+
+    print(gl2)
     pdb.set_trace()
 
+
+    L1CPC = PartitionMatrix(DDRCPC.value()[0][0],[Mc,Nc])
+    L1BPC = PartitionMatrix(DDRBPC.value()[0][0],[Kc,Nc])
+    L1APC = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc])
+
     
+    # Column wise computation 
+    pdb.set_trace()
+    print(L1APC,L1BPC,L1CPC)
+    decl, vs = Product_t(L1APC,L1BPC,L1CPC)
+    gl1 = Graph("L2 column wise C = A*B", vs,decl,C)
+    gl1.CDP = L1CPC
+    gl1.ADP = L1APC
+    gl1.BDP = L1BPC
     
 
+
+
+
+    print(gl1)
+    pdb.set_trace()
+    print(A,B,C)
+    print(DDRAPC,DDRBPC,DDRCPC)
+    print(L2APC,L2BPC,L2CPC)
+    print(L1APC,L1BPC,L1CPC)
+    
     
     
 
