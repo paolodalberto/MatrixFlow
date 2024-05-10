@@ -139,7 +139,6 @@ def Product_2(
                 
                 ## Partition of a partition ( is it working? )
                 CPC = PartitionMatrix(CPT.value()[i][j],[M,N])
-                
                 APC = PartitionMatrix(APT.value()[i][k],[M,K])
                 BPC = PartitionMatrix(BPT.value()[k][j],[K,N])
 
@@ -191,8 +190,100 @@ def Product_2(
     
     return G
 
+## We create a partitions of the matrices and then create a product of
+## the partitions. This is a two level L3-> L2 -> L1 Tiling
+def Product_3(
+        A : Matrix, B: Matrix, C: Matrix,
+        MT : list,  ## L3-L2  tiling
+        CT : list,  ## L2-L1  tiling 
+        ROWS : int = 4 , COLS : int = 4
+    ) -> list:
+
+    # we assume the matrix layout to me row major 
+
+    ## this is the problem size in DDR
+    M = C.matrix.shape[0]; N = C.matrix.shape[1]; K = A.matrix.shape[1]
+
+    # This is the computation as CORE partition, the minimum
+    # granularity
+    Mc,Nc,Kc = CT  
 
 
+    
+    ## number of matrix columns of B and C for a single AIE column
+    NC = math.ceil(N/Nc/COLS)*Nc
+    ## number of matrix columns of A and rows of  B for a single AIE row
+    KR = math.ceil(K/Kc/ROWS)*Kc
+    ## number of matrix rows of A and C for a single AIE row
+    MR = math.ceil(M/Mc/ROWS)*Mc
+
+
+    # This is the computation as CORE partition, the minimum
+    # granularity
+    Mc,Nc,Kc = CT  
+    
+    NNc = NC//Nc
+    MRc = MR//Mc
+    KRc = KR//Kc
+
+    if NC % Nc != 0 or KR % Kc !=0 or MR % Mc !=0 :
+        pdb.set_trace()
+
+        
+    ## this is a logical and physical division by columns
+    DDRCPC = PartitionMatrix(C,[M,NC])
+    DDRBPC = PartitionMatrix(B,[K,NC])
+    DDRAPC = PartitionMatrix(A,[M,K])
+
+
+    # Column wise computation 
+    decl, vs = Product_t(DDRAPC,DDRBPC,DDRCPC)
+    grt = Graph("DDR column wise C = A*B", vs,decl,C)
+    grt.CDP = CPT
+    grt.ADP = APT
+    grt.BDP = BPT
+
+
+    print(grt.compute())
+    print(grt)
+    pdb.set_trace()
+    
+    # this is the blocked computation if we use L2 tiling this should
+    # be a multiple of the core tiling.
+    Mt,Nt,Kt = MT  ## Every thing will be organized as L2 tiles
+
+    ## number of matrix columns of B and C for a single AIE column
+    NtC = math.ceil(Nt/Nc/COLS)*Nc
+    ## number of matrix columns of A and rows of  B for a single AIE row
+    KtR = math.ceil(Kt/Kc/ROWS)*Kc
+    ## number of matrix rows of A and C for a single AIE row
+    MtR = math.ceil(Mt/Mc/ROWS)*Mc
+
+
+    NNt = NtC//Nc
+    MRt = MtR//Mc
+    KRt = KtR//Kc
+
+    if NtC % Nc != 0 or KtR % Kc !=0 or MtR % Mc !=0 :
+        pdb.set_trace()
+
+    
+    M = vs[0]
+    print(M.compute())
+    pdb.set_trace()
+
+    
+    
+
+    
+    
+
+    
+
+    
+    
+
+    
 """
 This is the L3-L2 computation 
  ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
@@ -519,29 +610,6 @@ if __name__ == "__main__":
     G2.ADP = APT
     G2.BDP = BPT
     print(G2)
-
-    #    pdb.set_trace()
-    H = tiling.MemoryHierarchTensors("A_L3", APT)
-
-    print("Level Memory", tiling.L3)
-    print(APT)
-    Ts = H.read_tiling_by_parts(0,tiling.L3,1)
-    for t in Ts: print(t)
-    #pdb.set_trace()
-    print(BPT)
-    H = tiling.MemoryHierarchTensors("A_L3", BPT)
-    Ts = H.read_tiling_by_parts(0,tiling.L3,2)
-    for t in Ts: print(t)
-    
-
-    
-    #pdb.set_trace()
-    G1.compute()
-    print(G1.temp_result.matrix[0])
-
-    G2.compute()
-    print(G2.temp_result.matrix[0])
-
     
 
 
@@ -551,7 +619,7 @@ if __name__ == "__main__":
     ## factorization of the matrix factorization
     
     D1 = Scalar(0)*C
-    L  = Product_2(
+    L  = Product_3(
         A, B, D1,
         [args.MT, args.NT, args.KT],  ## L2 tiling 
         [args.MC, args.NC, args.KC]   ## L1 tiling 
@@ -560,12 +628,12 @@ if __name__ == "__main__":
     #    for v in L.left:
     #        print(v)
 
-    croshet(L,tiling.L3,tiling.L2, tiling.L1)
+    #croshet(L,tiling.L3,tiling.L2, tiling.L1)
 
 
-    L.compute()
+    #L.compute()
 
     
-    print(L.temp_result.matrix[0])
+    #print(L.temp_result.matrix[0])
 
 

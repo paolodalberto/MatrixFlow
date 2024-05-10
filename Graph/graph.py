@@ -845,7 +845,9 @@ class Data(Operation):
         return self.left.matrix.dtype
 
     
-    
+    def shape(self):
+        return  self.temp_result.shape()
+
     def __str__(self):
             
         if type(self.left) is Scalar:

@@ -18,7 +18,14 @@ class Matrix:
         self.padded = False
         self.pointer = None
         self.gpu     = None
-        
+        self.color   = -1
+
+    def shape(self):
+        return  self.matrix.shap, self.min, self.max
+
+    def set_color(self, color : int): self.color = color
+    def get_color(self):              return self.color 
+    
     def value(self): return self.matrix[self.min[0]:self.max[0],self.min[1]:self.max[1]]
     def set_value(self, A):
         self.value()[...] = A;
@@ -166,6 +173,8 @@ class PartitionMatrix:
         #    print([a.logicalshape for a in row ])
         #import pdb; pdb.set_trace()
 
+    def shape(self):
+        return len(self.l), len(self.l[0])
 
     def __str__(self):
             R = len(self.l)
