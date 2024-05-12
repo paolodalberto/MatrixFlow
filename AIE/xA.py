@@ -16,7 +16,8 @@ import sys
 import argparse
 import gc
 import pdb
-import AIE.conn as tiling  
+from  AIE.conn import Level, Tiling, Traversal,MemoryHierarchTensors
+import AIE.conn as tiling
 
 
 #####
@@ -61,7 +62,7 @@ def Product_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix, redu
     ## and binary operations. 
     ###
     V = []
-    for i in range(Row):  ## parallem in M
+    for i in range(Row):  ## parallem in M 
         for j in range(Col):  ## parallel in N
             
             T = Operation("p0", "*", AD[i][0] ,BD[0][j])
@@ -201,15 +202,15 @@ def Product_3(
 
     # we assume the matrix layout to me row major 
 
-    ## this is the problem size in DDR
+    ## this is the problem size in DDR: this is the buffer size in DDR
     M = C.matrix.shape[0]; N = C.matrix.shape[1]; K = A.matrix.shape[1]
+    
 
+    
     # This is the computation as CORE partition, the minimum
     # granularity
     Mc,Nc,Kc = CT  
 
-
-    
     ## number of matrix columns of B and C for a single AIE column
     NC = math.ceil(N/Nc/COLS)*Nc
     ## number of matrix columns of A and rows of  B for a single AIE row
@@ -222,31 +223,31 @@ def Product_3(
     # granularity
     Mc,Nc,Kc = CT  
     
-    NNc = NC//Nc
-    MRc = MR//Mc
-    KRc = KR//Kc
+    NNc = NC//Nc;  MRc = MR//Mc;    KRc = KR//Kc
 
     if NC % Nc != 0 or KR % Kc !=0 or MR % Mc !=0 :
         pdb.set_trace()
 
-        
+
+    ###
+    ## Split by column: SPATIAL NC 
+    ## Split by row   : TIME    MR
+    ###
     ## this is a logical and physical division by columns
-    DDRCPC = PartitionMatrix(C,[M,NC])
+    DDRCPC = PartitionMatrix(C,[MR,NC])
     DDRBPC = PartitionMatrix(B,[K,NC])
-    DDRAPC = PartitionMatrix(A,[M,K])  ## this should be by row but it is actually distributed 
+    DDRAPC = PartitionMatrix(A,[MR,K])  ## this should be by row but it is actually distributed 
 
-
-    # Column wise computation 
+    # Column wise computation: this specify the offset and as a
+    # function of channels for matrix C and B
     decl, vs = Product_t(DDRAPC,DDRBPC,DDRCPC)
-    grt = Graph("DDR column wise C = A*B", vs,decl,C)
-    grt.CDP = DDRCPC
-    grt.ADP = DDRAPC
-    grt.BDP = DDRBPC
+    grt = Graph("DDR column wise C = A*B", vs,decl,C,ADP=DDRAPC,BDP=DDRBPC,CDP=DDRCPC)
 
-
-    print(grt.compute())
+    print("Columns Graph")
     print(grt)
     pdb.set_trace()
+
+
     
     # this is the blocked computation if we use L2 tiling this should
     # be a multiple of the core tiling.
@@ -267,55 +268,129 @@ def Product_3(
     if NtC % Nc != 0 or KtR % Kc !=0 or MtR % Mc !=0 :
         pdb.set_trace()
 
-    
-    #M = vs[0]
-    #print(M.compute())
-
-
-    L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])
+    # We partition the Column computation using the L2 tile size
+    L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])   ## we assume by column and then by row
     L2BPC = PartitionMatrix(DDRBPC.value()[0][0],[KtR,NtC])
     L2APC = PartitionMatrix(DDRAPC.value()[0][0],[MtR,KtR])
 
+    ## Column wise computation using L2 tiles
+    ## L2 tile is actually TIME split in general
+    ## 
+    ## We have K tiling (which is time reduce or cascade reduce) the
+    ## reduction has to be by core and we have ROWs of them
+    ## 
+
     
-    # Column wise computation 
-    pdb.set_trace()
+    
+    
+    #pdb.set_trace()
     print(L2APC,L2BPC,L2CPC)
     decl, vs = Product_t(L2APC,L2BPC,L2CPC)
-    gl2 = Graph("L2 column wise C = A*B", vs,decl,C)
-    gl2.CDP = L2CPC
-    gl2.ADP = L2APC
-    gl2.BDP = L2BPC
-    
-    
-
+    gl2 = Graph("L2 column wise C = A*B", vs,decl,C,ADP=L2APC,BDP=L2BPC,CDP=L2CPC)
+    print("Column Graph using L2 tiles")
     print(gl2)
-    pdb.set_trace()
+    #pdb.set_trace()
 
 
+    
     L1CPC = PartitionMatrix(DDRCPC.value()[0][0],[Mc,Nc])
     L1BPC = PartitionMatrix(DDRBPC.value()[0][0],[Kc,Nc])
     L1APC = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc])
 
     
-    # Column wise computation 
-    pdb.set_trace()
+    # Column wise computation using CORE tiles 
+    #pdb.set_trace()
     print(L1APC,L1BPC,L1CPC)
     decl, vs = Product_t(L1APC,L1BPC,L1CPC)
-    gl1 = Graph("L2 column wise C = A*B", vs,decl,C)
-    gl1.CDP = L1CPC
-    gl1.ADP = L1APC
-    gl1.BDP = L1BPC
+    gl1 = Graph("L2 column wise C = A*B", vs,decl,C,ADP=L1APC,BDP=L1BPC,CDP=L1CPC)
     
 
+    RR,CC = L2CPC.shape()
+
+    gl1.Factotum['redution'] = "local"
+    gl2.Factotum['redution'] = "local"
+
+    if RR==1:
+        gl1.Factotum['redution'] = "local reduction and then cascade hardware"
+        gl2.Factotum['redution'] = "local reduction and then cascade hardware"
 
 
-
+    print("column graph using l1 tiles")
     print(gl1)
     pdb.set_trace()
-    print(A,B,C)
-    print(DDRAPC,DDRBPC,DDRCPC)
-    print(L2APC,L2BPC,L2CPC)
-    print(L1APC,L1BPC,L1CPC)
+
+
+    
+
+    LL3 = [ Level("DDR %d" % (i),3,parts =1)           for i in range(COLS)]
+    LL2 = [ Level("L2 %d" % (i),2, 512*10243,parts =1) for i in range(COLS)]
+    LL1 = [ [Level("L1 %d %d " % (i,j),1,16*1024,2)    for j in range(COLS)] for i in range(ROWS) ] 
+
+
+    A_DDRL2 = [
+        Tiling(
+            A.shape()[0],
+            L2APC.logicalshape,
+            [0, L2APC.logicalshape[1]*j ] ,
+            [
+                Traversal(
+                    i,
+                    L2APC.logicalshape[i],
+                    L2APC.shape()[i]
+                ) for i in range(2)
+            ],
+            -1,1
+        ) for j in range(ROWS)
+    ]
+
+    print("A Tiling L3 L2")
+    for d in A_DDRL2: print(d)
+    pdb.set_trace()
+    B_DDRL2 = [
+        Tiling(
+            B.shape()[0],
+            L2BPC.logicalshape,
+            [0,   DDRBPC.logicalshape[1]*j ] ,
+            [
+                Traversal(
+                    i,
+                    L2BPC.logicalshape[i],
+                    L2BPC.shape()[i]
+                ) for i in range(2)
+            ],
+            -1,1
+        ) for j in range(COLS)
+    ]
+
+    print("B Tiling L3 L2")
+    for d in B_DDRL2: print(d)
+    pdb.set_trace()
+    C_DDRL2 = [
+        Tiling(
+            C.shape()[0],
+            L2CPC.logicalshape,
+            [0,    DDRCPC.logicalshape[1]**j] ,
+            [
+                Traversal(
+                    i,
+                    L2CPC.logicalshape[i],
+                    L2CPC.shape()[i]
+                ) for i in range(2)
+            ],
+            -1,1
+        ) for j in range(COLS)
+    ]
+    
+    print("C Tiling L3 L2")
+    for d in C_DDRL2: print(d)
+    pdb.set_trace()
+    
+    print("Main Proble", A,B,C)
+    print("Column Problem", DDRAPC,DDRBPC,DDRCPC)
+    print("Column Problem L2 Tiles", L2APC,L2BPC,L2CPC)
+    
+    print("Column Problem L1 Tiles",L1APC,L1BPC,L1CPC)
+    
     
     
     
@@ -363,9 +438,9 @@ CDP[0,3] << (ADP[0,0]) * (BDP[0,3]) + (ADP[0,1]) * (BDP[1,3]) + (ADP[0,2]) * (BD
 
 def croshet(
         G : Graph,
-        L3: tiling.Level,
-        L2: tiling.Level,
-        L1: tiling.Level,
+        L3: Level,
+        L2: Level,
+        L1: Level,
         ROWS : int = 4 ,
         COLS : int = 4  
 ):
@@ -396,9 +471,9 @@ def croshet(
     L3B = L3.copy("B")
     L3C = L3.copy("C")
 
-    HA = tiling.MemoryHierarchTensors("A_L3", G.ADP)
-    HB = tiling.MemoryHierarchTensors("B_L3", G.BDP)
-    HC = tiling.MemoryHierarchTensors("C_L3", G.CDP)
+    HA = MemoryHierarchTensors("A_L3", G.ADP)
+    HB = MemoryHierarchTensors("B_L3", G.BDP)
+    HC = MemoryHierarchTensors("C_L3", G.CDP)
 
     print(L3A)
     print("A", G.ADP)
@@ -518,9 +593,9 @@ MemTile L: 2 [524288, 524288, 524288, 524288]
     CL2Partition = G.V[0].left[0].CDP
     AL2Partition = G.V[0].left[0].ADP
     BL2Partition = G.V[0].left[0].BDP
-    HAT = tiling.MemoryHierarchTensors("A_L2",AL2Partition)
-    HBT = tiling.MemoryHierarchTensors("B_L2",BL2Partition)
-    HCT = tiling.MemoryHierarchTensors("C_L2",CL2Partition)
+    HAT = MemoryHierarchTensors("A_L2",AL2Partition)
+    HBT = MemoryHierarchTensors("B_L2",BL2Partition)
+    HCT = MemoryHierarchTensors("C_L2",CL2Partition)
 
 
     L2A = L2.copy("A")
@@ -563,11 +638,11 @@ MemTile L: 2 [524288, 524288, 524288, 524288]
     L1C = L1.copy("C")
 
     PA = PartitionMatrix(AL2Partition.value()[0][0], AL2Partition.logicalshape)
-    HAC = tiling.MemoryHierarchTensors("A_L1", PA)
+    HAC = MemoryHierarchTensors("A_L1", PA)
     PB = PartitionMatrix(BL2Partition.value()[0][0], BL2Partition.logicalshape)
-    HBC = tiling.MemoryHierarchTensors("B_L1", PB)
+    HBC = MemoryHierarchTensors("B_L1", PB)
     PC = PartitionMatrix(CL2Partition.value()[0][0], CL2Partition.logicalshape)
-    HCC = tiling.MemoryHierarchTensors("C_L1", PC)
+    HCC = MemoryHierarchTensors("C_L1", PC)
     
 
     pdb.set_trace()

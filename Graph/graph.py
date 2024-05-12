@@ -1062,7 +1062,10 @@ class Graph(Function):
                   V : list = [] , ## this is an ordered list
                   D : list = None,
                   O : Matrix = None,
-                  I : list  = None
+                  I : list  = None,
+                  ADP : list = [],
+                  BDP : list = [],
+                  CDP : list = [],
                   
     ):
         Function.__init__(self,name, None, None)
@@ -1074,9 +1077,9 @@ class Graph(Function):
 
         self._ratio = None
         
-        self.CDP = list()
-        self.ADP = list()
-        self.BDP = list()
+        self.CDP = CDP
+        self.ADP = ADP
+        self.BDP = BDP
 
         self.A = None
         self.B = None
