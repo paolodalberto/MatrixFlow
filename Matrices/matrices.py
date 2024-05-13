@@ -21,7 +21,7 @@ class Matrix:
         self.color   = -1
 
     def shape(self):
-        return  self.matrix.shap, self.min, self.max
+        return  self.matrix.shape, self.min, self.max
 
     def set_color(self, color : int): self.color = color
     def get_color(self):              return self.color 

@@ -49,8 +49,8 @@ def Product_t(A : PartitionMatrix, B : PartitionMatrix, C: PartitionMatrix, redu
 
     Row = len(C.l)    # of the output partition
     Col = len(C.l[0])    # of the output partition
-    K   = len(B.l)
     ACol = len(A.l[0])
+    K   = min(len(B.l),ACol)
 
     
     
@@ -248,9 +248,12 @@ def Product_3(
     pdb.set_trace()
 
 
-    
-    # this is the blocked computation if we use L2 tiling this should
-    # be a multiple of the core tiling.
+    ### L2 Tiling
+    ## L2 tile is actually TIME split in general
+    ## 
+    ## this is the blocked computation if we use L2 tiling this should
+    ## be a multiple of the core tiling.
+
     Mt,Nt,Kt = MT  ## Every thing will be organized as L2 tiles
 
     ## number of matrix columns of B and C for a single AIE column
@@ -268,31 +271,30 @@ def Product_3(
     if NtC % Nc != 0 or KtR % Kc !=0 or MtR % Mc !=0 :
         pdb.set_trace()
 
-    # We partition the Column computation using the L2 tile size
-    L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])   ## we assume by column and then by row
+    ## We partition the Column computation using the L2 tile size
+    ## Spatial by colum (Columns do the Ntc
+    ## Time by Row      (MtR) 
+    L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])   
     L2BPC = PartitionMatrix(DDRBPC.value()[0][0],[KtR,NtC])
     L2APC = PartitionMatrix(DDRAPC.value()[0][0],[MtR,KtR])
 
-    ## Column wise computation using L2 tiles
-    ## L2 tile is actually TIME split in general
-    ## 
+
     ## We have K tiling (which is time reduce or cascade reduce) the
     ## reduction has to be by core and we have ROWs of them
     ## 
 
-    
-    
-    
+        
     #pdb.set_trace()
     print(L2APC,L2BPC,L2CPC)
     decl, vs = Product_t(L2APC,L2BPC,L2CPC)
     gl2 = Graph("L2 column wise C = A*B", vs,decl,C,ADP=L2APC,BDP=L2BPC,CDP=L2CPC)
     print("Column Graph using L2 tiles")
     print(gl2)
-    #pdb.set_trace()
+    pdb.set_trace()
 
 
     
+    ## We take the column computation and split into cores
     L1CPC = PartitionMatrix(DDRCPC.value()[0][0],[Mc,Nc])
     L1BPC = PartitionMatrix(DDRBPC.value()[0][0],[Kc,Nc])
     L1APC = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc])
@@ -320,6 +322,31 @@ def Product_3(
     pdb.set_trace()
 
 
+    ## Each mem tile is a time split we can compute each separately
+    ## notice that A here does not change because Mc = M but it should
+    ## in general
+    L1CPCfromL2 = PartitionMatrix(L2CPC.value()[0][0] ,[Mc,Nc]) ## this is one L2 tile of C
+    L1BPCfromL2 = PartitionMatrix(DDRBPC.value()[0][0] ,[Kc,Nc])
+    L1APCfromL2 = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc])
+
+    
+    # the computation now can be parallel in C (rows) because we write
+    # the columns of C in row major and thus we must finish the layout
+    # or by K for example we have two C_ij but 16 A_ik pdb.set_trace()
+    # in this particular case we do time split in C columns and reduce 
+    print(L1APCfromL2,L1BPCfromL2,L1CPCfromL2)
+    decl, vs = Product_t(L1APCfromL2,L1BPCfromL2,L1CPCfromL2)
+    gl1_2 = Graph("L1 column wise C = A*B from L2 Tile", vs,decl,C,ADP=L1APCfromL2,BDP=L1BPCfromL2,CDP=L1CPCfromL2)
+    
+
+    print("column graph using l1 tiles for a L2 tile ")
+    print(gl1_2)
+    pdb.set_trace()
+
+
+
+    
+    
     
 
     LL3 = [ Level("DDR %d" % (i),3,parts =1)           for i in range(COLS)]
@@ -388,8 +415,9 @@ def Product_3(
     print("Main Proble", A,B,C)
     print("Column Problem", DDRAPC,DDRBPC,DDRCPC)
     print("Column Problem L2 Tiles", L2APC,L2BPC,L2CPC)
-    
+    print("Column Problem L1 Tiles from L2 ",L1APCfromL2,L1BPCfromL2,L1CPCfromL2)    
     print("Column Problem L1 Tiles",L1APC,L1BPC,L1CPC)
+
     
     
     
@@ -705,7 +733,7 @@ if __name__ == "__main__":
     G1.BDP = BPC
     
     print(G1)
-
+    pdb.set_trace()
 
     ## disjoint partition at memtile level
     D = Scalar(0)*C
@@ -727,8 +755,8 @@ if __name__ == "__main__":
     G2.ADP = APT
     G2.BDP = BPT
     print(G2)
+    pdb.set_trace()
     
-
 
     ## Now we build an operation LOOP that is a composition of graphs
     ## each graph is a L3-L2-L3 that is then represented as a L2-L1-L2
