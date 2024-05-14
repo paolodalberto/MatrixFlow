@@ -200,7 +200,7 @@ def Product_3(
         ROWS : int = 4 , COLS : int = 4
     ) -> list:
 
-    # we assume the matrix layout to me row major 
+    # we assume the matrix layout to me row major (all of them)
 
     ## this is the problem size in DDR: this is the buffer size in DDR
     M = C.matrix.shape[0]; N = C.matrix.shape[1]; K = A.matrix.shape[1]
@@ -226,18 +226,32 @@ def Product_3(
     NNc = NC//Nc;  MRc = MR//Mc;    KRc = KR//Kc
 
     if NC % Nc != 0 or KR % Kc !=0 or MR % Mc !=0 :
+        # the problem has to be divisable by the core tile (other wise
+        # padding from the start or padding the L2 we skip this at
+        # this time )
         pdb.set_trace()
 
 
-    ###
-    ## Split by column: SPATIAL NC 
+    ############################################################################################################
+    ## SPLIT BY COLUMN: SPATIAL NC (paralle computation) 
     ## Split by row   : TIME    MR
-    ###
-    ## this is a logical and physical division by columns
+    ##
+    ## A will be a big matrix because each column will need it all
+    ## if NC < N, we split B and C by columns and thus we have OFFSET by column (row major) SPATIAL 
+    ## if MR < M, we split A and B by columns and thus we have OFFSET by row    (row major) TIME = loop
+    ############################################################################################################
+    ## this is a logical and physical division by AIE columns
     DDRCPC = PartitionMatrix(C,[MR,NC])
     DDRBPC = PartitionMatrix(B,[K,NC])
-    DDRAPC = PartitionMatrix(A,[MR,K])  ## this should be by row but it is actually distributed 
+    DDRAPC = PartitionMatrix(A,[MR,K])  ## this should be by row but
+                                        ## it is actually distributed,
+                                        ## differently because A goes
+                                        ## by ROW
 
+
+    # SPATIAL = OFFSET
+    # TIME    = TRAVERSAL and Tiling   
+                                        
     # Column wise computation: this specify the offset and as a
     # function of channels for matrix C and B
     decl, vs = Product_t(DDRAPC,DDRBPC,DDRCPC)
@@ -248,9 +262,15 @@ def Product_3(
     pdb.set_trace()
 
 
-    ### L2 Tiling
+    ############################################################################################################
+    ## L2 Tiling
     ## L2 tile is actually TIME split in general
+    ##
+    ## The tile sizes are based on all columns but they must be true
+    ## for every column! The matrix A will appear to be split at this
+    ## point because it is across different columns 
     ## 
+    ############################################################################################################
     ## this is the blocked computation if we use L2 tiling this should
     ## be a multiple of the core tiling.
 
@@ -259,7 +279,7 @@ def Product_3(
     ## number of matrix columns of B and C for a single AIE column
     NtC = math.ceil(Nt/Nc/COLS)*Nc
     ## number of matrix columns of A and rows of  B for a single AIE row
-    KtR = math.ceil(Kt/Kc/ROWS)*Kc
+    KtR = math.ceil(Kt/Kc)*Kc
     ## number of matrix rows of A and C for a single AIE row
     MtR = math.ceil(Mt/Mc/ROWS)*Mc
 
@@ -269,16 +289,27 @@ def Product_3(
     KRt = KtR//Kc
 
     if NtC % Nc != 0 or KtR % Kc !=0 or MtR % Mc !=0 :
+        ## as above L2 has to have Core granularity
+
         pdb.set_trace()
 
     ## We partition the Column computation using the L2 tile size
     ## Spatial by colum (Columns do the Ntc
-    ## Time by Row      (MtR) 
+    ## Time by Row      (MtR)
+    ##
+    ## The traversal has to keep up the correct order thus the looping
+    ## Doble buffering of any operand at L2 will affect the tiling
+    ## size so this should be known by now but the DB has to be
+    ## flagged so that we can build the 
     L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])   
     L2BPC = PartitionMatrix(DDRBPC.value()[0][0],[KtR,NtC])
+
+    ## This will help in finding the offset by columns (aka memtile
+    ## rows) because teh computation will be split accordingly
     L2APC = PartitionMatrix(DDRAPC.value()[0][0],[MtR,KtR])
 
-
+    
+    
     ## We have K tiling (which is time reduce or cascade reduce) the
     ## reduction has to be by core and we have ROWs of them
     ## 
@@ -322,12 +353,27 @@ def Product_3(
     pdb.set_trace()
 
 
+    #####################################################################################################
+    ## L1 Tiling
+    ## 
+    ## We take a tile in L2 for one column.
+    ##
+    ## Matrix A partitions will be a broad cast by row
+    ## Matrix B is a spatial split by core and thus there will be an offset
+    ##
+    ## This is the curious case of K tiling by cascade or
+    ## local. Choosing (L2CPC.value()[0][0]) set constraints on N and
+    ## M but it does not put ny constraints on K we need the L2
+    ## partition of B (by column) to have a bound of K
+    
+    #####################################################################################################
+
     ## Each mem tile is a time split we can compute each separately
     ## notice that A here does not change because Mc = M but it should
     ## in general
     L1CPCfromL2 = PartitionMatrix(L2CPC.value()[0][0] ,[Mc,Nc]) ## this is one L2 tile of C
-    L1BPCfromL2 = PartitionMatrix(DDRBPC.value()[0][0] ,[Kc,Nc])
-    L1APCfromL2 = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc])
+    L1BPCfromL2 = PartitionMatrix(L2BPC.value()[0][0],[Kc,Nc]) ## we need more tiles but contained in L2
+    L1APCfromL2 = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc]) 
 
     
     # the computation now can be parallel in C (rows) because we write
