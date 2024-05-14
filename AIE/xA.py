@@ -278,7 +278,7 @@ def Product_3(
 
     ## number of matrix columns of B and C for a single AIE column
     NtC = math.ceil(Nt/Nc/COLS)*Nc
-    ## number of matrix columns of A and rows of  B for a single AIE row
+    ## number of matrix columns of A all rows and rows of  B for a single AIE column
     KtR = math.ceil(Kt/Kc)*Kc
     ## number of matrix rows of A and C for a single AIE row
     MtR = math.ceil(Mt/Mc/ROWS)*Mc
