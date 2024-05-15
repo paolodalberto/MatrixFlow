@@ -1,0 +1,973 @@
+@INPROCEEDINGS{LiGP2004,
+  author={X. {Li} and M. J. {Garzaran} and D. {Padua}},
+  booktitle={International Symposium on Code Generation and Optimization, 2004. CGO 2004.},  
+  title={A dynamically tuned sorting library}, 
+  year={2004},
+  volume={},
+  number={},
+  pages={111-122},}
+
+@INPROCEEDINGS{HuangGl2009,  author={B. {Huang} and J. {Gao} and
+                  X. {Li}},
+                  booktitle={2009 IEEE International Symposium on
+                  Parallel and Distributed Processing with
+                  Applications},   title={An Empirically Optimized
+                  Radix Sort for GPU},   year={2009},  volume={},
+                  number={},  pages={234-241},}
+
+
+@inproceedings{merrill2016merge,
+  title={Merge-based parallel sparse matrix-vector multiplication},
+  author={Merrill, Duane and Garland, Michael},
+  booktitle={Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis},
+  pages={58},
+  year={2016},
+  organization={IEEE Press}
+}
+
+@article{hosseinabady2019streaming,
+  title={A Streaming Dataflow Engine for Sparse Matrix-Vector Multiplication using High-Level Synthesis},
+  author={Hosseinabady, Mohammad and Nunez-Yanez, Jose Luis},
+  journal={IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems},
+  year={2019},
+  publisher={IEEE}
+}
+
+@inproceedings{dorrance2014scalable,
+  title={A scalable sparse matrix-vector multiplication kernel for energy-efficient sparse-blas on FPGAs},
+  author={Dorrance, Richard and Ren, Fengbo and Markovi{\'c}, Dejan},
+  booktitle = {Proceedings of the International Symposium on Field Programmable	Gate Arrays ({FPGA)}},
+  pages={161--170},
+  year={2014},
+  organization={ACM}
+}
+
+@article{williams2010sparse,
+  title={Sparse matrix-vector multiplication on multicore and accelerators},
+  author={Williams, Samuel and Bell, Nathan and Choi, Jee Whan and Garland, Michael and Oliker, Leonid and Vuduc, Richard},
+  journal={Scientific Computing with Multicore and Accelerators},
+  pages={83--109},
+  year={2010},
+  publisher={CRC Press}
+}
+
+@inproceedings{grigoracs2016optimising,
+  title={Optimising sparse matrix vector multiplication for large scale FEM problems on FPGA},
+  author={Grigora{\c{s}}, Paul and Burovskiy, Pavel and Luk, Wayne and Sherwin, Spencer},
+  booktitle = {Proceedings of the International Conference on Field Programmable Logic and Applications ({FPL)}},
+  pages={1--9},
+  organization={IEEE},
+  year={2016}
+}
+
+@inproceedings{buono2017data,
+  title={Data analytics with NVLink: An SpMV case study},
+  author={Buono, Daniele and Artico, Fausto and Checconi, Fabio and Choi, Jee W and Que, Xinyu and Schneidenbach, Lars},
+  booktitle={Proceedings of the Computing Frontiers Conference},
+  pages={89--96},
+  year={2017},
+  organization={ACM}
+}
+
+@inproceedings{ashari2014fast,
+  title={Fast sparse matrix-vector multiplication on GPUs for graph applications},
+  author={Ashari, Arash and Sedaghati, Naser and Eisenlohr, John and Parthasarathy, Srinivasan and Sadayappan, P},
+  booktitle={Proceedings of the international conference for high performance computing, networking, storage and analysis},
+  pages={781--792},
+  year={2014},
+  organization={IEEE Press}
+}
+
+@inproceedings{goumas2008understanding,
+  title={Understanding the performance of sparse matrix-vector multiplication},
+  author={Goumas, Georgios and Kourtis, Kornilios and Anastopoulos, Nikos and Karakasis, Vasileios and Koziris, Nectarios},
+  booktitle={Proceedings of the Euromicro Conference on Parallel, Distributed and Network-Based Processing (PDP)},
+  pages={283--292},
+  year={2008},
+  organization={IEEE}
+}
+
+@article{zhou2019hitgraph,
+  title={HitGraph: High-throughput Graph Processing Framework on FPGA},
+  author={Zhou, Shijie and Kannan, Rajgopal and Prasanna, Viktor K and Seetharaman, Guna and Wu, Qing},
+  journal={IEEE Transactions on Parallel and Distributed Systems},
+  volume={30},
+  number={10},
+  pages={2249--2264},
+  year={2019},
+  publisher={IEEE}
+}
+
+@inproceedings{grigoras2016cask,
+  title={CASK: Open-Source Custom Architectures for Sparse Kernels},
+  author={Grigoras, Paul and Burovskiy, Pavel and Luk, Wayne},
+  booktitle = {Proceedings of the International Symposium on Field Programmable	Gate Arrays ({FPGA)}},
+  pages={179--184},
+  year={2016},
+  organization={ACM}
+}
+
+@inproceedings{li2016data,
+  title={A data locality-aware design framework for reconfigurable sparse matrix-vector multiplication kernel},
+  author={Li, Sicheng and Wang, Yandan and Wen, Wujie and Wang, Yu and Chen, Yiran and Li, Hai},
+  booktitle={Proceedings of the International Conference on Computer-Aided Design (ICCAD)},
+  pages={1--6},
+  year={2016},
+  organization={IEEE}
+}
+
+@inproceedings{fowers2014high,
+  title={A high memory bandwidth fpga accelerator for sparse matrix-vector multiplication},
+  author={Fowers, Jeremy and Ovtcharov, Kalin and Strauss, Karin and Chung, Eric S and Stitt, Greg},
+  booktitle = {{IEEE} Symposium on {FPGAs} for Custom Computing Machines ({FCCM)}},
+  pages={36--43},
+  year={2014},
+  organization={IEEE}
+}
+
+@inproceedings{townsend2013reduce,
+  title={Reduce, reuse, recycle (r 3): A design methodology for sparse matrix vector multiplication on reconfigurable platforms},
+  author={Townsend, Kevin and Zambreno, Joseph},
+  booktitle = {Proceedings of the International Conference on Application-Specific Systems, Architectures and Processors ({ASAP)}},
+  pages={185--191},
+  year={2013},
+  organization={IEEE}
+}
+
+@inproceedings{kestur2012towards,
+  title={Towards a universal FPGA matrix-vector multiplication architecture},
+  author={Kestur, Srinidhi and Davis, John D and Chung, Eric S},
+  booktitle = {{IEEE} Symposium on {FPGAs} for Custom Computing Machines ({FCCM)}},
+  pages={9--16},
+  year={2012},
+  organization={IEEE}
+}
+
+@inproceedings{nagar2011sparse,
+  title={A sparse matrix personality for the convey HC-1},
+  author={Nagar, Krishna K and Bakos, Jason D},
+  booktitle = {{IEEE} Symposium on {FPGAs} for Custom Computing Machines ({FCCM)}},
+  pages={1--8},
+  year={2011},
+  organization={IEEE}
+}
+
+@inproceedings{zhuo2005sparse,
+  title={Sparse matrix-vector multiplication on FPGAs},
+  author={Zhuo, Ling and Prasanna, Viktor K},
+  booktitle = {Proceedings of the International Symposium on Field Programmable	Gate Arrays ({FPGA)}},
+  pages={63--74},
+  year={2005},
+  organization={ACM}
+}
+
+@book{lamport94,
+    author    = "Leslie Lamport",
+    title     = "{\LaTeX: A Document Preparation System}",
+    year      = "1994",
+    publisher = "Addison-Wesley",
+    edition = "2nd",
+    address   = "Reading, Massachusetts"
+}
+
+@inproceedings{nicepaper1,
+  author = "Firstname1 Lastname1 and Firstname2 Lastname2",
+  title = "A Very Nice Paper To Cite",
+  month = "Feb.",
+  year = "2014",
+  booktitle = "Intl. Symp. on High Performance Computer Architecture (HPCA)"
+}
+
+@inproceedings{nicepaper2,
+  author = "Firstname1 Lastname1 and Firstname2 Lastname2 and Firstname3 Lastname3",
+  title = "Another Very Nice Paper to Cite",
+  month = "Oct.",
+  year = "2012",
+  booktitle = "Intl. Symp. on Microarchitecture (MICRO)"
+}
+
+@inproceedings{nicepaper3,
+  author = "Firstname1 Lastname1 and Firstname2 Lastname2 and Firstname3 Lastname3 and Firstname4 Lastname4 and Firstname5 Lastname5",
+  title = "Yet Another Very Nice Paper To Cite, With Many Author Names All Spelled Out",
+  month = "June",
+  year = "2011",
+  booktitle = "Intl. Symp. on Computer Architecture (ISCA)"
+}
+
+@inproceedings{KrizhevskySH:2012,
+ author = {Krizhevsky, Alex and Sutskever, Ilya and Hinton, Geoffrey E.},
+ title = {ImageNet Classification with Deep Convolutional Neural Networks},
+ booktitle = {Proceedings of the 25th International Conference on Neural Information Processing Systems - Volume 1},
+ series = {NIPS'12},
+ year = {2012},
+ location = {Lake Tahoe, Nevada},
+ pages = {1097--1105},
+ numpages = {9},
+ url = {http://dl.acm.org/citation.cfm?id=2999134.2999257},
+ acmid = {2999257},
+ publisher = {Curran Associates Inc.},
+ address = {USA},
+}
+
+
+
+@inproceedings{LiuAESRFB:2016,
+title = "SSD: Single shot multibox detector",
+abstract = "We present a method for detecting objects in images using a single deep neural network. Our approach, named SSD, discretizes the output space of bounding boxes into a set of default boxes over different aspect ratios and scales per feature map location. At prediction time, the network generates scores for the presence of each object category in each default box and produces adjustments to the box to better match the object shape. Additionally, the network combines predictions from multiple feature maps with different resolutions to naturally handle objects of various sizes. SSD is simple relative to methods that require object proposals because it completely eliminates proposal generation and subsequent pixel or feature resampling stages and encapsulates all computation in a single network. This makes SSD easy to train and straightforward to integrate into systems that require a detection component. Experimental results on the PASCAL VOC, COCO, and ILSVRC datasets confirm that SSD has competitive accuracy to methods that utilize an additional object proposal step and is much faster, while providing a unified framework for both training and inference. For 300x300 input, SSD achieves 74.3{\%} mAP on VOC2007 test at 59 FPS on a Nvidia Titan X and for 512 x 512 input, SSD achieves 76.9{\%} mAP, outperforming a comparable state of the art Faster R-CNN model. Compared to other single stage methods, SSD has much better accuracy even with a smaller input image size. Code is available at https://github.com/weiliu89/caffe/ tree/ssd.",
+keywords = "Convolutional neural network, Real-time object detection",
+author = "Wei Liu and Dragomir Anguelov and Dumitru Erhan and Christian Szegedy and Scott Reed and Fu, {Cheng Yang} and Berg, {Alexander C.}",
+year = "2016",
+month = "1",
+day = "1",
+doi = "10.1007/978-3-319-46448-0_2",
+language = "English (US)",
+isbn = "9783319464473",
+series = "Lecture Notes in Computer Science (including subseries Lecture Notes in Artificial Intelligence and Lecture Notes in Bioinformatics)",
+publisher = "Springer Verlag",
+pages = "21--37",
+editor = "Bastian Leibe and Jiri Matas and Max Welling and Nicu Sebe",
+booktitle = "Computer Vision - 14th European Conference, ECCV 2016, Proceedings",
+address = "Germany",
+}
+
+
+
+@inproceedings{HiltonDYDMJSVNKS:2012,
+author = {Hinton, Geoffrey and Deng, Li and Yu, Dong and Dahl, George and Mohamed, Abdel-rahman and Jaitly, Navdeep and Senior, Andrew and Vanhoucke, Vincent and Nguyen, Patrick and Kingsbury, Brian and Sainath, Tara},
+title = {Deep Neural Networks for Acoustic Modeling in Speech Recognition},
+year = {2012},
+month = {November},
+abstract = {Most current speech recognition systems use hidden Markov models (HMMs) to deal with the temporal variability of speech and Gaussian mixture models (GMMs) to determine how well each state of each HMM fits a frame or a short window of frames of coefficients that represents the acoustic input. An alternative way to evaluate the fit is to use a feed-forward neural network that takes several frames of coefficients as input and produces posterior probabilities over HMM states as output. Deep neural networks (DNNs) that have many hidden layers and are trained using new methods have been shown to outperform GMMs on a variety of speech recognition benchmarks, sometimes by a large margin. This article provides an overview of this progress and represents the shared views of four research groups that have had recent successes in using DNNs for acoustic modeling in speech recognition.},
+url = {https://www.microsoft.com/en-us/research/publication/deep-neural-networks-for-acoustic-modeling-in-speech-recognition/},
+pages = {82-97},
+journal = {IEEE Signal Processing Magazine},
+volume = {29},
+edition = {IEEE Signal Processing Magazine},
+}
+
+@inproceedings{HiltonDYDMJSVNKS20124444,
+author = {Hinton, Geoffrey and Deng, Li and Yu, Dong and Dahl, George and Mohamed, Abdel-rahman and Jaitly, Navdeep and Senior, And\
+rew and Vanhoucke, Vincent and Nguyen, Patrick and Kingsbury, Brian and Sainath, Tara},
+title = {Deep Neural Networks for Acoustic Modeling in Speech Recognition},
+year = {2012},
+month = {November},
+abstract = {Most current speech recognition systems use hidden Markov models (HMMs) to deal with the temporal variability of speech and Gaussia\
+n mixture models (GMMs) to determine how well each state of each HMM fits a frame or a short window of frames of coefficients that \
+represents the acoustic input. An alternative way to evaluate the fit is to use a feed-forward neural network that takes several fr\
+ames of coefficients as input and produces posterior probabilities over HMM states as output. Deep neural networks (DNNs) that have\
+ many hidden layers and are trained using new methods have been shown to outperform GMMs on a variety of speech recognition benchma\
+ rks, sometimes by a large margin. This article provides an overview of this progress and represents the shared views of four resear\
+ ch groups that have had recent successes in using DNNs for acoustic modeling in speech recognition.},
+ url = {https://www.microsoft.com/en-us/research/publication/deep-neural-networks-for-acoustic-modeling-in-speech-recognition/},
+ pages = {82-97},
+ journal = {IEEE Signal Processing Magazine},
+ volume = {29},
+ edition = {IEEE Signal Processing Magazine},
+ }
+
+@inproceedings{DBLP:SzegedyLJSRAEVR15,
+  author    = {Christian Szegedy and
+               Wei Liu and
+               Yangqing Jia and
+               Pierre Sermanet and
+               Scott E. Reed and
+               Dragomir Anguelov and
+               Dumitru Erhan and
+               Vincent Vanhoucke and
+               Andrew Rabinovich},
+  title     = {Going deeper with convolutions},
+  booktitle = {{IEEE} Conference on Computer Vision and Pattern Recognition, {CVPR}
+               2015, Boston, MA, USA, June 7-12, 2015},
+  pages     = {1--9},
+  year      = {2015},
+  crossref  = {DBLP:conf/cvpr/2015},
+  url       = {https://doi.org/10.1109/CVPR.2015.7298594},
+  doi       = {10.1109/CVPR.2015.7298594},
+  timestamp = {Wed, 14 Nov 2018 10:57:53 +0100},
+  biburl    = {https://dblp.org/rec/bib/conf/cvpr/SzegedyLJSRAEVR15},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{DBLP:HeZRS15,
+  author    = {Kaiming He and
+               Xiangyu Zhang and
+               Shaoqing Ren and
+               Jian Sun},
+  title     = {Deep Residual Learning for Image Recognition},
+  journal   = {CoRR},
+  volume    = {abs/1512.03385},
+  year      = {2015},
+  url       = {http://arxiv.org/abs/1512.03385},
+  archivePrefix = {arXiv},
+  eprint    = {1512.03385},
+  timestamp = {Mon, 13 Aug 2018 16:46:56 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/HeZRS15},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+@inproceedings{GokhaleZXC:2017,
+  author    = {Vinayak Gokhale and
+               Aliasger Zaidy and
+               Andre Xian Ming Chang and
+               Eugenio Culurciello},
+  title     = {Snowflake: An efficient hardware accelerator for convolutional neural networks},
+  booktitle = {{IEEE} International Symposium on Circuits and Systems, {ISCAS} 2017, Baltimore, MD, USA, May 28-31, 2017},
+  pages     = {1--4},
+  year      = {2017},
+  crossrefXXX  = {DBLP:conf/iscas/2017},
+  url       = {https://doi.org/10.1109/ISCAS.2017.8050809},
+  doi       = {10.1109/ISCAS.2017.8050809},
+  timestamp = {Sat, 07 Oct 2017 17:45:24 +0200},
+  biburl    = {https://dblp.org/rec/bib/conf/iscas/GokhaleZCC17},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+  }
+
+@inproceedings{SharmaPSLCCE:2018,
+  author    = {Hardik Sharma and
+               Jongse Park and
+               Naveen Suda and
+               Liangzhen Lai and
+               Benson Chau and
+               Vikas Chandra and
+               Hadi Esmaeilzadeh},
+  title     = {Bit Fusion: Bit-Level Dynamically Composable Architecture for Accelerating
+               Deep Neural Network},
+  booktitle = {45th {ACM/IEEE} Annual International Symposium on Computer Architecture,
+               {ISCA} 2018, Los Angeles, CA, USA, June 1-6, 2018},
+  pages     = {764--775},
+  year      = {2018},
+  crossrefXXX  = {DBLP:conf/isca/2018},
+  url       = {https://doi.org/10.1109/ISCA.2018.00069},
+  doi       = {10.1109/ISCA.2018.00069},
+  timestamp = {Tue, 11 Sep 2018 14:35:34 +0200},
+  biburl    = {https://dblp.org/rec/bib/conf/isca/SharmaPSLCCE18},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+@inproceedings{SharmaPMAKSME:2016, 
+  author    = {Hardik Sharma and
+               Jongse Park and
+               Divya Mahajan and
+               Emmanuel Amaro and
+               Joon Kyung Kim and
+               Chenkai Shao and
+               Asit Mishra and
+               Hadi Esmaeilzadeh},
+  title     = {From high-level deep neural models to FPGAs},
+  booktitle = {49th Annual {IEEE/ACM} International Symposium on Microarchitecture,
+               {MICRO} 2016, Taipei, Taiwan, October 15-19, 2016},
+  pages     = {17:1--17:12},
+  year      = {2016},
+  crossrefXXX  = {DBLP:conf/micro/2016},
+  url       = {https://doi.org/10.1109/MICRO.2016.7783720},
+  doi       = {10.1109/MICRO.2016.7783720},
+  timestamp = {Sat, 10 Mar 2018 15:19:35 +0100},
+  biburl    = {https://dblp.org/rec/bib/conf/micro/SharmaPMAKSME16},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+@inproceedings{JouppiYPPABBBBB:2017,
+  author    = {Norman P. Jouppi and
+               Cliff Young and
+               Nishant Patil and
+               David A. Patterson and
+               Gaurav Agrawal and
+               Raminder Bajwa and
+               Sarah Bates and
+               Suresh Bhatia and
+               Nan Boden and
+               Al Borchers and
+               Rick Boyle and
+               Pierre{-}luc Cantin and
+               Clifford Chao and
+               Chris Clark and
+               Jeremy Coriell and
+               Mike Daley and
+               Matt Dau and
+               Jeffrey Dean and
+               Ben Gelb and
+               Tara Vazir Ghaemmaghami and
+               Rajendra Gottipati and
+               William Gulland and
+               Robert Hagmann and
+               C. Richard Ho and
+               Doug Hogberg and
+               John Hu and
+               Robert Hundt and
+               Dan Hurt and
+               Julian Ibarz and
+               Aaron Jaffey and
+               Alek Jaworski and
+               Alexander Kaplan and
+               Harshit Khaitan and
+               Daniel Killebrew and
+               Andy Koch and
+               Naveen Kumar and
+               Steve Lacy and
+               James Laudon and
+               James Law and
+               Diemthu Le and
+               Chris Leary and
+               Zhuyuan Liu and
+               Kyle Lucke and
+               Alan Lundin and
+               Gordon MacKean and
+               Adriana Maggiore and
+               Maire Mahony and
+               Kieran Miller and
+               Rahul Nagarajan and
+               Ravi Narayanaswami and
+               Ray Ni and
+               Kathy Nix and
+               Thomas Norrie and
+               Mark Omernick and
+               Narayana Penukonda and
+               Andy Phelps and
+               Jonathan Ross and
+               Matt Ross and
+               Amir Salek and
+               Emad Samadiani and
+               Chris Severn and
+               Gregory Sizikov and
+               Matthew Snelham and
+               Jed Souter and
+               Dan Steinberg and
+               Andy Swing and
+               Mercedes Tan and
+               Gregory Thorson and
+               Bo Tian and
+               Horia Toma and
+               Erick Tuttle and
+               Vijay Vasudevan and
+               Richard Walter and
+               Walter Wang and
+               Eric Wilcox and
+               Doe Hyun Yoon},
+  title     = {In-Datacenter Performance Analysis of a Tensor Processing Unit},
+  booktitle = {Proceedings of the 44th Annual International Symposium on Computer
+               Architecture, {ISCA} 2017, Toronto, ON, Canada, June 24-28, 2017},
+  pages     = {1--12},
+  year      = {2017},
+  crossrefXXX  = {DBLP:conf/isca/2017},
+  url       = {https://doi.org/10.1145/3079856.3080246},
+  doi       = {10.1145/3079856.3080246},
+  timestamp = {Tue, 06 Nov 2018 11:07:01 +0100},
+  biburl    = {https://dblp.org/rec/bib/conf/isca/JouppiYPPABBBBB17},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+@inproceedings{FowersOPMLLAHAG:2018,
+  author    = {Jeremy Fowers and
+               Kalin Ovtcharov and
+               Michael Papamichael and
+               Todd Massengill and
+               Ming Liu and
+               Daniel Lo and
+               Shlomi Alkalay and
+               Michael Haselman and
+               Logan Adams and
+               Mahdi Ghandi and
+               Stephen Heil and
+               Prerak Patel and
+               Adam Sapek and
+               Gabriel Weisz and
+               Lisa Woods and
+               Sitaram Lanka and
+               Steven K. Reinhardt and
+               Adrian M. Caulfield and
+               Eric S. Chung and
+               Doug Burger},
+  title     = {A Configurable Cloud-Scale {DNN} Processor for Real-Time {AI}},
+  booktitle = {45th {ACM/IEEE} Annual International Symposium on Computer Architecture,
+               {ISCA} 2018, Los Angeles, CA, USA, June 1-6, 2018},
+  pages     = {1--14},
+  year      = {2018},
+  crossrefXXX  = {DBLP:conf/isca/2018},
+  url       = {https://doi.org/10.1109/ISCA.2018.00012},
+  doi       = {10.1109/ISCA.2018.00012},
+  timestamp = {Tue, 11 Sep 2018 14:35:34 +0200},
+  biburl    = {https://dblp.org/rec/bib/conf/isca/FowersOPMLLAHAG18},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+@inproceedings{ChenES:2016,
+  author    = {Yu{-}Hsin Chen and
+               Joel S. Emer and
+               Vivienne Sze},
+  title     = {Eyeriss: {A} Spatial Architecture for Energy-Efficient Dataflow for
+               Convolutional Neural Networks},
+  booktitle = {43rd {ACM/IEEE} Annual International Symposium on Computer Architecture,
+               {ISCA} 2016, Seoul, South Korea, June 18-22, 2016},
+  pages     = {367--379},
+  year      = {2016},
+  crossrefXXX  = {DBLP:conf/isca/2016},
+  url       = {https://doi.org/10.1109/ISCA.2016.40},
+  doi       = {10.1109/ISCA.2016.40},
+  timestamp = {Tue, 23 May 2017 01:12:16 +0200},
+  biburl    = {https://dblp.org/rec/bib/conf/isca/ChenES16},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+@article{HubaraCSEB:2016,
+  author    = {Itay Hubara and
+               Matthieu Courbariaux and
+               Daniel Soudry and
+               Ran El{-}Yaniv and
+               Yoshua Bengio},
+  title     = {Quantized Neural Networks: Training Neural Networks with Low Precision
+               Weights and Activations},
+  journal   = {CoRR},
+  volume    = {abs/1609.07061},
+  year      = {2016},
+  url       = {http://arxiv.org/abs/1609.07061},
+  archivePrefix = {arXiv},
+  eprint    = {1609.07061},
+  timestamp = {Mon, 13 Aug 2018 16:49:12 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/HubaraCSEB16},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+@article{DBLP:journals/corr/HubaraCSEB16,
+  author    = {Itay Hubara and
+               Matthieu Courbariaux and
+               Daniel Soudry and
+               Ran El{-}Yaniv and
+               Yoshua Bengio},
+  title     = {Quantized Neural Networks: Training Neural Networks with Low Precision
+               Weights and Activations},
+  journal   = {CoRR},
+  volume    = {abs/1609.07061},
+  year      = {2016},
+  url       = {http://arxiv.org/abs/1609.07061},
+  archivePrefix = {arXiv},
+  eprint    = {1609.07061},
+  timestamp = {Mon, 13 Aug 2018 16:49:12 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/HubaraCSEB16},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@manual{Alveo:2018,
+  title  = "Adaptable Accelerator Cards for Data Center Workloads",
+  author = "Xilinx",
+  url    = "https://www.xilinx.com/products/boards-and-kits/alveo.html",
+  year   = "2018" }
+
+@manual{AWS:2018,
+  title  = "Amazon EC2 F1 Instances: Run Customizable FPGAs  in the AWS Cloud",
+  author = "Xilinx",
+  url    = "https://aws.amazon.com/ec2/instance-types/f1/",
+  year   = "2018" }
+
+@manual{Virtex:2018,
+  title  = " Virtex Ultrascale+",
+  author = "Xilinx",
+  url    = "https://www.xilinx.com/products/silicon-devices/fpga/virtex-ultrascale-plus.html",
+  year   = "2018" }
+
+@manual{DSP48,
+  title  = "UG579, UltraScale Architecture DSP48 Slice User Guide.",
+  author = "Xilinx",
+  year   = "2018" }
+
+@manual{FuWS:2015,
+  title  = "8-Bit Dot-Product Acceleration , Xilinx White Paper-WP487",
+  author = "Yao Fu and  Ephrem Wu and Ashish Sirasao",
+  year   = "2015" }
+
+@manual{SDx:2018,
+  title  = "SDAccel Development Environment",
+  author = "Xilinx",
+  url    = "https://www.xilinx.com/products/design-tools/software-zone/sdaccel.html",
+  year   = "2018" }
+
+
+@article{HanMD:2015,
+  author    = {Song Han and
+               Huizi Mao and
+               William J. Dally},
+  title     = {Deep Compression: Compressing Deep Neural Network with Pruning, Trained
+               Quantization and Huffman Coding},
+  journal   = {CoRR},
+  volume    = {abs/1510.00149},
+  year      = {2015},
+  url       = {http://arxiv.org/abs/1510.00149},
+  archivePrefix = {arXiv},
+  eprint    = {1510.00149},
+  timestamp = {Mon, 13 Aug 2018 16:48:14 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/HanMD15},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{GyselMG:2016,
+  author    = {Philipp Gysel and
+               Mohammad Motamedi and
+               Soheil Ghiasi},
+  title     = {Hardware-oriented Approximation of Convolutional Neural Networks},
+  journal   = {CoRR},
+  volume    = {abs/1604.03168},
+  year      = {2016},
+  url       = {http://arxiv.org/abs/1604.03168},
+  archivePrefix = {arXiv},
+  eprint    = {1604.03168},
+  timestamp = {Mon, 13 Aug 2018 16:46:56 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/GyselMG16},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+@inproceedings{WuZBC:2017,
+  author    = {Ephrem Wu and
+               Xiaoqian Zhang and
+               David Berman and
+               Inkeun Cho},
+  title     = {A high-throughput reconfigurable processing array for neural networks},
+  booktitle = {27th International Conference on Field Programmable Logic and Applications,
+               {FPL} 2017, Ghent, Belgium, September 4-8, 2017},
+  pages     = {1--4},
+  year      = {2017},
+  crossrefXXX  = {DBLP:conf/fpl/2017},
+  url       = {https://doi.org/10.23919/FPL.2017.8056794},
+  doi       = {10.23919/FPL.2017.8056794},
+  timestamp = {Wed, 11 Oct 2017 15:18:54 +0200},
+  biburl    = {https://dblp.org/rec/bib/conf/fpl/WuZBC17},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@inproceedings{HanLMPPHD:2016,
+  author    = {Song Han and
+               Xingyu Liu and
+               Huizi Mao and
+               Jing Pu and
+               Ardavan Pedram and
+               Mark A. Horowitz and
+               William J. Dally},
+  title     = {{EIE:} Efficient Inference Engine on Compressed Deep Neural Network},
+  booktitle = {43rd {ACM/IEEE} Annual International Symposium on Computer Architecture,
+               {ISCA} 2016, Seoul, South Korea, June 18-22, 2016},
+  pages     = {243--254},
+  year      = {2016},
+  crossrefXXX  = {DBLP:conf/isca/2016},
+  url       = {https://doi.org/10.1109/ISCA.2016.30},
+  doi       = {10.1109/ISCA.2016.30},
+  timestamp = {Wed, 14 Nov 2018 10:57:02 +0100},
+  biburl    = {https://dblp.org/rec/bib/conf/isca/HanLMPPHD16},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@inproceedings{UmurogluFGBLJV:2017,
+  author    = {Yaman Umuroglu and
+               Nicholas J. Fraser and
+               Giulio Gambardella and
+               Michaela Blott and
+               Philip Heng Wai Leong and
+               Magnus Jahre and
+               Kees A. Vissers},
+  title     = {{FINN:} {A} Framework for Fast, Scalable Binarized Neural Network
+               Inference},
+  booktitle = {Proceedings of the 2017 {ACM/SIGDA} International Symposium on Field-Programmable
+               Gate Arrays, {FPGA} 2017, Monterey, CA, USA, February 22-24, 2017},
+  pages     = {65--74},
+  year      = {2017},
+  crossrefXXX  = {DBLP:conf/fpga/2017},
+  url       = {http://dl.acm.org/citation.cfm?id=3021744},
+  timestamp = {Tue, 06 Nov 2018 16:58:22 +0100},
+  biburl    = {https://dblp.org/rec/bib/conf/fpga/UmurogluFGBLJV17},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@ARTICLE{GuoSQYWYHWY:2018,
+author={K. Guo and L. Sui and J. Qiu and J. Yu and J. Wang and S. Yao and S. Han and Y. Wang and H. Yang},
+journal={IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems},
+title={Angel-Eye: A Complete Design Flow for Mapping CNN Onto Embedded FPGA},
+year={2018},
+volume={37},
+number={1},
+pages={35-47},
+keywords={computational complexity;convolution;field programmable gate arrays;neural nets;Angel-Eye;complete design flow;embedded FPGA;convolutional neural network;computation complexity;GPU acceleration;CNN-based applications;CNN-based solutions;programmable CNN accelerator architecture;flexible CNN accelerator architecture;data quantization strategy;compilation tool maps;field-programmable gate arrays;Zynq XC7Z045 platform;NIVIDA TK1;TX1 platforms;Kernel;Field programmable gate arrays;Feature extraction;Hardware;Convolution;Computational modeling;Complexity theory;Convolutional neural network (CNN);design flow;embedded field-programmable gate array (FPGA);hardware/software co-design},
+doi={10.1109/TCAD.2017.2705069},
+ISSN={0278-0070},
+month={Jan},}
+
+
+@book{quinton1991systolic,
+  title={Systolic Algorithms \& Architectures},
+  author={Quinton, P. and Robert, Y.},
+  isbn={9780138807900},
+  lccn={gb90020190},
+  url={https://books.google.com/books?id=6JJQAAAAMAAJ},
+  year={1991},
+  publisher={Prentice Hall}
+}
+
+
+
+@article{SettleBDDFFNSW:2018,
+  author    = {Sean O. Settle and
+               Manasa Bollavaram and
+	       Paolo D'Alberto and
+	       Elliott Delaye and
+	       Oscar Fernandez and
+	       Nicholas Fraser and
+	       Aaron Ng and
+	       Ashish Sirasao and
+	       Michael Wu},
+   title     = {Quantizing Convolutional Neural Networks for Low-Power High-Throughput Inference Engines},
+   journal   = {CoRR},
+   volume    = {abs/1805.07941},
+   year      = {2018},
+   url       = {http://arxiv.org/abs/1805.07941},
+   archivePrefix = {arXiv},
+   eprint    = {1805.07941},
+   timestamp = {Mon, 13 Aug 2018 16:48:49 +0200},
+   biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1805-07941},
+   bibsource = {dblp computer science bibliography, https://dblp.org}
+   }
+
+
+@article{Kung1982,
+  author    = {H. T. Kung},
+  title     = {Why Systolic Architectures?},
+  journal   = {{IEEE} Computer},
+  volume    = {15},
+  number    = {1},
+  pages     = {37--46},
+  year      = {1982},
+  url       = {https://doi.org/10.1109/MC.1982.1653825},
+  doi       = {10.1109/MC.1982.1653825},
+  timestamp = {Wed, 17 May 2017 10:56:45 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/computer/Kung82},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+@misc{dumoulin2016guide,
+  abstract = {We introduce a guide to help deep learning practitioners understand and
+manipulate convolutional neural network architectures. The guide clarifies the
+relationship between various properties (input shape, kernel shape, zero
+padding, strides and output shape) of convolutional, pooling and transposed
+convolutional layers, as well as the relationship between convolutional and
+transposed convolutional layers. Relationships are derived for various cases,
+and are illustrated in order to make them intuitive.},
+  added-at = {2016-03-24T09:02:29.000+0100},
+  author = {Dumoulin, Vincent and Visin, Francesco},
+  biburl = {https://www.bibsonomy.org/bibtex/24282c5ae16fe6012c818a9dc7c442a0d/pixor},
+  description = {[1603.07285] A guide to convolution arithmetic for deep learning},
+  interhash = {47f037084e2155cec24f09bf4897dcba},
+  intrahash = {4282c5ae16fe6012c818a9dc7c442a0d},
+  keywords = {*** DeepLearning Tutorial},
+  note = {cite arxiv:1603.07285},
+  timestamp = {2016-03-24T09:10:05.000+0100},
+  title = {A guide to convolution arithmetic for deep learning},
+  url = {http://arxiv.org/abs/1603.07285},
+  year = 2016
+}
+
+@article{JainGWD2019,
+  author    = {Sambhav R. Jain and
+               Albert Gural and
+               Michael Wu and
+               Chris Dick},
+  title     = {Trained Uniform Quantization for Accurate and Efficient Neural Network
+               Inference on Fixed-Point Hardware},
+  journal   = {CoRR},
+  volume    = {abs/1903.08066},
+  year      = {2019},
+  url       = {http://arxiv.org/abs/1903.08066},
+  archivePrefix = {arXiv},
+  eprint    = {1903.08066},
+  timestamp = {Mon, 01 Apr 2019 14:07:37 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1903-08066},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{Han2015DeepCC,
+  title={Deep Compression: Compressing Deep Neural Network with Pruning, Trained Quantization and Huffman Coding},
+  author={Song Han and Huizi Mao and William J. Dally},
+  journal={CoRR},
+  year={2015},
+  volume={abs/1510.00149}
+}
+
+@article{Settle2018,
+  author    = {Sean O. Settle and
+               Manasa Bollavaram and
+               Paolo D'Alberto and
+               Elliott Delaye and
+               Oscar Fernandez and
+               Nicholas Fraser and
+               Aaron Ng and
+               Ashish Sirasao and
+               Michael Wu},
+  title     = {Quantizing Convolutional Neural Networks for Low-Power High-Throughput
+               Inference Engines},
+  journal   = {CoRR},
+  volume    = {abs/1805.07941},
+  year      = {2018},
+  url       = {http://arxiv.org/abs/1805.07941},
+  archivePrefix = {arXiv},
+  eprint    = {1805.07941},
+  timestamp = {Mon, 13 Aug 2018 16:48:49 +0200},
+  biburl    = {https://dblp.org/rec/bib/journals/corr/abs-1805-07941},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+
+@article{Duarte_2018,
+   title={Fast inference of deep neural networks in FPGAs for particle physics},
+   volume={13},
+   ISSN={1748-0221},
+   url={http://dx.doi.org/10.1088/1748-0221/13/07/P07027},
+   DOI={10.1088/1748-0221/13/07/p07027},
+   number={07},
+   journal={Journal of Instrumentation},
+   publisher={IOP Publishing},
+   author={Duarte, J. and Han, S. and Harris, P. and Jindariani, S. and Kreinar, E. and Kreis, B. and Ngadiuba, J. and Pierini, M. and Rivera, R. and Tran, N. and et al.},
+   year={2018},
+   month={Jul},
+   pages={P07027–P07027}
+}
+
+@misc{sharma_rohit_2019_trafficVision,
+    author       = {Rohit Sharma},
+    title        = {{trafficVision: Inferencing traffic with yolo on AMU GPU}},
+    month        = Jan,
+    year         = 2019,
+    version      = {1.0},
+    publisher    = {AITS},
+    url          = {https://github.com/srohit0/trafficVision}
+    }
+
+@article{Duarte2019,
+title = {FPGAs as a Service to Accelerate Machine Learning Inference},
+author = {Duarte, Javier and et al.},
+abstractNote = {Large-scale particle physics experiments face
+                  challenging demands for high-throughput computing
+                  resources both now and in the future. New
+                  heterogeneous computing paradigms on dedicated
+                  hardware with increased parallelization, such as
+                  Field Programmable Gate Arrays (FPGAs), offer
+                  exciting solutions with large potential gains. The
+                  growing applications of machine learning algorithms
+                  in particle physics for simulation, reconstruction,
+                  and analysis are naturally deployed on such
+                  platforms. We demonstrate that the acceleration of
+                  machine learning inference as a web service
+                  represents a heterogeneous computing solution for
+                  particle physics experiments that requires minimal
+                  modification to the current computing model. As
+                  examples, we retrain the ResNet-50 convolutional
+                  neural network to demonstrate state-of-the-art
+                  performance for top quark jet tagging at the LHC,
+                  and apply a ResNet-50 model with transfer learning
+                  for neutrino event classification. Using Project
+                  Brainwave b y Microsoft to accelerate the ResNet-50
+                  image classification model, we achieve average
+                  inference times of 60 (10) milliseconds with our
+                  experimental physics software framework using
+                  Brainwave as a cloud (edge or on-premises) service,
+                  representing an improvement by a factor of
+                  approximately 30 (175) in model inference latency
+                  over traditional CPU inference in current
+                  experimental hardware. A single FPGA service
+                  accessed by many CPUs achieves a throughput of
+                  600--700 inferences per second using an image batch
+                  of one, comparable to large batch-size GPU
+                  throughput and significantly better than small
+                  batch-size GPU throughput. Deployed as an edge or
+                  cloud service for the particle physics computing
+                  model, coprocessor accelerators can have a higher
+                  duty cycle and are potentially much more
+                  cost-effective.},
+place = {United States},
+year = {2019},
+month = {3}
+}
+
+@misc{dalberto2012nonparametric,
+    title={Non-Parametric Methods Applied to the N-Sample Series Comparison},
+    author={Paolo D'Alberto and Chris Drome and Ali Dasdan},
+    year={2012},
+    eprint={1205.1880},
+    archivePrefix={arXiv},
+    primaryClass={stat.CO}
+}
+@book{Boyd:2004,
+ author = {Boyd, Stephen and Vandenberghe, Lieven},
+ title = {Convex Optimization},
+ year = {2004},
+ isbn = {0521833787},
+ publisher = {Cambridge University Press},
+ address = {New York, NY, USA},
+} 
+
+@article{DBLP:journals/siamsc/KayaaslanAU18,
+  author    = {Enver Kayaaslan and
+               Cevdet Aykanat and
+               Bora U{\c{c}}ar},
+ title     = {1.5D Parallel Sparse Matrix-Vector Multiply},
+  journal   = {{SIAM} J. Scientific Computing},
+  volume    = {40},
+  number    = {1},
+  year      = {2018},
+  url       = {https://doi.org/10.1137/16M1105591},
+  doi       = {10.1137/16M1105591},
+  timestamp = {Fri, 27 Dec 2019 21:17:42 +0100},
+  biburl    = {https://dblp.org/rec/journals/siamsc/KayaaslanAU18.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+ 
+
+@inproceedings{DBLP:conf/ieeehpcs/PageK18,
+  author    = {Brian A. Page and
+               Peter M. Kogge},
+  title     = {Scalability of Hybrid Sparse Matrix Dense Vector (SpMV) Multiplication},
+  booktitle = {2018 International Conference on High Performance Computing {\&}
+               Simulation, {HPCS} 2018, Orleans, France, July 16-20, 2018},
+  pages     = {406--414},
+  publisher = {{IEEE}},
+  year      = {2018},
+  url       = {https://doi.org/10.1109/HPCS.2018.00072},
+  doi       = {10.1109/HPCS.2018.00072},
+  timestamp = {Wed, 16 Oct 2019 14:14:54 +0200},
+  biburl    = {https://dblp.org/rec/conf/ieeehpcs/PageK18.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+ 
+
+@inproceedings{DBLP:conf/cluster/PichelP18,
+  author    = {Juan Carlos Pichel and
+               Beatriz Pateiro{-}L{\'{o}}pez},
+  title     = {A New Approach for Sparse Matrix Classification Based on Deep Learning
+               Techniques},
+  booktitle = {{IEEE} International Conference on Cluster Computing, {CLUSTER} 2018,
+               Belfast, UK, September 10-13, 2018},
+  pages     = {46--54},
+  publisher = {{IEEE} Computer Society},
+  year      = {2018},
+  url       = {https://doi.org/10.1109/CLUSTER.2018.00017},
+  doi       = {10.1109/CLUSTER.2018.00017},
+  timestamp = {Wed, 16 Oct 2019 14:14:57 +0200},
+  biburl    = {https://dblp.org/rec/conf/cluster/PichelP18.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+
+@article{DBLP:journals/topc/AnztCYDFNTTW20,
+  author    = {Hartwig Anzt and
+               Terry Cojean and
+               Chen Yen{-}Chen and
+               Jack J. Dongarra and
+               Goran Flegar and
+               Pratik Nayak and
+               Stanimire Tomov and
+               Yuhsiang M. Tsai and
+               Weichung Wang},
+  title     = {Load-balancing Sparse Matrix Vector Product Kernels on GPUs},
+  journal   = {{ACM} Trans. Parallel Comput.},
+  volume    = {7},
+  number    = {1},
+  pages     = {2:1--2:26},
+  year      = {2020},
+  url       = {https://doi.org/10.1145/3380930},
+  doi       = {10.1145/3380930},
+  timestamp = {Fri, 08 May 2020 16:11:36 +0200},
+  biburl    = {https://dblp.org/rec/journals/topc/AnztCYDFNTTW20.bib},
+  bibsource = {dblp computer science bibliography, https://dblp.org}
+}
+

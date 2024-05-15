@@ -1,0 +1,87 @@
+%%% -*-BibTeX-*-
+%%% Do NOT edit. File created by BibTeX with style
+%%% ACM-Reference-Format-Journals [18-Jan-2012].
+
+\begin{thebibliography}{3}
+
+%%% ====================================================================
+%%% NOTE TO THE USER: you can override these defaults by providing
+%%% customized versions of any of these macros before the \bibliography
+%%% command.  Each of them MUST provide its own final punctuation,
+%%% except for \shownote{}, \showDOI{}, and \showURL{}.  The latter two
+%%% do not use final punctuation, in order to avoid confusing it with
+%%% the Web address.
+%%%
+%%% To suppress output of a particular field, define its macro to expand
+%%% to an empty string, or better, \unskip, like this:
+%%%
+%%% \newcommand{\showDOI}[1]{\unskip}   % LaTeX syntax
+%%%
+%%% \def \showDOI #1{\unskip}           % plain TeX syntax
+%%%
+%%% ====================================================================
+
+\ifx \showCODEN    \undefined \def \showCODEN     #1{\unskip}     \fi
+\ifx \showDOI      \undefined \def \showDOI       #1{#1}\fi
+\ifx \showISBNx    \undefined \def \showISBNx     #1{\unskip}     \fi
+\ifx \showISBNxiii \undefined \def \showISBNxiii  #1{\unskip}     \fi
+\ifx \showISSN     \undefined \def \showISSN      #1{\unskip}     \fi
+\ifx \showLCCN     \undefined \def \showLCCN      #1{\unskip}     \fi
+\ifx \shownote     \undefined \def \shownote      #1{#1}          \fi
+\ifx \showarticletitle \undefined \def \showarticletitle #1{#1}   \fi
+\ifx \showURL      \undefined \def \showURL       {\relax}        \fi
+% The following commands are used for tagged output and should be
+% invisible to TeX
+\providecommand\bibfield[2]{#2}
+\providecommand\bibinfo[2]{#2}
+\providecommand\natexlab[1]{#1}
+\providecommand\showeprint[2][]{arXiv:#2}
+
+\bibitem[\protect\citeauthoryear{D'Alberto}{D'Alberto}{2013}]%
+        {Paolo2007}
+\bibfield{author}{\bibinfo{person}{Paolo D'Alberto}.}
+  \bibinfo{year}{2013}\natexlab{}.
+\newblock \bibinfo{title}{FastMMW: Fast Matrix Multiplicaiton by Winograd}.
+\newblock \bibinfo{howpublished}{https://github.com/paolodalberto/FastMMW}.
+\newblock
+
+
+\bibitem[\protect\citeauthoryear{Fawzi, Balog, Huang, Hubert, Romera-Paredes,
+  Barekatain, Novikov, R~Ruiz, Schrittwieser, Swirszcz, Silver, Hassabis, and
+  Kohli}{Fawzi et~al\mbox{.}}{2022}]%
+        {PMID:36198780}
+\bibfield{author}{\bibinfo{person}{Alhussein Fawzi}, \bibinfo{person}{Matej
+  Balog}, \bibinfo{person}{Aja Huang}, \bibinfo{person}{Thomas Hubert},
+  \bibinfo{person}{Bernardino Romera-Paredes}, \bibinfo{person}{Mohammadamin
+  Barekatain}, \bibinfo{person}{Alexander Novikov},
+  \bibinfo{person}{Francisco~J R~Ruiz}, \bibinfo{person}{Julian Schrittwieser},
+  \bibinfo{person}{Grzegorz Swirszcz}, \bibinfo{person}{David Silver},
+  \bibinfo{person}{Demis Hassabis}, {and} \bibinfo{person}{Pushmeet Kohli}.}
+  \bibinfo{year}{2022}\natexlab{}.
+\newblock \showarticletitle{Discovering faster matrix multiplication algorithms
+  with reinforcement learning}.
+\newblock \bibinfo{journal}{\emph{Nature}} \bibinfo{volume}{610},
+  \bibinfo{number}{7930} (\bibinfo{date}{October} \bibinfo{year}{2022}),
+  \bibinfo{pages}{47—53}.
+\newblock
+\showISSN{0028-0836}
+\urldef\tempurl%
+\url{https://doi.org/10.1038/s41586-022-05172-4}
+\showDOI{\tempurl}
+
+
+\bibitem[\protect\citeauthoryear{STRASSEN}{STRASSEN}{1969}]%
+        {STRASSEN1969}
+\bibfield{author}{\bibinfo{person}{V. STRASSEN}.}
+  \bibinfo{year}{1969}\natexlab{}.
+\newblock \showarticletitle{Gaussian Elimination is not Optimal.}
+\newblock \bibinfo{journal}{\emph{Numer. Math.}}  \bibinfo{volume}{13}
+  (\bibinfo{year}{1969}), \bibinfo{pages}{354--356}.
+\newblock
+\urldef\tempurl%
+\url{http://eudml.org/doc/131927}
+\showURL{%
+\tempurl}
+
+
+\end{thebibliography}

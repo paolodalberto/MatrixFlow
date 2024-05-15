@@ -1,0 +1,54 @@
+This is BibTeX, Version 0.99d (TeX Live 2019/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: rad.aux
+The style file: ACM-Reference-Format.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Database file #1: ref.bib
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated glb_str_ptr (elt_size=4) to 20 items from 10.
+Reallocated global_strs (elt_size=200001) to 20 items from 10.
+Reallocated glb_str_end (elt_size=4) to 20 items from 10.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+You've used 3 entries,
+            5897 wiz_defined-function locations,
+            1345 strings with 15311 characters,
+and the built_in function-call counts, 3862 in all, are:
+= -- 482
+> -- 191
+< -- 0
++ -- 63
+- -- 68
+* -- 296
+:= -- 436
+add.period$ -- 15
+call.type$ -- 3
+change.case$ -- 27
+chr.to.int$ -- 3
+cite$ -- 3
+duplicate$ -- 286
+empty$ -- 197
+format.name$ -- 72
+if$ -- 889
+int.to.chr$ -- 2
+int.to.str$ -- 1
+missing$ -- 8
+newline$ -- 72
+num.names$ -- 24
+pop$ -- 94
+preamble$ -- 1
+purify$ -- 54
+quote$ -- 0
+skip$ -- 108
+stack$ -- 0
+substring$ -- 247
+swap$ -- 37
+text.length$ -- 0
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 62
+warning$ -- 0
+while$ -- 23
+width$ -- 0
+write$ -- 98
