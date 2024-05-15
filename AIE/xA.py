@@ -243,6 +243,8 @@ def Product_3(
     ## this is a logical and physical division by AIE columns
     DDRCPC = PartitionMatrix(C,[MR,NC])
     DDRBPC = PartitionMatrix(B,[K,NC])
+
+    DDRAPC_ = PartitionMatrix(A,[M,KR])  
     DDRAPC = PartitionMatrix(A,[MR,K])  ## this should be by row but
                                         ## it is actually distributed,
                                         ## differently because A goes
@@ -303,10 +305,11 @@ def Product_3(
     ## flagged so that we can build the 
     L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])   
     L2BPC = PartitionMatrix(DDRBPC.value()[0][0],[KtR,NtC])
+    L2APC  = PartitionMatrix(DDRAPC.value()[0][0],[MtR,KtR])
 
     ## This will help in finding the offset by columns (aka memtile
     ## rows) because teh computation will be split accordingly
-    L2APC = PartitionMatrix(DDRAPC.value()[0][0],[MtR,KtR])
+    L2APC_ = PartitionMatrix(DDRAPC_.value()[0][0],[MtR,KtR//ROWS])
 
     
     
@@ -392,7 +395,7 @@ def Product_3(
 
 
     
-    
+    ## croshet 
     
 
     LL3 = [ Level("DDR %d" % (i),3,parts =1)           for i in range(COLS)]
@@ -400,16 +403,22 @@ def Product_3(
     LL1 = [ [Level("L1 %d %d " % (i,j),1,16*1024,2)    for j in range(COLS)] for i in range(ROWS) ] 
 
 
+    ## we move data from DDR L2 (there are channels and there are columns)
+    ## A -> DDRAPC -> L2APC ( row major layouot but the shape is row,column)
+    
+    ABuffer = [ i for i in reversed(A.shape()[0]) ] 
+    ATile   = [ i for i in reversed(L2APC_.logicalshape)]
+    NTiles  = [ i for i in reversed(L2APC_.shape())] 
     A_DDRL2 = [
         Tiling(
-            A.shape()[0],
-            L2APC.logicalshape,
-            [0, L2APC.logicalshape[1]*j ] ,
+            ABuffer,            # The original buffer is the original matrix 
+            ATile,              # What we transfer is the L2 tiling
+            [KR*j,0 ] ,   # This is a spatial partitioning 
             [
                 Traversal(
                     i,
-                    L2APC.logicalshape[i],
-                    L2APC.shape()[i]
+                    ATile[i],
+                    NTiles[i]
                 ) for i in range(2)
             ],
             -1,1
@@ -419,17 +428,25 @@ def Product_3(
     print("A Tiling L3 L2")
     for d in A_DDRL2: print(d)
     pdb.set_trace()
+
+
+
+
+    
+    BBuffer = [ i for i in reversed(B.shape()[0]) ] 
+    BTile   = [ i for i in reversed(L2BPC.logicalshape)]
+    NBTiles  = [ i for i in reversed(L2BPC.shape())] 
     B_DDRL2 = [
         Tiling(
-            B.shape()[0],
-            L2BPC.logicalshape,
-            [0,   DDRBPC.logicalshape[1]*j ] ,
+            BBuffer,
+            BTile,
+            [NC*j,0 ] ,
             [
                 Traversal(
                     i,
-                    L2BPC.logicalshape[i],
-                    L2BPC.shape()[i]
-                ) for i in range(2)
+                    BTile[i],
+                    NBTiles[i]
+                ) for i in range(1,-1,-1)
             ],
             -1,1
         ) for j in range(COLS)
@@ -450,7 +467,8 @@ def Product_3(
                     L2CPC.shape()[i]
                 ) for i in range(2)
             ],
-            -1,1
+            -1,
+            1
         ) for j in range(COLS)
     ]
     
@@ -474,41 +492,6 @@ def Product_3(
     
     
 
-    
-"""
-This is the L3-L2 computation 
- ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
-CDP[0,0] << (ADP[0,0]) * (BDP[0,0])
-CDP[0,1] << (ADP[0,0]) * (BDP[0,1])
-CDP[0,2] << (ADP[0,0]) * (BDP[0,2])
-CDP[0,3] << (ADP[0,0]) * (BDP[0,3])
-CDP[0,4] << (ADP[0,0]) * (BDP[0,4])
-CDP[0,5] << (ADP[0,0]) * (BDP[0,5])
-CDP[0,6] << (ADP[0,0]) * (BDP[0,6])
-CDP[0,7] << (ADP[0,0]) * (BDP[0,7])
-
-Then L2-L1 computation
- ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
-T[
-[[0], [0, 1, 2, 3, 4, 5, 6, 7], [0]]
-] { 
-(8
- ['A: Partitions  [1,16] of size [8,128]', 'B: Partitions  [16,4] of size [128,64]', 'C: Partitions  [1,4] of size [8,64]']
-CDP[0,0] << (ADP[0,0]) * (BDP[0,0]) + (ADP[0,1]) * (BDP[1,0]) + (ADP[0,2]) * (BDP[2,0]) + (ADP[0,3]) * (BDP[3,0]) + (ADP[0,4]) * (BDP[4,0]) + (ADP[0,5]) * (BDP[5,0]) + (ADP[0,6]) * (BDP[6,0])\ 
-	 + (ADP[0,7]) * (BDP[7,0]) + (ADP[0,8]) * (BDP[8,0]) + (ADP[0,9]) * (BDP[9,0]) + (ADP[0,10]) * (BDP[10,0]) + (ADP[0,11]) * (BDP[11,0])\ 
-	 + (ADP[0,12]) * (BDP[12,0]) + (ADP[0,13]) * (BDP[13,0]) + (ADP[0,14]) * (BDP[14,0]) + (ADP[0,15]) * (BDP[15,0])
-CDP[0,1] << (ADP[0,0]) * (BDP[0,1]) + (ADP[0,1]) * (BDP[1,1]) + (ADP[0,2]) * (BDP[2,1]) + (ADP[0,3]) * (BDP[3,1]) + (ADP[0,4]) * (BDP[4,1]) + (ADP[0,5]) * (BDP[5,1]) + (ADP[0,6]) * (BDP[6,1])\ 
-	 + (ADP[0,7]) * (BDP[7,1]) + (ADP[0,8]) * (BDP[8,1]) + (ADP[0,9]) * (BDP[9,1]) + (ADP[0,10]) * (BDP[10,1]) + (ADP[0,11]) * (BDP[11,1])\ 
-	 + (ADP[0,12]) * (BDP[12,1]) + (ADP[0,13]) * (BDP[13,1]) + (ADP[0,14]) * (BDP[14,1]) + (ADP[0,15]) * (BDP[15,1])
-CDP[0,2] << (ADP[0,0]) * (BDP[0,2]) + (ADP[0,1]) * (BDP[1,2]) + (ADP[0,2]) * (BDP[2,2]) + (ADP[0,3]) * (BDP[3,2]) + (ADP[0,4]) * (BDP[4,2]) + (ADP[0,5]) * (BDP[5,2]) + (ADP[0,6]) * (BDP[6,2])\ 
-	 + (ADP[0,7]) * (BDP[7,2]) + (ADP[0,8]) * (BDP[8,2]) + (ADP[0,9]) * (BDP[9,2]) + (ADP[0,10]) * (BDP[10,2]) + (ADP[0,11]) * (BDP[11,2])\ 
-	 + (ADP[0,12]) * (BDP[12,2]) + (ADP[0,13]) * (BDP[13,2]) + (ADP[0,14]) * (BDP[14,2]) + (ADP[0,15]) * (BDP[15,2])
-CDP[0,3] << (ADP[0,0]) * (BDP[0,3]) + (ADP[0,1]) * (BDP[1,3]) + (ADP[0,2]) * (BDP[2,3]) + (ADP[0,3]) * (BDP[3,3]) + (ADP[0,4]) * (BDP[4,3]) + (ADP[0,5]) * (BDP[5,3]) + (ADP[0,6]) * (BDP[6,3])\ 
-	 + (ADP[0,7]) * (BDP[7,3]) + (ADP[0,8]) * (BDP[8,3]) + (ADP[0,9]) * (BDP[9,3]) + (ADP[0,10]) * (BDP[10,3]) + (ADP[0,11]) * (BDP[11,3])\ 
-	 + (ADP[0,12]) * (BDP[12,3]) + (ADP[0,13]) * (BDP[13,3]) + (ADP[0,14]) * (BDP[14,3]) + (ADP[0,15]) * (BDP[15,3])
-)
-"""
-
 
 def croshet(
         G : Graph,
@@ -519,207 +502,6 @@ def croshet(
         COLS : int = 4  
 ):
 
-    
-    if not G.tiled: return None
-    
-
-    ## this should be the L3 - L2 computation for example.
-    """
-    This is the L3-L2 computation 
-    ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
-    CDP[0,0] << (ADP[0,0]) * (BDP[0,0])
-    CDP[0,1] << (ADP[0,0]) * (BDP[0,1])
-    CDP[0,2] << (ADP[0,0]) * (BDP[0,2])
-    CDP[0,3] << (ADP[0,0]) * (BDP[0,3])
-    CDP[0,4] << (ADP[0,0]) * (BDP[0,4])
-    CDP[0,5] << (ADP[0,0]) * (BDP[0,5])
-    CDP[0,6] << (ADP[0,0]) * (BDP[0,6])
-    CDP[0,7] << (ADP[0,0]) * (BDP[0,7])
-    """
-
-
-    
-    ## L3 Tiling read tiling
-    ## L2 tile is written into L2 from L3
-    L3A = L3.copy("A")
-    L3B = L3.copy("B")
-    L3C = L3.copy("C")
-
-    HA = MemoryHierarchTensors("A_L3", G.ADP)
-    HB = MemoryHierarchTensors("B_L3", G.BDP)
-    HC = MemoryHierarchTensors("C_L3", G.CDP)
-
-    print(L3A)
-    print("A", G.ADP)
-    #
-    ## tiling is physical and thus the dimensions are in reverse order
-    #pdb.set_trace()
-
-
-
-    
-    ###
-    ## We split matrices by columns and by 'memory' columns so we tile
-    ## physically by the second physical dimension on a column major
-    ## matrix, yeah it is not really straightforward
-    ##
-    ## The trick here is to understand that the tensor in L3 and L2
-    ## are distributed. Think in your head that the blocks these are
-    ## composed are 
-    ### 
-    TAs = HA.read_tiling_by_parts(1,L3A,1);
-    for t in TAs: print(t)
-
-    print("B", G.BDP)
-    TBs = HB.read_tiling_by_parts(1,L3B,2)
-    for t in TBs: print(t)
-
-    print("C", G.CDP)
-    TCs = HC.read_tiling_by_parts(1,L3C,1)
-    for t in TCs: print(t)
-
-
-    """
-    DDR L: 3 [549755813888, 549755813888, 549755813888, 549755813888]
-    
-    
-    A Partitions  [1,1] of size [8,2048]
-    ##### 0
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 0], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
-    ##### 1
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 512], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
-    ##### 2
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 1024], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
-    ##### 3
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 512], offset=[0, 1536], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=512, wrap=4)], packet_port_id=-1, repetition=1)
-    
-
-    B Partitions  [1,8] of size [2048,256]
-    ##### 0
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 0], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 32], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    ##### 1
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 64], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 96], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    ##### 2
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 128], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 160], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    ##### 3
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 192], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[2048, 2048], tiling_dimension=[2048, 32], offset=[0, 224], tile_traversal=[Traversal(dimension=0, stride=2048, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    
-
-    C Partitions  [1,8] of size [8,256]
-    ##### 0
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 0], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 32], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    ##### 1
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 64], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 96], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    ##### 2
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 128], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 160], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    ##### 3
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 192], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-    Tiling(buffer_dimension=[8, 2048], tiling_dimension=[8, 32], offset=[0, 224], tile_traversal=[Traversal(dimension=0, stride=8, wrap=1), Traversal(dimension=1, stride=32, wrap=64)], packet_port_id=-1, repetition=8)
-MemTile L: 2 [524288, 524288, 524288, 524288]
-    """
-
-
-
-    
-    """    
-    Then L2-L1 computation
-    ['A: Partitions  [1,1] of size [8,2048]', 'B: Partitions  [1,8] of size [2048,256]', 'C: Partitions  [1,8] of size [8,256]']
-    T[
-    [[0], [0, 1, 2, 3, 4, 5, 6, 7], [0]]
-    ] { 
-    (8
-    ['A: Partitions  [1,16] of size [8,128]', 'B: Partitions  [16,4] of size [128,64]', 'C: Partitions  [1,4] of size [8,64]']
-    CDP[0,0] << (ADP[0,0]) * (BDP[0,0]) + (ADP[0,1]) * (BDP[1,0]) + (ADP[0,2]) * (BDP[2,0]) + (ADP[0,3]) * (BDP[3,0]) + (ADP[0,4]) * (BDP[4,0]) + (ADP[0,5]) * (BDP[5,0]) + (ADP[0,6]) * (BDP[6,0])\ 
-	 + (ADP[0,7]) * (BDP[7,0]) + (ADP[0,8]) * (BDP[8,0]) + (ADP[0,9]) * (BDP[9,0]) + (ADP[0,10]) * (BDP[10,0]) + (ADP[0,11]) * (BDP[11,0])\ 
-	 + (ADP[0,12]) * (BDP[12,0]) + (ADP[0,13]) * (BDP[13,0]) + (ADP[0,14]) * (BDP[14,0]) + (ADP[0,15]) * (BDP[15,0])
-    CDP[0,1] << (ADP[0,0]) * (BDP[0,1]) + (ADP[0,1]) * (BDP[1,1]) + (ADP[0,2]) * (BDP[2,1]) + (ADP[0,3]) * (BDP[3,1]) + (ADP[0,4]) * (BDP[4,1]) + (ADP[0,5]) * (BDP[5,1]) + (ADP[0,6]) * (BDP[6,1])\ 
-	 + (ADP[0,7]) * (BDP[7,1]) + (ADP[0,8]) * (BDP[8,1]) + (ADP[0,9]) * (BDP[9,1]) + (ADP[0,10]) * (BDP[10,1]) + (ADP[0,11]) * (BDP[11,1])\ 
-	 + (ADP[0,12]) * (BDP[12,1]) + (ADP[0,13]) * (BDP[13,1]) + (ADP[0,14]) * (BDP[14,1]) + (ADP[0,15]) * (BDP[15,1])
-    CDP[0,2] << (ADP[0,0]) * (BDP[0,2]) + (ADP[0,1]) * (BDP[1,2]) + (ADP[0,2]) * (BDP[2,2]) + (ADP[0,3]) * (BDP[3,2]) + (ADP[0,4]) * (BDP[4,2]) + (ADP[0,5]) * (BDP[5,2]) + (ADP[0,6]) * (BDP[6,2])\ 
-	 + (ADP[0,7]) * (BDP[7,2]) + (ADP[0,8]) * (BDP[8,2]) + (ADP[0,9]) * (BDP[9,2]) + (ADP[0,10]) * (BDP[10,2]) + (ADP[0,11]) * (BDP[11,2])\ 
-	 + (ADP[0,12]) * (BDP[12,2]) + (ADP[0,13]) * (BDP[13,2]) + (ADP[0,14]) * (BDP[14,2]) + (ADP[0,15]) * (BDP[15,2])
-    CDP[0,3] << (ADP[0,0]) * (BDP[0,3]) + (ADP[0,1]) * (BDP[1,3]) + (ADP[0,2]) * (BDP[2,3]) + (ADP[0,3]) * (BDP[3,3]) + (ADP[0,4]) * (BDP[4,3]) + (ADP[0,5]) * (BDP[5,3]) + (ADP[0,6]) * (BDP[6,3])\ 
-	 + (ADP[0,7]) * (BDP[7,3]) + (ADP[0,8]) * (BDP[8,3]) + (ADP[0,9]) * (BDP[9,3]) + (ADP[0,10]) * (BDP[10,3]) + (ADP[0,11]) * (BDP[11,3])\ 
-	 + (ADP[0,12]) * (BDP[12,3]) + (ADP[0,13]) * (BDP[13,3]) + (ADP[0,14]) * (BDP[14,3]) + (ADP[0,15]) * (BDP[15,3])
-    )
-    """
-
-    ###
-    ##  Now the partitions are in shape for the cores so the partition
-    ##  is a composition of core data and it may require multiple
-    ##  passes.
-    ##
-    ##  How ever, we see from the prospective of a single Memtile
-    ##  distributing to a single column or a row. So when you think at
-    ##  the communication we are actually send a core block as broad
-    ##  cast to the same row: for example A00 goes to Row 0 or a
-    ##  column [B00, B10, B20, B30] is sent to a column and each block
-    ##  to a core ... we will figure out how to manage this.
-    ##
-    ###
-    CL2Partition = G.V[0].left[0].CDP
-    AL2Partition = G.V[0].left[0].ADP
-    BL2Partition = G.V[0].left[0].BDP
-    HAT = MemoryHierarchTensors("A_L2",AL2Partition)
-    HBT = MemoryHierarchTensors("B_L2",BL2Partition)
-    HCT = MemoryHierarchTensors("C_L2",CL2Partition)
-
-
-    L2A = L2.copy("A")
-    L2B = L2.copy("B")
-    L2C = L2.copy("C")
-
-    ## L2 Tiling read tiling 
-    print(L2)
-    print("A", AL2Partition)
-    pdb.set_trace()
-    TAs = HAT.read_tiling_by_parts(0,L2A,1,colmajor=False)
-    for t in TAs: print(t)
-    pdb.set_trace()
-    print("B", BL2Partition)
-    TBs = HBT.read_tiling_by_parts(1,L2B,1,dim_time=[0,ROWS])
-    for t in TBs: print(t)
-    pdb.set_trace()
-    print("C", CL2Partition)
-    TCs = HCT.read_tiling_by_parts(1,L2C,1)
-    for t in TCs: print(t)
-    pdb.set_trace()
-    # cascade reduction or local reduction?
-
-    
-
-    tc = [len(CL2Partition.l), len(CL2Partition.l[0])]
-    ta = [len(AL2Partition.l), len(AL2Partition.l[0])]
-    we = [ROWS,COLS]
-
-
-    pdb.set_trace()
-    if tc!=we and ta[1] > 1:
-        G.Factotum['reduction'] = 'cascade'
-    
-    
-    
-    ## L1 Tiling for write in L1
-    L1A = L1.copy("A")
-    L1B = L1.copy("B")
-    L1C = L1.copy("C")
-
-    PA = PartitionMatrix(AL2Partition.value()[0][0], AL2Partition.logicalshape)
-    HAC = MemoryHierarchTensors("A_L1", PA)
-    PB = PartitionMatrix(BL2Partition.value()[0][0], BL2Partition.logicalshape)
-    HBC = MemoryHierarchTensors("B_L1", PB)
-    PC = PartitionMatrix(CL2Partition.value()[0][0], CL2Partition.logicalshape)
-    HCC = MemoryHierarchTensors("C_L1", PC)
-    
-
-    pdb.set_trace()
     
     
     return G
@@ -760,48 +542,49 @@ if __name__ == "__main__":
     C = gen_matrix(args.M,args.N,args.error)
     
 
+
     ## disjoint partition of input output at core level 
-    CPC = PartitionMatrix(C,[args.MC,args.NC])
-    BPC = PartitionMatrix(B,[args.KC,args.NC])
-    APC = PartitionMatrix(A,[args.MC,args.KC])
+    #CPC = PartitionMatrix(C,[args.MC,args.NC])
+    #BPC = PartitionMatrix(B,[args.KC,args.NC])
+    #APC = PartitionMatrix(A,[args.MC,args.KC])
 
     ## we create the sequence of matrix operation describing the
     ## larger product. this is a classic matrix multiplication where
     ## the focus and granularity is the core subvolume
-    decls, V = Product_t(APC, BPC, CPC)
+    #decls, V = Product_t(APC, BPC, CPC)
             
     ###
     ## create a graph (L2-L1-L2) where everithing fits L2
     ###
-    G1 = Graph("C = alpha*A*B", V,decls,C)
-    G1.CDP = CPC
-    G1.ADP = APC
-    G1.BDP = BPC
+    #G1 = Graph("C = alpha*A*B", V,decls,C)
+    #G1.CDP = CPC
+    #G1.ADP = APC
+    #G1.BDP = BPC
     
-    print(G1)
-    pdb.set_trace()
+    #print(G1)
+    #pdb.set_trace()
 
     ## disjoint partition at memtile level
-    D = Scalar(0)*C
-    CPT = PartitionMatrix(D,[args.MT,args.NT])
-    BPT = PartitionMatrix(B,[args.KT,args.NT])
-    APT = PartitionMatrix(A,[args.MT,args.KT])
+    #D = Scalar(0)*C
+    #CPT = PartitionMatrix(D,[args.MT,args.NT])
+    #BPT = PartitionMatrix(B,[args.KT,args.NT])
+    #APT = PartitionMatrix(A,[args.MT,args.KT])
     
     ## we create the sequence of matrix operation describing the
     ## larger product. this is a classic matrix multiplication where
     ## the focus and granularity is the memtile level
-    decls, V = Product_t(APT, BPT, CPT)
+    #decls, V = Product_t(APT, BPT, CPT)
 
 
     ###
     ## create a graph (L3-L2-L3) where everithing fits L2
     ###
-    G2 = Graph("C = alpha*A*B", V,decls,C)
-    G2.CDP = CPT
-    G2.ADP = APT
-    G2.BDP = BPT
-    print(G2)
-    pdb.set_trace()
+    #G2 = Graph("C = alpha*A*B", V,decls,C)
+    #G2.CDP = CPT
+    #G2.ADP = APT
+    #G2.BDP = BPT
+    #print(G2)
+    #pdb.set_trace()
     
 
     ## Now we build an operation LOOP that is a composition of graphs
