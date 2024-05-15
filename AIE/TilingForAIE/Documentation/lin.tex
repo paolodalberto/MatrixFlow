@@ -1,0 +1,1032 @@
+
+
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+%\usepackage{hyperref}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{comment}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+%\usepackage{}
+
+
+\onecolumn 
+\input{mydef}
+
+%\graphicspath{ {./}{./depth} }
+
+\begin{document}
+
+%%%%%%%%%%%---SETME-----%%%%%%%%%%%%%
+\title{Tiling/Blocking MHA, GEMM, LN, CONV }
+
+\author{
+  \IEEEauthorblockN{P.D.}
+}
+
+%\renewcommand{\shortauthors}{D'Alberto, et al.}
+\maketitle
+
+\begin{abstract}
+  How a conversation with Zhongyi Lin about Multi-head attention
+  became the starting point for a stand alone tiling tool for the
+  search, description and computation of blocked algorithms for AIE
+  overlays.
+
+  We start with a formal description of MHA and we jot down several
+  ideas how to describe, code, and interpret tiling strategies. This
+  is our first attempt to describe formally and optimally the tiling
+  process. We started with pure tiling as suggestions to an FPGA IP
+  (XDNN), with layer fusion and explicit double buffering by software
+  pipelining (DPUV3INT8). We introduce explicit code and compute
+  parallelism by symmetric computations for sparse convolutions
+  (Weight block sparsity). Here, we finally explore all valid
+  solutions and optimum by any custom function with the ability to
+  represent complex computation using double buffering at all level of
+  the memory hierarchy without being hold back by how to implement
+  each instructions (but having done so in the past).
+  
+
+
+  
+\end{abstract}
+
+
+\begin{IEEEkeywords}
+ AI, FPGA, Performance, LLM BS and Tools
+\end{IEEEkeywords}
+
+\section{MHA, its Notations and an Introduction}
+\label{sec:introduction}
+This is a HEAD
+\begin{equation}
+  \Vc{R} = \Smax{\Vc{Q}*\Vc{K}^t}*\Vc{V}
+\end{equation}
+
+Where $\Vc{K},\Vc{Q},\Vc{V} \in \R ^{L\times d}$, where $d\in\{32,64\}$ is small and $L \in \{4096\}$
+is large
+\begin{equation}
+  \Smax{\Vc{M}}  = \Vc{S}, \text{ with } \Vc{S}, \Vc{M} \in R^{m\times n} \\
+\end{equation}
+
+\begin{equation}
+  \Smax{\Vc{M}}_{i,j}  = \Smaxd{\Vc{M}} 
+\end{equation}
+Where the denominator is a sum by row and the result is literally a
+vector normalizing the row of hte numerator. Another way is to
+consider it a unitary matrix multiplying on the left
+\begin{equation}
+  \label{eq:gamma}
+  \Gamma= \frac{1}{\sum_j\exp{M_{i,j}}} = [ \frac{1}{\sum_j\exp{M_{0,j}}}, \dots,  \frac{1}{\sum_j\exp{M_{m,j}}} ] * \Vc{I}
+\end{equation}
+\begin{equation}
+  \Smax{\Vc{M}}  = \Gamma \Vc{M} = \Vc{S}
+\end{equation}
+
+\begin{equation}
+  \Vc{Q}*\Vc{K}^t = \Vc{T} \in \R^{L\times L}
+\end{equation}
+
+The submatrix of $\Vc{K}^t$ are actually transposed, so I do not need
+to carry the transpose sign everywhere. Assume that $\Vc{K}_i, \Vc{Q}_j \in \R^{d\times d}$
+{\small \begin{equation*}
+  \label{eq:mat}
+  \begin{pmatrix}
+    \Vc{Q}_0  \\
+    \Vc{Q}_1  \\
+    \dots \\
+    \Vc{Q}_n
+  \end{pmatrix} * 
+  \begin{pmatrix}
+    \Vc{K}_0 & \Vc{K}_1  & \dots \Vc{K}_n \\
+  \end{pmatrix}\\
+  =
+  \begin{pmatrix}
+    \Vc{Q}_0\Vc{K}_0 & \Vc{Q}_0\Vc{K}_1  & \dots \Vc{Q}_0\Vc{K}_n \\
+    \Vc{Q}_1\Vc{K}_0 & \Vc{Q}_1\Vc{K}_1  & \dots \Vc{Q}_1\Vc{K}_n \\
+    \dots \\
+    \Vc{Q}_n\Vc{K}_0 & \Vc{Q}_n\Vc{K}_1  & \dots \Vc{Q}_n\Vc{K}_n \\
+  \end{pmatrix}\\
+\end{equation*}
+}
+
+\begin{equation*}
+  \Vc{R}_0 = \Smax{
+    \begin{pmatrix}
+      \Vc{Q}_0\Vc{K}_0 &  \Vc{Q}_0\Vc{K}_1  & \dots & \Vc{Q}_0\Vc{K}_n 
+    \end{pmatrix}
+  }
+  \begin{pmatrix}
+    \Vc{V}_0  \\
+    \Vc{V}_1  \\
+    \dots \\
+    \Vc{V}_n
+  \end{pmatrix} 
+\end{equation*}
+
+To be precise, 
+
+\begin{equation}
+  \label{eq:a}
+  \Vc{R}_0 = \frac{1}{\sum_j\exp{\Vc{Q}_0\Vc{K}_j}}
+  \begin{pmatrix}
+    \exp{\Vc{Q}_0\Vc{K}_0} &  \dots &\exp{\Vc{Q}_0\Vc{K}_n} 
+  \end{pmatrix}
+  \begin{pmatrix}
+    \Vc{V}_0  \\
+    \Vc{V}_1  \\
+    \dots \\
+    \Vc{V}_n
+  \end{pmatrix} 
+\end{equation}
+
+\begin{equation}
+  \label{eq:b}
+  \Vc{R}_0 = \frac{\sum_j(\exp{\Vc{Q}_0\Vc{K}_j})\Vc{V}_j}{\sum_j\exp{\Vc{Q}_0\Vc{K}_j}}=\Gamma_0\sum_j(\exp{\Vc{Q}_0\Vc{K}_j})\Vc{V}_j
+\end{equation}
+The sum at the denominator is by row, the result is a vector and it
+can be represented also as a left diagonal matrix multiplication using
+Equation \ref{eq:gamma}.  The sum at the numerator is a matrix
+addition (or a left matrix multiplication and thanks to
+associative). Thus, Equations \ref{eq:a} and \ref{eq:b} are proper and
+equivalent. We can apply to the remaining $\Vc{Q}_i$ and $\Vc{R}_i$.
+
+
+\begin{comment}
+\begin{equation*}
+  \Vc{r}_{0,t-1} =
+  \frac{\sum_{j=0}^{t-1}(\exp{\Vc{Q}_0\Vc{K}_j})\Vc{V}_j}{\sum_{j=0}^{t-1}\exp{\Vc{Q}_0\Vc{K}_j}}
+\end{equation*}
+\begin{equation*}
+  \Vc{r}_{t,n} = \frac{\sum_{j=t}^{n}(\exp{\Vc{Q}_0\Vc{K}_j})\Vc{V}_j}{\sum_{j=t}^n\exp{\Vc{Q}_0\Vc{K}_j}}
+\end{equation*}
+
+\begin{equation}
+  \Vc{D}_{\iota,\ell} = \sum_{j=\iota}^{\ell}\exp{\Vc{Q}_0\Vc{K}_j}
+\end{equation}
+\begin{equation}
+  \Vc{D}_{0,n} = \Vc{D}_{0,t-1} + \Vc{D}_{t,n}
+\end{equation}
+\begin{equation*}
+  \Vc{R}_0 = \frac{\Vc{D}_{0,t-1}}{\Vc{D}_{0,t-1} + \Vc{D}_{t,n}}\Vc{r}_{0,t-1}  +  \frac{\Vc{D}_{t,n}}{\Vc{D}_{0,t-1} + \Vc{D}_{t,n}}\Vc{r}_{t,n} 
+\end{equation*}
+The fraction is actually a scalar operation: it is an element wise
+scalar to be multiplied to $\Vc{r}_{0,i}$
+
+\begin{equation*}
+  \Vc{r}_{0,t+1} = \frac{\Vc{D}_{0,t-1}}{\Vc{D}_{0,t-1} + \Vc{D}_{t,t+1}}\Vc{r}_{0,t-1}  +  \frac{\Vc{D}_{t,t+1}}{\Vc{D}_{0,t-1} + \Vc{D}_{t,t+1}}\Vc{r}_{t,t+1} 
+\end{equation*}
+
+The Divion does not need to be done step by step but only at the
+end. So we have a matrix update iteration as in Equation \ref{eq:sum0}
+and \ref{eq:sum1}, and we can conclude with the final result in
+Equation \ref{eq:res} and \ref{eq:resall}.
+\end{comment}
+
+\subsection{Range of $\exp(\Vc{Q}_0\Vc{K}_j)$}
+\label{sec:range}
+The function $e^x$ has the property that $\frac{\partial e^x}{\partial
+  x}= e^x$. The function $e^x$ is always positive, is always
+increasing, and $e^0=1$ and also the derivative. For $x>0$ and with
+numerical representation that could be limited in range, we want to
+stay on the left side of $x=0$ or at a very least in a bound region to
+avoid saturation and overflow. Clearly, for $x>0$ we have
+$\frac{\partial e^x}{\partial x}>1$ and it really highlights small
+variation of $x$.
+
+If we keep the range of $\Vc{Q}_0\Vc{K}_j$ being smaller than one,
+then the $\exp()$ is bound to $e$. Due to the nature of the
+exponential function, the range will be positive and increasing (well
+exponentially). For example, assume we compute the product
+$\Vc{Q}\Vc{K}$ and we determine the maximum by row. This is a column
+vector $\Vc{M} = \max_{row} \Vc{Q}\Vc{K}$ then we can compute the
+final result. 
+
+\begin{equation}
+  \label{eq:c}
+  \Vc{R}_0^t = \frac{\sum_j(\exp{(\Vc{Q}_0\Vc{K}_j-\Vc{M})})\Vc{V}_j}{\sum_j\exp{(\Vc{Q}_0\Vc{K}_j-\Vc{M})}} =
+     \Vc{R}_0\frac{e^{\Vc{M}}}{e^{\Vc{M}}}= \Vc{R}_0
+\end{equation}
+The exponential range is under control, the summation at the
+denominator is increasing but bound to the number of additions.  The
+denominator can be applied at the end of the computation but the
+normalization of the range as to be applied as soon as possible in
+such a way to have undesired overflow. In Section \ref{sec:iterative}, we combine
+everything into an iterative method that can be split into independent
+computations.
+
+\subsection{The identity element in $\Smax{\Vc{M}}$}
+\label{sec:identity}
+
+In the ring based on the operation addition $+$, there is a identity
+element $0$ (zero) such as $\forall a, a+0 = 0+a = a$. For
+multiplication $*$ the identity element is $1$ (one). If the operands
+are matrices, we can extend the zero and one elements to zero matrices
+and to diagonal one matrices.
+
+Take $\Smaxd{\Vc{M}}$, if for any reason we need to pad or extend
+$\Vc{M}$ to $\Vc{N}$, what can we do so that $\Smaxd{\Vc{M}}=
+\Smax{\Vc{N}}$? How do we pad it?
+
+\begin{itemize}
+  \item {\bf Padding the inputs before matrix multiplication will not
+    work.} For example, take the last $\Vc{K}_n \in d\times m$ and for
+    the computation of the matrix multiplication $\Vc{Q}_0\Vc{K}_n$ we
+    must increase $m$ to $m+1$ (say, alignment properties). This may
+    affect also $\Vc{V}_n$.  This will change the shape of the results
+    and in practice, we would introduce $d$ zeros into the matrix
+    results. This will introduce 1 into the matrix
+    $\exp(\Vc{Q}_0\Vc{K}_n)$ and when applied to
+    $\Smax{\Vc{Q}_0\Vc{K}_n}$, then we change the shape of the
+    numerator and we increase the denominator (by one in this
+    case). If we need to compute the max for range purpose as in
+    Equation \ref{eq:c}, we are changing also the values of the
+    numerator matrix and given the $\max$ is not bijective, we cannot
+    reverse the effects. Padding the operands and in combination with
+    range constraints, we cannot have a clean computation.
+
+  \item {\bf Padding the output of $\exp(\Vc{M})$ with zeros.}  In
+    practice, the unitary element of the denominator sum is zero
+    $\exp(-\infty)$, the unitary element for $\max$ is $-\infty$.
+    Either pad the output with zero or the input with $-\infty$. In
+    finite precision and for $\max$, any $\min$ instead of $-\infty$
+    value will work, however, the $\exp(\min)$ will not translate to
+    zero in floating point representation unless we fix the result to
+    zero.
+
+    How do we introduce $-\infty$ ? or how we introduce zeros to a
+    specific output pattern?
+
+ 
+    
+    
+
+\end{itemize}
+
+
+
+
+
+
+
+\section{MHA, Blocked and  Iterative Method}
+\label{sec:iterative}
+Take $\Vc{N}_{0,0}= \Vc{D}_{0,0}=0$, $\Vc{M} = \Vc{0}$, $\Vc{M}_1 =
+\max_{row} (\Vc{Q}_m\Vc{K}_{t}, M)$ and
+$\Vc{E}_t^m=\exp{(\Vc{Q}_m\Vc{K}_{t}-\Vc{M}_1)}$, and $\Vc{S}
+=\exp{(\Vc{M}_1 - \Vc{M})}$ assume we have done the computation until
+step $t$ and compute $t+1$ to $t=n$ then
+
+\begin{equation}
+  \label{eq:sum0}
+  \Vc{N}_{0,t+1} =(\
+  \frac{\Vc{N}_{0,t}}{\Vc{S}}  + (\Vc{E}_{t+1}^0)\Vc{V}_{t+1}\
+  )
+\end{equation}
+\begin{equation}
+    \label{eq:sum1}
+  {\Vc{D}_{0,t+1}} = {\frac{\Vc{D}_{0,t}}{\Vc{S}} +\Vc{E}_{t+1}^0}
+\end{equation}
+\begin{equation}
+  \label{eq:res}
+  \Vc{R}_0 = \frac{\Vc{N}_{0,n}}{\Vc{D}_{0,n}}
+\end{equation}
+This scaling or averiging is actually an element wise operation.
+
+For every element of $\Vc{Q}_i$ we can repeat the process and compute the final result
+\begin{equation}
+  \label{eq:resall}
+ \forall i \in [0,n],\/ \Vc{R}_i = \frac{\Vc{N}_{i,n}}{\Vc{D}_{i,n}}
+\end{equation}
+
+
+
+Space requirements: $\Vc{Q}_i, \Vc{K}_i, \Vc{V}_i \in \R^{d \times
+  d}$,, $\Vc{Q}_i\Vc{K}_j \in \R^{d\times d}$, $\exp\Vc{Q}_i\Vc{K}_j
+\in \R^{d\times d}$ $\Vc{D}_{0,i} \in \R^{d}$,
+$\Vc{N}_{0,t}\Vc{N}_{0,t+1} \in \R^{d \times d}$.
+
+We need to keep in memory $\Vc{D}_{0,t}$ and $\Vc{N}_{0,t}$, we
+compute $\exp{\Vc{Q}_0\Vc{K}_{t+1}}$ to add to $\Vc{D}_{0,t}$, we then
+compute $(\exp{\Vc{Q}_0\Vc{K}_{t+1}})\Vc{V}_{t+1}$. We need 5 matrices
+of size $d \times d$. We store  $\Vc{D}_{0,t+1}$ and $\Vc{N}_{0,t+1}$.
+
+
+\subsection{Implementation of the head}
+
+We discuss here the case where where we perform the operations with
+{\em int16}. Consider $L=512$, we split the matrices $\Vc{Q}$ and
+$\Vc{V}$ into horizontal parts and we split $\Vc{K}^t$ into vertical
+parts. We choose to split $\Vc{K}^t$ and $\Vc{V}$ equally into four
+core so each core will receive $2^6\times
+\lceil\frac{2^9}{2^2}\rceil=2^7$ for a space of $2^{14}$ Bytes and we
+need to store the same amount of $\Vc{V}$ for a total space of
+$2^{15}$ this is equivalent to four banks. We can split the
+computation so that $\Vc{V}_i, \Vc{K}_i \in 64\times 64$ and thus we
+send into each core 2 $\Vc{V}_i$ and 2 $\Vc{K}_i$.
+
+Let consider what should be the size of $\Vc{Q}_0 = m \times 64$ so
+that we can fit a basic computation in a core.
+
+$\Vc{T} = \Vc{Q}_0\Vc{K}_i = m \times 64$, 
+$\Vc{T} = \exp{\Vc{T}} = m \times 64$,
+$\Vc{D} += \Vc{T}$, $\Vc{T} = \Vc{T}\Vc{V}_i$, and $\Vc{N} +=
+\Vc{T}$. We need to have space for 4 matrices matrices of size $ m
+\times 64$. Thus $m2^32^6$ must fit into 2 banks $2^{14}$.  We have $m
+= 2^5 = 32$.
+
+Core $A_i$ compute $N_{i*2,(i+1)*2 -1}$ and $D_{i*2,(i+1)*2 -1}$ With
+three reductions per column we have the computation of $R_0$, we
+repeat the process.  The subvolume for $\Vc{Q}_i = 32\times 64$.  We
+need to broad cast $\Vc{Q}_i$ 16 times.
+
+\singlefigure{0.20}{20240222_214743.jpg}{HEAD for int16}{fig:head}
+
+
+In this section, we show the algorithm that can be implemented on a
+$2\times 4$ having the problem size $d=64$ and $L=512$
+
+
+\singlefigure{0.40}{20240217-151903.jpg}{HEAD for int 8}{fig:head1}
+
+\subsection{The curious case of the problem size $l=77$ and $L=768$}
+
+This is the place holder for the curious case and may be a code
+generator. 
+
+
+\newpage
+\section{GEMM for Asymmetric systolic arrays}
+
+We start a conversation about $\Vc{C} = \Vc{A}*\Vc{B}$ where we imply
+that the right operand is larger than the left operand. If it may
+happen the opposite, then we may want to compute $\Vc{C}^t =
+\Vc{B}^t*\Vc{A}^t$, the shapes may be different but the sizes stay the
+same. The algorithm in a nut shell is a systolic algorithm where the
+matrix C is spatially separated and computed completely before
+written. Any matrices we are going to present in this section will
+have the usual notation
+
+\begin{equation*} \Vc{M} =
+    \begin{pmatrix}
+    \Vc{M}_{0,0} & \Vc{M}_{0,1} & \Vc{M}_{0,2} & \Vc{M}_{0,3} & \dots \\
+    \Vc{M}_{1,0} & \Vc{M}_{1,1} & \Vc{M}_{1,2} & \Vc{M}_{1,3} & \dots \\
+    \Vc{M}_{2,0} & \Vc{M}_{2,1} & \Vc{M}_{2,2} & \Vc{M}_{2,3} & \dots \\
+    \Vc{M}_{3,0} & \Vc{M}_{3,1} & \Vc{M}_{3,2} & \Vc{M}_{3,3} & \dots \\
+    \dots
+  \end{pmatrix}  
+\end{equation*}
+Where each element is a sub matrix. We will refer these as subvolumes
+but they can be reduce to scalar if necessary.  We assume an array of
+AIEs in a formation $4 \times 2$. Two columns and four rows.
+
+{\small \begin{equation}
+  \label{eq:gemm-fatc}
+  \begin{pmatrix}
+    \Vc{C}_{0,0} = \sum_k \Vc{A}_{0,k}\Vc{B}_{k,0} & \Vc{C}_{1,0} \sum_k \Vc{A}_{1,k}\Vc{B}_{k,0}\\
+    \Vc{C}_{0,1} = \sum_k \Vc{A}_{0,k}\Vc{B}_{k,1} & \Vc{C}_{1,1} \sum_k \Vc{A}_{1,k}\Vc{B}_{k,1}\\
+    \Vc{C}_{0,2} = \sum_k \Vc{A}_{0,k}\Vc{B}_{k,2} & \Vc{C}_{1,2} \sum_k \Vc{A}_{1,k}\Vc{B}_{k,2}\\
+    \Vc{C}_{0,3} = \sum_k \Vc{A}_{0,k}\Vc{B}_{k,3} & \Vc{C}_{1,3} \sum_k \Vc{A}_{1,k}\Vc{B}_{k,3}\\
+  \end{pmatrix}  
+\end{equation}
+}
+
+$\Vc{A}_{0,k}$ is broad cast on column zero and $\Vc{A}_{1,k}$ to
+column one, one subvolume at a time. $\Vc{B}_{k,0}$ is broad cast on
+row zero and $\Vc{B}_{k,3}$ on row three, one subvolume at a
+time. This is a systolic communication.
+
+\subsection{Sub-Volume}
+The basic computation for one core is $\Vc{C}_{i,j} = \sum_k
+\Vc{A}_{i,k}\Vc{B}_{k,j}$, the basic subvolume for this computation is
+$\Vc{C}_{i,j}, \Vc{A}_{i,k},\Vc{B}_{k,j}$. They are not same-size matrices. They need to be in the AIE cores. This has eight banks of 8
+KB each ($2^{13}$ elements).  We assume that the computation and
+communication to the core is double buffered.
+\begin{algorithm}
+  \caption{Core streaming computation for $\Vc{C}_{0,0}$}
+  \label{alg:one}
+  \begin{algorithmic}[1]
+    \STATE $\Vc{T}_A = \Vc{A}_{0,0}, \Vc{T}_B = \Vc{B}_{0,0}$ 
+    \STATE $\forall i [1,K-1], \Vc{{TT}}_A = \Vc{A}_{0,i} , \Vc{{TT}}_B = \Vc{B}_{i,0},    \Vc{C}_{0,0} += \Vc{T}_{A}\Vc{T}_{B}, \Vc{T}_A = \Vc{{TT}}_{A} , \Vc{T}_B = \Vc{{TT}}_B$ 
+    \STATE $\Vc{C}_{0,0} += \Vc{T}_{A}\Vc{T}_{B}$ 
+  \end{algorithmic}  
+\end{algorithm}
+
+We decide sub-volume $\Vc{C}_{0,0}$ will fit a bank $2^{13}$, to keep
+the most balance computation we choose $(128=2^7) \times (64=2^6)$ (8
+KB). This means that $\Vc{A}_{0,0}$ will be $128 \times 64$ (8 KB) and
+$\Vc{B}_{0,0}$ will be $64 \times 64$ (4 KB).
+
+One step (tick) of the overlay computation is an {\em outer} product
+
+{\small \begin{equation}
+  \label{eq:gemmA}
+  \begin{pmatrix}
+    \Vc{C}_{0,0}  &  \Vc{C}_{0,1}  & \Vc{C}_{0,2}  &\Vc{C}_{0,3} \\
+    \Vc{C}_{1,0}  & \Vc{C}_{1,1}   & \Vc{C}_{1,2}  & \Vc{C}_{1,3} \\
+  \end{pmatrix}    =
+  \begin{pmatrix}
+    \Vc{A}_{0,k}  \\
+    \Vc{A}_{1,k}   \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,0}  &  \Vc{B}_{k,1}  & \Vc{B}_{k,2}  &\Vc{B}_{k,3} \\
+  \end{pmatrix}    
+\end{equation}
+} We read 16 KB of $\Vc{A}$ ($256 \times 64$) , we read 16 KB of
+$\Vc{B}$ ($64 \times 256$), and we compute $256 \times 256$ elements
+of $\Vc{C}$. In practice, the full computation is formally, where we
+introduce a step in the outer loop:
+
+
+
+
+{\small \begin{equation*}
+    %\label{eq:gemm}
+    \sum_{i=0,2}^M
+    \sum_{j=0,4}^N
+  \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,j+1}    & \Vc{C}_{i,j+2}    &\Vc{C}_{i,j+3} \\
+    \Vc{C}_{i+1,j}  & \Vc{C}_{i+1,j+1}   & \Vc{C}_{i+1,j+2}  & \Vc{C}_{i+1,j+3} \\
+  \end{pmatrix}    = \sum_k^K
+  \begin{pmatrix}
+    \Vc{A}_{i,k}  \\
+    \Vc{A}_{i+1,k}   \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1}  & \Vc{B}_{k,j+2}  &\Vc{B}_{k,j+3} \\
+  \end{pmatrix}    
+\end{equation*}
+}
+
+
+
+We have a ratio compute over communication per core
+\begin{equation}
+  \label{eq:ratio}
+  \F = \frac{2^7 * 2^6 * 2^7 } { 2* 2^7 * 2^6} = \frac{2^{20}}{2^{14}} = 2^6
+\end{equation}
+This ratio is useful to estimate the smallest subvolume we can afford
+in order to hide communication latency by double buffering or figure
+out the ratio between the computation speed and bandwidth. 
+
+For example, assume we can send each operand by different channels at
+8 GB/s = $2^3 *2^{30}$ and 256 operations can be done in one cycle at
+1 GHz. The ratio above will become
+
+\[
+\F_c = \frac{2^7 * 2^6 * 2^7 * 2^{33}} { 2* 2^7 * 2^6* 2^8 *10^9} \sim \frac{2^{53}}{2^{14+8+28=50}} > 2^3  
+\]
+For any values larger than one, the execution time is compute
+bound. In the same way we can choose the operand sizes:
+
+\[
+\frac{2^3 * 2^3 * 2^3 * 2^{33}} { 2* 2^3 * 2^3* 2^8 *10^9} \sim \frac{2^{42}}{2^{7+8+28=43}} >1/2    
+\]
+any sub volume smaller than $8 \times 8$ will be communication bound
+and double buffering will not help. This Ratio can be used for the
+investigation of double buffering and latency of reading operands in
+Mem-Tiles.
+
+\subsubsection{Transpose Algorithm}
+Because the sizes and shapes of the operands does not need to be the
+same, we may need to consider also the transpose algorithm
+
+{\small \begin{equation}
+  \label{eq:gemmB}
+  \begin{pmatrix}
+    \Vc{C}_{0,0}  & \Vc{C}_{0,1}  \\
+    \Vc{C}_{1,0}  & \Vc{C}_{1,1}    \\
+    \Vc{C}_{2,0}  & \Vc{C}_{2,1}  \\
+    \Vc{C}_{3,0}  & \Vc{C}_{3,1} \\
+  \end{pmatrix}    =
+  \begin{pmatrix}
+    \Vc{A}_{0,k}  \\
+    \Vc{A}_{1,k}  \\
+    \Vc{A}_{2,k}  \\
+    \Vc{A}_{3,k}  \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,0}  &  \Vc{B}_{k,1}  \\
+  \end{pmatrix}    
+\end{equation}
+} We read 16 KB of $\Vc{A}$ ($64 \times 256$) , we read 16 KB of
+$\Vc{B}$ ($256 \times 64$), and we compute $256 \times 256$ elements
+of $\Vc{C}$. In practice, the full computation is formally, where we
+introduce a step in the outer loop: 
+
+{\small \begin{equation*}
+    %\label{eq:gemm}
+    \sum_{i=0,4}^M
+    \sum_{j=0,2}^N
+  \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,  j+1}  \\
+    \Vc{C}_{i+1,j} & \Vc{C}_{i+1,j+1} \\
+    \Vc{C}_{i+2,j} & \Vc{C}_{i+2,j+1} \\
+    \Vc{C}_{i+3,j} & \Vc{C}_{i+3,j+1} \\ 
+  \end{pmatrix}    = \sum_k^K
+  \begin{pmatrix}
+    \Vc{A}_{i,  k}  \\
+    \Vc{A}_{i+1,k}   \\
+    \Vc{A}_{i+2,k}  \\
+    \Vc{A}_{i+3,k}   \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1} \\
+  \end{pmatrix}    
+\end{equation*}
+}
+
+The main difference and utility to have two algorithms (for
+memtile-core) is the better way to have a different ratio of the
+computation. As a practical point, Equation \ref{eq:gemmA} leads to a
+reuse of $\Vc{A}$ in memtile (if $\Vc{A}$ smaller space) and Equation
+\ref{eq:gemmB} leads to a reuse of $\Vc{B}$ (if $\Vc{B}$ is smaller).
+This will be evident when we write and present a code generator based
+on this document. For
+
+
+\subsubsection{Different sizes: int16}
+In the case, we are working with an element 2 Bytes (int 16) and we
+can keep the same subvolumes, the fraction $\F = \frac{2^6}{2}$. The
+number of computation does not change, the communication increases
+linearly.
+
+The sub-volume computations has to change. We take $Vc{C}_{0,0} =
+64\times 64 = 2^6 \times 2^6$, this means of size $2*2^12$, this is 8
+KB (again). $\Vc{A}_{0,k}, \Vc{B}_{k,0} = 64 \times 64$, one bank
+again. The subvolume computation is $64\times 64 \times 64$. Changing
+the subvolume does not affect the Bytes transfer per tick (16 KB for
+each operand). This is still balanced.
+
+
+
+\subsection{Mem-tiles and the case   $A=512\times 768$ $B=768\times 768$ }
+
+The matrix $\Vc{A}$ has size $(512=2^9) \times (768= 3*2^8)$ that is
+$3*2^{17}$ and this fits nicely in a memtile of size 512 KB, that is
+$2^{19}$ elements.  The matrix $\Vc{B}$ has size $768 \times 768$ that
+is $9*2^{16}>2^{19}$. The nice property is that we can split the
+matrix $\Vc{B}$ by column into three parts exactly and we can do
+double buffering
+
+
+{\small \begin{equation*}
+    %\label{eq:gemm}
+    \sum_{j=0,4}^{12}
+    { \{ } \sum_{i=0,2}^4
+  \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,j+1}    & \Vc{C}_{i,j+2}    &\Vc{C}_{i,j+3} \\
+    \Vc{C}_{i,j}  & \Vc{C}_{i+1,j+1}   & \Vc{C}_{i+1,j+2}  & \Vc{C}_{i+1,j+3} \\
+  \end{pmatrix}    = \sum_k^{12}
+  \begin{pmatrix}
+    \Vc{A}_{i,k}  \\
+    \Vc{A}_{i+1,k}   \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1}  & \Vc{B}_{k,j+2}  &\Vc{B}_{k,j+3} \\
+  \end{pmatrix}
+  { \}}    
+\end{equation*}
+}
+
+The curly brackets show the part of the computation when the sub
+matrix of $\Vc{B}$ of size $768 \times 256$ is double buffered.
+
+\subsection{Mem-tiles and the case  int16  $A=512\times 768$ $B=768\times 768$ }
+
+The matrix $\Vc{A}$ has size $(512=2^9) \times (768= 3*2^8)$ that is
+$2*3*2^{17}$, We need to tile and double buffering $\Vc{A}$.  We need
+need to feed two columns: $A_{0,*}$ and $A_{1,*}$ at a time. One ping
+per column will be $2*(64 \time 768)$: If we split $\Vc{A}$ into 4
+tiles of 128 rows (4 subvolumes), We can have 4 iterations where we
+double buffer $A_{i,*}$ and $A_{i,*}$. We need to keep a space of 384
+KB in memtile 0.
+
+
+
+The matrix $\Vc{B}$ has size $768 \times 768$ that is
+$2*9*2^{16}>2^{19}$. If we keep the same sub-volume, we need
+$\Vc{B}_{*,0} \dots \Vc{B}_{*,3}$ thus $2*256 \times 768$, four double
+buffering we need twice as much as that. To make this possible we need
+to change the subvolume of $\Vc{B}$ and of $\Vc{C}$.
+
+To allow double buffering of the $\Vc{B}$ in memtile, The sub-volume
+computations has to change. We take $Vc{C}_{0,0} = 64\times 32 = 2^6
+\times 2^5$, this means of size $2*2^{11}$, this is 4 KB
+(again). $\Vc{A}_{0,k} = 64 \times 64$ one bank, $\Vc{B}_{k,0} = 64
+\times 32$, 4 KB. The subvolume computation is $64\times 64 \times
+32$. Changing the subvolume does affect the Bytes transfer per tick
+(16 KB for A and 8KB for B). 
+
+
+
+
+{\small \begin{equation*}
+    %\label{eq:gemm}
+    \sum_{j=0,4}^{24}
+    { \{ } \sum_{i=0,2}^8 
+  \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,j+1}    & \Vc{C}_{i,j+2}    &\Vc{C}_{i,j+3} \\
+    \Vc{C}_{i,j}  & \Vc{C}_{i+1,j+1}   & \Vc{C}_{i+1,j+2}  & \Vc{C}_{i+1,j+3} \\
+  \end{pmatrix}    = \sum_k^{12}
+  \{
+  \begin{pmatrix}
+    \Vc{A}_{i,k}  \\
+    \Vc{A}_{i+1,k}   \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1}  & \Vc{B}_{k,j+2}  &\Vc{B}_{k,j+3} \\
+  \end{pmatrix}
+  \}{ \}}    
+\end{equation*}
+}
+\begin{algorithm}
+  \caption{Small Small still need tiling}
+  \label{alg:one3}
+  \begin{algorithmic}[1]
+    \FOR{i=0 \TO 8 step 2}
+      \STATE{Ping/Pong  $\Vc{A}_{i,*} .. \Vc{A}_{i+1,*}$}
+      \STATE{\# Reuse A but hide latency}
+      \FOR{j=0 \TO 24 step 4}
+         \STATE{Ping/Pong  $\Vc{B}_{*,j} \dots \Vc{B}_{*,j+3}$}
+         \STATE{$
+           \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,j+1}    & \Vc{C}_{i,j+2}    &\Vc{C}_{i,j+3} \\
+    \Vc{C}_{i,j}  & \Vc{C}_{i+1,j+1}   & \Vc{C}_{i+1,j+2}  & \Vc{C}_{i+1,j+3} \\
+  \end{pmatrix} = \sum_k^{12}
+           \begin{pmatrix}
+             \Vc{A}_{i,k}  \\
+             \Vc{A}_{i+1,k}   \\
+           \end{pmatrix}  
+           \begin{pmatrix}
+             \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1}  & \Vc{B}_{k,j+2}  &\Vc{B}_{k,j+3} \\
+         \end{pmatrix}$} 
+      \ENDFOR
+    \ENDFOR
+  \end{algorithmic}  
+\end{algorithm}
+
+\[
+\F_{cm} = \frac{2^6 * 2^6 * 2^5/128/10^9 } {2(2^{12}+2^{11})/8/2^{30}}=  0.75  
+\]
+
+This is communication bound. If we consider the computation of a core
+and the time to read a ping of $\Vc{B}$ from DDR to memtile
+(considering we can use 2 channels 8 GBs). We can reach break even
+with the computation if we use 4 channels (copy to both
+Memtiles)
+\[
+\F_{md} = \frac{2^6 * 3*2^8 * 2^5 /128/10^9  } {2*2^7*32^8/(2*8*2^{30}} = 0.53
+\]
+
+If we assume we can use 4 channels for DDR. The execution time will be
+$6*8*12*{2(2^{12}+2^{11})/8/2^{30}}$ which is 411 us
+
+
+
+
+\subsection{Mem-tiles and the case   $A=512\times 768$ $B=768\times 768*4$ }
+The matrix $\Vc{A}$ has size $(512=2^9) \times (768= 3*2^8)$ that is
+$3*2^{17}$ and this fits nicely in a memtile of size 512 KB, that is
+$2^{19}$ elements.  The matrix $\Vc{B}$ has size $768 \times 768*4$
+that is $9*2^{18}>2^{19}$. The nice property is that we can split the
+matrix $\Vc{B}$ by column into 12 parts exactly and we can do double
+buffering 
+
+{\small \begin{equation*}
+    %\label{eq:gemm}
+    \sum_{j=0,4}^{48}
+    { \{} \sum_{i=0,2}^4
+  \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,j+1}    & \Vc{C}_{i,j+2}    &\Vc{C}_{i,j+3} \\
+    \Vc{C}_{i,j}  & \Vc{C}_{i+1,j+1}   & \Vc{C}_{i+1,j+2}  & \Vc{C}_{i+1,j+3} \\
+  \end{pmatrix}    = \sum_k^{12}
+  \begin{pmatrix}
+    \Vc{A}_{i,k}  \\
+    \Vc{A}_{i+1,k}   \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1}  & \Vc{B}_{k,j+2}  &\Vc{B}_{k,j+3} \\
+  \end{pmatrix}
+  { \}}    
+\end{equation*}
+}
+
+
+\subsection{Mem-tiles and the case $A=512\times 768*4$ $B=768*4 \times 768$ }
+The matrix $\Vc{A}$ has size $(512=2^9) \times (768= 3*2^{10})$ that
+is $3*2^{19}$.  The matrix $\Vc{B}$ has size $768*4 \times 768$ that
+is $9*2^{18}>2^{19}$.
+
+We present two algorithms. The first algorithm change the subvolume so
+that we can double buffer A and reuse a slice of A multiple times.
+
+Consider first that a matrix of size $512 \times 768$ fits a Memtile.
+A slice of $\Vc{A}$ of size $64 \times 768*4$ allows a double
+buffering. This means that a column will solve a subvolume of size
+$m=32$ (64 divided by 2). Equivalently, a slice of $\Vc{B}$ of size
+$t68*4 \times 64$ will allow double buffering and thus a sub volume of
+$n=16$ (64 divided by 4). 
+
+$\Vc{C}_{i,j}$ has size $32 \times 16$.   $\Vc{A}_{i,k}$ has size $32 \times 64$. $\Vc{B}_{k,j}$ has size $64 \times 16$.      
+
+{\small \begin{equation*}
+    %\label{eq:gemm}
+    \sum_{i=0,2}^{8}
+    { \{} \sum_{j=0,4}^{96}
+  \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,j+1}    & \Vc{C}_{i,j+2}    &\Vc{C}_{i,j+3} \\
+    \Vc{C}_{i,j}  & \Vc{C}_{i+1,j+1}   & \Vc{C}_{i+1,j+2}  & \Vc{C}_{i+1,j+3} \\
+  \end{pmatrix}    = \sum_k^{192}
+  \{
+  \begin{pmatrix}
+    \Vc{A}_{i,k}  \\
+    \Vc{A}_{i+1,k}   \\
+  \end{pmatrix}  
+  \begin{pmatrix}
+    \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1}  & \Vc{B}_{k,j+2}  &\Vc{B}_{k,j+3} \\
+  \end{pmatrix}
+  \}
+  { \}}    
+\end{equation*}
+}
+
+\begin{algorithm}
+  \caption{Large Large}
+  \label{alg:one2}
+  \begin{algorithmic}[1]
+    \FOR{i=0 \TO 8 step 2}
+      \STATE{Ping/Pong  $\Vc{A}_{i,*} .. \Vc{A}_{i+1,*}$}
+      \STATE{\# Reuse A but hide latency}
+      \FOR{j=0 \TO 48 step 4}
+         \STATE{Ping/Pong  $\Vc{B}_{*,j} \dots \Vc{B}_{*,j+3}$}
+         \STATE{$
+           \begin{pmatrix}
+    \Vc{C}_{i,j}  & \Vc{C}_{i,j+1}    & \Vc{C}_{i,j+2}    &\Vc{C}_{i,j+3} \\
+    \Vc{C}_{i,j}  & \Vc{C}_{i+1,j+1}   & \Vc{C}_{i+1,j+2}  & \Vc{C}_{i+1,j+3} \\
+  \end{pmatrix} = \sum_k^{192}
+           \begin{pmatrix}
+             \Vc{A}_{i,k}  \\
+             \Vc{A}_{i+1,k}   \\
+           \end{pmatrix}  
+           \begin{pmatrix}
+             \Vc{B}_{k,j}  &  \Vc{B}_{k,j+1}  & \Vc{B}_{k,j+2}  &\Vc{B}_{k,j+3} \\
+         \end{pmatrix}$} 
+      \ENDFOR
+    \ENDFOR
+  \end{algorithmic}  
+\end{algorithm}
+
+\newpage 
+\section{GEMM Tiles Generator}
+In general, the core computation needs to be a multiple aligned to
+$8$, say, for the channels (columns of the operands). Subvolumes being
+a power of two are nice and not necessary. What if we can explore the
+sub-volume solution space with some type of properties? In Equation
+\ref{eq:ratio}, the ratio $\F$ is a function of the subvolume
+($\F(m,n,k)$). This sub-volume can be for a core (streaming) or the
+representation of the cluster computation (all cores with all
+memtiles). We argue for three requirements: we should have a subvolume
+that fit into a core (basic subvolume), we want to have largest number
+of operations per subvolume ($\C(m,n,k)$), and among them we prefer
+the one that have the largest ratio $\F = \frac{\C}{\ST}$ (where $\ST$
+stands for space ans 24 KB represent the space for 6 banks in a
+core). We can call $\T$ the set of valid solutions and we call $\W$
+the sorted solution space as follows:
+
+\begin{equation}
+  \T = \{ [m,n,k]\mbox{ s.t. }\ST(m,n,k)< 24 KB \}
+\end{equation}
+
+\begin{equation}
+  \W =  sort(\T, \lambda x: (-\C(x), -\F(x) )
+\end{equation}
+ 
+
+We call $\QQ_0$ the sum over $k$ of Equation \ref{eq:gemmA} and
+$\QQ_1$ of Equation \ref{eq:gemmB}. These represent two algorithms and
+also subproblems. The cluster of cores work together reading from
+Mem-Tile and in the context of the larger problem we can double buffer
+either $\Vc{A}$ or $\Vc{B}$.
+
+If we chose $(m,n,k) = \W[0]$ as starting block for the core
+computation. Then $\QQ_0$ will have a memtile subvolume
+$M_0=(2*m,4*n,K)$ and $\QQ_1$ $M_1=(4*m,2*n,K)$. Both computations
+will be the reduction of $K/k$ iterations. And we can choose the
+algorithm so that $\F(M_0)$ and $\F(M_1)$ is the largest. The core
+subvolume is determined by space and $\F$, so it is the Mem-tile
+subvolume and thus the algorithm itself.
+
+At this time, we will not deal with padding and alignment per core and
+per memtile. We summarily say that the core subvolume $(m,n,k)$ will
+determine a minimum zero padding so that a core will produce the
+correct result. Padding at cluster level does not need to be, we can
+accept either the turn off or columns/rows or the computation of
+garbage and not writing back to DDR.
+
+\subsection{Double Buffering aka DB}  
+
+Rarely $\Vc{A}$ and $\Vc{B}$ will fit the Memtile and some double
+buffering may be required. Given a core subvolume, If we can do double
+buffering for both operands, there is no problem.
+
+
+$\QQ_1$ is more efficient for large $\Vc{B}$, we tend to reuse
+$\Vc{A}$, and at a minimum we need to double buffer $\Vc{B}$. Clearly
+the core subvolume is related to the memtile subvolume and whether we
+can double buffer. If we must tile the $K$ dimension, we can design
+the algorithm and estimate the execution time. Then we can restart the
+search space asking for a problem size that we can do DB of $\Vc{B}$
+and compare.
+
+$\QQ_0$ is more efficient for large $\Vc{A}$, we tend to reuse
+$\Vc{B}$, and at a minimum we need to double buffer $\Vc{A}$. Clearly
+the core subvolume is related to the memtile subvolume and whether we
+can double buffer. If we must tile the $K$ dimension, we can design
+the algorithm and estimate the execution time. Then we can restart the
+search space asking for a problem size that we can do DB of $\Vc{A}$
+and compare.
+
+This search is almost complete. This is simply a set of heuristics for
+the selection of the solution space, the algorithms, and the tiling.
+In the, following section we shall present the ideas for a automatic
+selection and exploration of the solution space and its optimal solution.
+
+
+
+
+\section{Solution space and its exploration}
+We are working on a software tool that will explore a solution space
+for a given problem. For GEMM this is triplet $(M,N,K)$ (i.e., $\Vc{C}
+\in M \times N, \Vc{A} \in M \times K, \Vc{B} \in K \times N$). Briefly,
+  tiling $(M,N,K)$ to memtile is another triplet $(M_m,N_m,K_m)$. This
+  can describe the (largest) problem we solve using data in
+  memtile. We can go down further and describe the tiling at core
+  level as $(M_c,N_c,K_c)$. In practice, $(M,N,K)=P$,
+  $(M_m,N_m,K_m)=m$, and $(M_c,N_c,K_c)=c$ are enough to describe a
+  complete computation.
+
+The solution space is the composition of all valid ${\cal S}= \{
+(P,m,c) \mbox{ s.t. valid}\}$. A tiling tools have two main goals:
+First, we need to describe a complete set of solutions. In general,
+this can be quite large; however hardware requirements and designs
+strategies make the solution space a limited one. Second, we can address
+cost functions and their effect on the overall solution space simply
+by translating the solution $P,m,c$ either into actual code or other
+realistic and consistent measures.
+
+In all previous work, we did compute algorithm choices (such as
+tiling) by back of the envelop cost estimates, code generation cost
+estimate, simulations, and actual time measures. Here, we reduce to a
+minimum the description of the algorithm and hardware. We compute
+tiling for the application of double buffering at core and memtile
+level. We aim at symmetric computations (so that we can have uniform
+and predictable data movement).
+
+In these subsections, we introduce the main idea for tiling and
+solution space we use for each computation. We assume in all cases
+that the computation start from DDR and we end in DDR. Problem $P$
+will start in DDR and the result will be in DDR. The operand memory
+allocation in DDR is given and the memtile is considered clean and
+clear. If the P fit memtile, then $(P,P,*)$ may be a valid
+solution. For this tool, we do not use addresses and we assume that
+allocation is always possible if space is available. We are aware this
+last statement is not always true.
+
+\subsection{GEMM}
+The current architecture is $4\times 2$ architecture and thus the
+computation is rectangular by nature. We have two main algorithms
+Equation \ref{eq:gemmA} and \ref{eq:gemmB}. We search first valid core
+solutions $(M_c,N_c,K_c)=c$ using property of alignment specific to
+the HW, then to the space requirements for the operands (with double
+buffering).
+
+For Equation \ref{eq:gemmA}, we need to read from memtile
+$(2*M_c,4*N_c,K)=m$ and for \ref{eq:gemmB} we need
+$(4*M_c,2*N_c,K)=m$. If K is too large, we will split K accordingly
+($(4*M_c,2*N_c,K/4)=m$, say) and stream the computation.
+
+First, the data in memtile is split perfectly across the cores. We aim
+at padding at core level and if we can avoid better.  If we can double
+buffer A or B or both we try, if we split by K, we double buffer
+portions of A and B on the K dimension. Second we can split the
+computation between DDR and memtile $m$ and thus we have the final
+solution $P,m,c$. This describes completely our solution space from
+core to original problem size.  We use a cost function, time, space,
+compute and ratio to explore the solution space and the Pareto curve.
+
+We provide two different classes and approaches: we provide a solution
+space stemming from a single problem and from a set. A single problem
+create a list of solutions but we do not take advantage of any
+repetition. For a list of problem we create dictionary of
+solutions. This can help us to explore solutions that would not be
+available and consider in case extra constraints are introduced.
+
+
+\subsection{MHA}
+To exploit performance is to read into cores the matrices $\Vc{K}$ and
+$\Vc{V}$ so that to perform the largest block inner product
+$\sum_j\exp(\Vc{Q}_0\Vc{K}_j)*\Vc{V}_j$. The idea is to compute the
+space requirement in order to compute locally in a core the numerator
+Equation \ref{eq:sum0} and the denominator Equation
+\ref{eq:sum1}. Then do a reduction by a single core for the final
+computation Equation \ref{eq:resall}.
+
+The minimum number of cores is one, if it is possible we rather use a
+single column. The reduction is simpler done by a single column, and
+the next column can work on $\Vc{Q}_1$ and $\Vc{R}_1$.
+
+We start with a problem of size $P=(d,L_0,L_1,r)$ so that $\Vc{Q} \in
+L_0\times d$, $\Vc{K} \in d\times L_1$, and $\Vc{V} \in L_1\times
+r$. We find all the problem $c=(d,l_c,\ell_c,r)$ that fit in a core
+and we can estimate the execution time.
+
+\subsection{Layer Norm}
+The solution space and cost estimation follow the same ideas developed
+for MHA in the previous sections.
+
+\subsection{Convolution}
+The way we build the solution space is by observing the output tensor
+from the smallest to the largest and compute the projection to the
+input. Projection is a function that given an output tensor of size
+$(1,H,W,C_{out})$ and a convolution with stride $(0, s_h, s_w,0)$ and
+kernel $(C_{out}, k_h, k_w,C_{in})$, the projection is $(1,
+(H-1)s_h+k_h, (W-1)s_w+k_w,C_{in})$. We have an starting problem ${\bf
+  P}$.
+
+Consider now that the output tensor will be created by two (or more)
+columns of cores. We consider the computation split by width so that
+each column compute may compute any $v \in [0,w/2]$ and each core
+compute $c_o \in [0,C_{out}/4]$ with a proper granularity
+(alignment). We assume we are streaming the computation by H (this is
+important for the computation description and its time estimates)
+
+The core will use a space for ${\bf c}$
+\begin{itemize}
+  \item output $(1,h,v,c_o)$ 
+  \item input  $(1,(h-1)s_h*k_h,(v-1)s_w+k+w,C_{in})$ 
+  \item weights $(c,k_h,k_w,C_{in})$ + $(1,1,1,c_o)$ 
+\end{itemize}
+
+For each core subvolume, we consider in memtile only multiple of the
+core subvolume ${\bf m}$; that is, $H = m*h$ and $V=n*v$.
+\begin{itemize}
+  \item output $(1,H,V,c_o)$ 
+  \item input  $(1,(H-1)s_h*k_h,(H-1)s_w+k+w,C_{in})$ 
+  \item weights $(c,k_h,k_w,C_{in})$ + $(1,1,1,c_o)$ 
+\end{itemize}
+
+
+
+So for the same ${\bf c}$ we may have
+multiple ${\bf m}$ that can fit in memtile with double buffering.
+
+We have then a complete representation of the solution by our usual
+triplet $({\bf P, m ,c})$ and we can estimate the performance by a
+simple cost function. 
+
+Notice, If we want to split the computation by input channel,
+$C_{in}$, we may just transform the convolution into two or more
+convolutions followed by element wise additions. If we want to split
+the computation by $C_{out}$, we can transform the convolution into
+two convolutions and a concatenation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+%%%%%%%%% -- BIB STYLE AND FILE -- %%%%%%%%
+\bibliographystyle{IEEEtran} \bibliography{ref}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\appendix{Review and Response}
+%\input{review.tex}
+\end{document}
