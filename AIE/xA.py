@@ -1,5 +1,9 @@
 
 
+
+
+
+
 import numpy
 import math
 from  Matrices.matrices import Matrix, PartitionMatrix, Vector, Scalar, read_alpha
@@ -18,6 +22,26 @@ import gc
 import pdb
 from  AIE.conn import Level, Tiling, Traversal,MemoryHierarchTensors
 import AIE.conn as tiling
+from collections import namedtuple
+
+
+class Parts:
+    def __init__(self, C, A, B, name : str = "" ):
+        self.name = name
+        self.A = A
+        self.B = B
+        self.C = C
+    def __str__(self):
+        return self.name +"\nC:" + str(self.C) + "\nA:" + str(self.A) + "\nB:" + str(self.B)
+
+class Distinction:
+    def __init__(self, A, B):
+        self.Logical = A
+        self.Physical = B
+    def __str__(self):
+        return "( L:" + str(self.Logical) + " P:" + str(self.Physical) +")"
+        
+
 
 
 #####
@@ -191,21 +215,22 @@ def Product_2(
     
     return G
 
-## We create a partitions of the matrices and then create a product of
-## the partitions. This is a two level L3-> L2 -> L1 Tiling
-def Product_3(
-        A : Matrix, B: Matrix, C: Matrix,
-        MT : list,  ## L3-L2  tiling
-        CT : list,  ## L2-L1  tiling 
-        ROWS : int = 4 , COLS : int = 4
-    ) -> list:
+
+
+def Spatial_Split(
+        A: Matrix,
+        B: Matrix,
+        C: Matrix,
+        CT   : list, # CORE Tiling the problem solved in AIE Core
+        ROWS : int = 4 ,
+        COLS : int = 4
+) -> Parts : ## partitions of A, B, C
 
     # we assume the matrix layout to me row major (all of them)
 
     ## this is the problem size in DDR: this is the buffer size in DDR
-    M = C.matrix.shape[0]; N = C.matrix.shape[1]; K = A.matrix.shape[1]
+    M = C.matrix.shape[0]; N = C.matrix.shape[1];  K = A.matrix.shape[1]
     
-
     
     # This is the computation as CORE partition, the minimum
     # granularity
@@ -226,44 +251,38 @@ def Product_3(
     NNc = NC//Nc;  MRc = MR//Mc;    KRc = KR//Kc
 
     if NC % Nc != 0 or KR % Kc !=0 or MR % Mc !=0 :
-        # the problem has to be divisable by the core tile (other wise
+        # the problem has to be divisible by the core tile (other wise
         # padding from the start or padding the L2 we skip this at
         # this time )
         pdb.set_trace()
 
 
     ############################################################################################################
-    ## SPLIT BY COLUMN: SPATIAL NC (paralle computation) 
-    ## Split by row   : TIME    MR
+    ## SPLIT BY COLUMN: SPATIAL NC (paralle computation and offset 
+    ## Split by row   : TIME    MR (tiling will move the index)
     ##
     ## A will be a big matrix because each column will need it all
     ## if NC < N, we split B and C by columns and thus we have OFFSET by column (row major) SPATIAL 
-    ## if MR < M, we split A and B by columns and thus we have OFFSET by row    (row major) TIME = loop
+    ## if MR < M, we split A and C by columns and thus we have Tiling by row    (row major) TIME     = loop
     ############################################################################################################
-    ## this is a logical and physical division by AIE columns
-    DDRCPC = PartitionMatrix(C,[MR,NC])
-    DDRBPC = PartitionMatrix(B,[K,NC])
 
-    DDRAPC_ = PartitionMatrix(A,[M,KR])  
-    DDRAPC = PartitionMatrix(A,[MR,K])  ## this should be by row but
-                                        ## it is actually distributed,
-                                        ## differently because A goes
-                                        ## by ROW
+    DDRCPC = PartitionMatrix(C,[MR,NC])  # NC Spatial (physical), MR Time 
+    DDRBPC = PartitionMatrix(B,[K,NC])   # NC spatial (physical) we keep all K
 
+    DDRAPC_ = PartitionMatrix(A,[M,KR]) ## (phisical) KR is split in ROWs phisically but we have all M 
+    DDRAPC = PartitionMatrix(A,[MR,K])  ## (logical) The ROWS are combined and they have all K 
 
-    # SPATIAL = OFFSET
-    # TIME    = TRAVERSAL and Tiling   
-                                        
-    # Column wise computation: this specify the offset and as a
-    # function of channels for matrix C and B
-    decl, vs = Product_t(DDRAPC,DDRBPC,DDRCPC)
-    grt = Graph("DDR column wise C = A*B", vs,decl,C,ADP=DDRAPC,BDP=DDRBPC,CDP=DDRCPC)
-
-    print("Columns Graph")
-    print(grt)
-    pdb.set_trace()
+    return Parts(DDRCPC,Distinction(DDRAPC,DDRAPC_),DDRBPC, "DDR")
 
 
+    
+def L2_Split(
+        DDR  : Parts,   # these are partitions describing the column computation (C,A.Distinction, B)
+        MT   : list, # MemTile Tiling the problem solved in mem tile (column point of view)
+        CT   : list, # CORE Tiling the problem solved in AIE Core
+        ROWS : int = 4 ,
+        COLS : int = 4
+) -> Parts : ## partitions of A, B, C
     ############################################################################################################
     ## L2 Tiling
     ## L2 tile is actually TIME split in general
@@ -276,6 +295,7 @@ def Product_3(
     ## this is the blocked computation if we use L2 tiling this should
     ## be a multiple of the core tiling.
 
+    Mc,Nc,Kc = CT  ## Core tiles
     Mt,Nt,Kt = MT  ## Every thing will be organized as L2 tiles
 
     ## number of matrix columns of B and C for a single AIE column
@@ -303,14 +323,86 @@ def Product_3(
     ## Doble buffering of any operand at L2 will affect the tiling
     ## size so this should be known by now but the DB has to be
     ## flagged so that we can build the 
-    L2CPC = PartitionMatrix(DDRCPC.value()[0][0],[MtR,NtC])   
-    L2BPC = PartitionMatrix(DDRBPC.value()[0][0],[KtR,NtC])
-    L2APC  = PartitionMatrix(DDRAPC.value()[0][0],[MtR,KtR])
+
+    L2CPC = PartitionMatrix(DDR.C.value()[0][0],[MtR,NtC])   
+    L2BPC = PartitionMatrix(DDR.B.value()[0][0],[KtR,NtC])
+    L2APC  = PartitionMatrix(DDR.A.Logical.value()[0][0],[MtR,KtR])
 
     ## This will help in finding the offset by columns (aka memtile
     ## rows) because teh computation will be split accordingly
-    L2APC_ = PartitionMatrix(DDRAPC_.value()[0][0],[MtR,KtR//ROWS])
+    L2APC_ = PartitionMatrix(DDR.A.Physical.value()[0][0],[MtR,KtR//ROWS])
 
+    return Parts(L2CPC,Distinction(L2APC,L2APC_),L2BPC, "L2")
+
+
+
+def L_Split(
+        Lup  : Parts,# these are partitions describing the Core computation (C,A.Distinction, B)
+        CT   : list, # register Tiling the problem solved in AIE Core
+) -> Parts : ## partitions of A, B, C
+    ############################################################################################################
+    ## L1 Tiling
+    ## L1 tile is actually TIME split in general
+    ##
+    ## 
+    ############################################################################################################
+    ## this is the blocked computation if we use L2 tiling this should
+    ## be a multiple of the core tiling.
+    
+    Mc,Nc,Kc = CT  ## register tiles
+    Mt, Nt = Lup.C.shape()
+    Kt, Nt = Lup.B.shape()
+    
+    ## number of matrix columns of B and C for a single AIE column
+    NtC = math.ceil(Nt/Nc)*Nc
+    ## number of matrix columns of A all rows and rows of  B for a single AIE column
+    KtR = math.ceil(Kt/Kc)*Kc
+    ## number of matrix rows of A and C for a single AIE row
+    MtR = math.ceil(Mt/Mc)*Mc
+
+
+
+    if Nt % Nc != 0 or Kt % Kc !=0 or Mt % Mc !=0 :
+        ## as above L2 has to have Core granularity
+
+        pdb.set_trace()
+
+
+    L1CPC = PartitionMatrix(Lup.C.value()[0][0],[MtR,NtC])   
+    L1BPC = PartitionMatrix(Lup.B.value()[0][0],[KtR,NtC])
+    L1APC  = PartitionMatrix(Lup.A.value()[0][0],[MtR,KtR])
+
+
+    return Parts(L1CPC,Distinction(None,L1APC),L1BPC,"L1")
+
+
+
+## We create a partitions of the matrices and then create a product of
+## the partitions. This is a two level L3-> L2 -> L1 Tiling
+def Product_3(
+        A : Matrix, B: Matrix, C: Matrix,
+        MT : list,  ## L3-L2  tiling
+        CT : list,  ## L2-L1  tiling 
+        ROWS : int = 4 , COLS : int = 4,
+        KT : list = [],  ## L1 MMUL instruction tiling. 
+    ) -> list:
+
+    # we assume the matrix layout to me row major (all of them)
+
+    # SPATIAL = OFFSET
+    # TIME    = TRAVERSAL and Tiling   
+    
+    DDR= Spatial_Split(A,B,C,CT,ROWS, COLS)
+
+    decl, vs = Product_t(DDR.A.Logical,DDR.B,DDR.C)
+    grt = Graph("DDR column wise C = A*B", vs,decl,C,ADP=DDR.A.Logical,BDP=DDR.B,CDP=DDR.C)
+
+    print("Columns Graph")
+    print(grt)
+    pdb.set_trace()
+
+    
+    L2 = L2_Split(DDR,MT,CT)
     
     
     ## We have K tiling (which is time reduce or cascade reduce) the
@@ -319,41 +411,15 @@ def Product_3(
 
         
     #pdb.set_trace()
-    print(L2APC,L2BPC,L2CPC)
-    decl, vs = Product_t(L2APC,L2BPC,L2CPC)
-    gl2 = Graph("L2 column wise C = A*B", vs,decl,C,ADP=L2APC,BDP=L2BPC,CDP=L2CPC)
+    print(L2.A.Logical,L2.B,L2.C)
+    decl, vs = Product_t(L2.A.Logical,L2.B,L2.C)
+    gl2 = Graph("L2 column wise C = A*B", vs,decl,C,ADP=L2.A.Logical,BDP=L2.B,CDP=L2.C)
     print("Column Graph using L2 tiles")
     print(gl2)
     pdb.set_trace()
 
 
     
-    ## We take the column computation and split into cores
-    L1CPC = PartitionMatrix(DDRCPC.value()[0][0],[Mc,Nc])
-    L1BPC = PartitionMatrix(DDRBPC.value()[0][0],[Kc,Nc])
-    L1APC = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc])
-
-    
-    # Column wise computation using CORE tiles 
-    #pdb.set_trace()
-    print(L1APC,L1BPC,L1CPC)
-    decl, vs = Product_t(L1APC,L1BPC,L1CPC)
-    gl1 = Graph("L2 column wise C = A*B", vs,decl,C,ADP=L1APC,BDP=L1BPC,CDP=L1CPC)
-    
-
-    RR,CC = L2CPC.shape()
-
-    gl1.Factotum['redution'] = "local"
-    gl2.Factotum['redution'] = "local"
-
-    if RR==1:
-        gl1.Factotum['redution'] = "local reduction and then cascade hardware"
-        gl2.Factotum['redution'] = "local reduction and then cascade hardware"
-
-
-    print("column graph using l1 tiles")
-    print(gl1)
-    pdb.set_trace()
 
 
     #####################################################################################################
@@ -374,26 +440,33 @@ def Product_3(
     ## Each mem tile is a time split we can compute each separately
     ## notice that A here does not change because Mc = M but it should
     ## in general
-    L1CPCfromL2 = PartitionMatrix(L2CPC.value()[0][0] ,[Mc,Nc]) ## this is one L2 tile of C
-    L1BPCfromL2 = PartitionMatrix(L2BPC.value()[0][0],[Kc,Nc]) ## we need more tiles but contained in L2
-    L1APCfromL2 = PartitionMatrix(DDRAPC.value()[0][0],[Mc,Kc]) 
 
+    L1 = Parts(
+        PartitionMatrix(L2.C.value()[0][0] ,[Mc,Nc]), ## this is one L2 tile of C
+        PartitionMatrix(L2.Logical.value()[0][0],[Mc,Kc]),
+        PartitionMatrix(L2.B.value()[0][0],[Kc,Nc]) ## we need more tiles but contained in L2
+    )
+
+    
     
     # the computation now can be parallel in C (rows) because we write
     # the columns of C in row major and thus we must finish the layout
     # or by K for example we have two C_ij but 16 A_ik pdb.set_trace()
     # in this particular case we do time split in C columns and reduce 
-    print(L1APCfromL2,L1BPCfromL2,L1CPCfromL2)
-    decl, vs = Product_t(L1APCfromL2,L1BPCfromL2,L1CPCfromL2)
-    gl1_2 = Graph("L1 column wise C = A*B from L2 Tile", vs,decl,C,ADP=L1APCfromL2,BDP=L1BPCfromL2,CDP=L1CPCfromL2)
+    print(L1.A,L1.B,L1.C)
+    decl, vs = Product_t(L1.A,L1.B,L1.C)
+    gl1_2 = Graph("L1 column wise C = A*B from L2 Tile", vs,decl,C,ADP=L1.A,BDP=L1.B,CDP=L1.C)
     
+
 
     print("column graph using l1 tiles for a L2 tile ")
     print(gl1_2)
     pdb.set_trace()
 
-
-
+    CTiling = L_Split(L1,KT)
+    print(CTiling)
+    pdb.set_trace()
+    
     
     ## croshet 
     

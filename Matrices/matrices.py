@@ -177,9 +177,9 @@ class PartitionMatrix:
         return len(self.l), len(self.l[0])
 
     def __str__(self):
-            R = len(self.l)
-            C = len(self.l[0])
-            return "Partitions  [%d,%d] of size [%d,%d]" % (R,C, self.logicalshape[0], self.logicalshape[1])
+        R = len(self.l)
+        C = len(self.l[0])
+        return "Partitions  [%d,%d] of size [%d,%d]" % (R,C, self.logicalshape[0], self.logicalshape[1])
     ###
     ## Because DeepMind store the "gamma" matrix in a transpose format
     ## and the computation for C_12 is actually for C_21 ... do not
