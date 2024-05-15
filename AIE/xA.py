@@ -348,19 +348,12 @@ def L_Split(
     ############################################################################################################
     ## this is the blocked computation if we use L2 tiling this should
     ## be a multiple of the core tiling.
-    
+
+    #import pdb; pdb.set_trace()
     Mc,Nc,Kc = CT  ## register tiles
-    Mt, Nt = Lup.C.shape()
-    Kt, Nt = Lup.B.shape()
+    Mt, Nt = Lup.C.logicalshape
+    Kt, Nt = Lup.B.logicalshape
     
-    ## number of matrix columns of B and C for a single AIE column
-    NtC = math.ceil(Nt/Nc)*Nc
-    ## number of matrix columns of A all rows and rows of  B for a single AIE column
-    KtR = math.ceil(Kt/Kc)*Kc
-    ## number of matrix rows of A and C for a single AIE row
-    MtR = math.ceil(Mt/Mc)*Mc
-
-
 
     if Nt % Nc != 0 or Kt % Kc !=0 or Mt % Mc !=0 :
         ## as above L2 has to have Core granularity
@@ -368,9 +361,9 @@ def L_Split(
         pdb.set_trace()
 
 
-    L1CPC = PartitionMatrix(Lup.C.value()[0][0],[MtR,NtC])   
-    L1BPC = PartitionMatrix(Lup.B.value()[0][0],[KtR,NtC])
-    L1APC  = PartitionMatrix(Lup.A.value()[0][0],[MtR,KtR])
+    L1CPC = PartitionMatrix(Lup.C.value()[0][0],[Mc,Nc])   
+    L1BPC = PartitionMatrix(Lup.B.value()[0][0],[Kc,Nc])
+    L1APC  = PartitionMatrix(Lup.A.value()[0][0],[Mc,Kc])
 
 
     return Parts(L1CPC,Distinction(None,L1APC),L1BPC,"L1")
@@ -399,7 +392,7 @@ def Product_3(
 
     print("Columns Graph")
     print(grt)
-    pdb.set_trace()
+    #pdb.set_trace()
 
     
     L2 = L2_Split(DDR,MT,CT)
@@ -416,7 +409,7 @@ def Product_3(
     gl2 = Graph("L2 column wise C = A*B", vs,decl,C,ADP=L2.A.Logical,BDP=L2.B,CDP=L2.C)
     print("Column Graph using L2 tiles")
     print(gl2)
-    pdb.set_trace()
+    #pdb.set_trace()
 
 
     
@@ -441,9 +434,11 @@ def Product_3(
     ## notice that A here does not change because Mc = M but it should
     ## in general
 
+    Mc,Nc,Kc = CT
+    
     L1 = Parts(
         PartitionMatrix(L2.C.value()[0][0] ,[Mc,Nc]), ## this is one L2 tile of C
-        PartitionMatrix(L2.Logical.value()[0][0],[Mc,Kc]),
+        PartitionMatrix(L2.A.Logical.value()[0][0],[Mc,Kc]),
         PartitionMatrix(L2.B.value()[0][0],[Kc,Nc]) ## we need more tiles but contained in L2
     )
 
@@ -461,11 +456,13 @@ def Product_3(
 
     print("column graph using l1 tiles for a L2 tile ")
     print(gl1_2)
-    pdb.set_trace()
+    #pdb.set_trace()
 
-    CTiling = L_Split(L1,KT)
-    print(CTiling)
-    pdb.set_trace()
+
+    print("This is to write the computation block into a different shape and size")
+    RegisterTiling = L_Split(L1,KT)
+    print(RegisterTiling)
+    #pdb.set_trace()
     
     
     ## croshet 
@@ -476,17 +473,20 @@ def Product_3(
     LL1 = [ [Level("L1 %d %d " % (i,j),1,16*1024,2)    for j in range(COLS)] for i in range(ROWS) ] 
 
 
+    
+    
     ## we move data from DDR L2 (there are channels and there are columns)
     ## A -> DDRAPC -> L2APC ( row major layouot but the shape is row,column)
     
     ABuffer = [ i for i in reversed(A.shape()[0]) ] 
-    ATile   = [ i for i in reversed(L2APC_.logicalshape)]
-    NTiles  = [ i for i in reversed(L2APC_.shape())] 
-    A_DDRL2 = [
+    ATile   = [ i for i in reversed(L2.A.Physical.logicalshape)]
+    NTiles  = [ i for i in reversed(L2.A.Physical.shape())]
+    OFF     = [ i for i in reversed(DDR.A.Physical.logicalshape) ]
+    A_DDR_read = [
         Tiling(
             ABuffer,            # The original buffer is the original matrix 
             ATile,              # What we transfer is the L2 tiling
-            [KR*j,0 ] ,   # This is a spatial partitioning 
+            [OFF[0]*j,0 ] ,   # This is a spatial partitioning 
             [
                 Traversal(
                     i,
@@ -498,46 +498,74 @@ def Product_3(
         ) for j in range(ROWS)
     ]
 
-    print("A Tiling L3 L2")
-    for d in A_DDRL2: print(d)
+    print("A L3 read ")
+    for d in A_DDR_read: print(d)
+
+    print(L1)
+    ABuffer = ATile
+    ATile   = [ i for i in reversed(L1.A.logicalshape)]
+    NTiles  = [ i for i in reversed(L1.A.shape())]
+    OFF     = [ 0 for i in reversed(DDR.A.Physical.logicalshape) ]
+    A_DDR_read = [
+        Tiling(
+            ABuffer,            # The original buffer is the original matrix 
+            ATile,              # What we transfer is the L2 tiling
+            [OFF[0]*j,0 ] ,   # This is a spatial partitioning 
+            [
+                Traversal(
+                    i,
+                    ATile[i],
+                    NTiles[i]
+                ) for i in range(2)
+            ],
+            -1,1
+        ) for j in range(1)
+    ]
+
+    print("A L2 read ")
+    for d in A_DDR_read: print(d)
     pdb.set_trace()
-
-
 
 
     
     BBuffer = [ i for i in reversed(B.shape()[0]) ] 
-    BTile   = [ i for i in reversed(L2BPC.logicalshape)]
-    NBTiles  = [ i for i in reversed(L2BPC.shape())] 
-    B_DDRL2 = [
+    BTile   = [ i for i in reversed(L2.B.logicalshape)]
+    NBTiles  = [ i for i in reversed(L2.B.shape())]
+    OFF     = [ i for i in reversed(DDR.B.logicalshape) ]
+                
+    B_DDR_read = [
         Tiling(
             BBuffer,
             BTile,
-            [NC*j,0 ] ,
+            [OFF[0]*j,0 ] ,
             [
                 Traversal(
                     i,
                     BTile[i],
                     NBTiles[i]
-                ) for i in range(1,-1,-1)
+                ) for i in range(2)
             ],
             -1,1
         ) for j in range(COLS)
     ]
 
     print("B Tiling L3 L2")
-    for d in B_DDRL2: print(d)
+    for d in B_DDR_read: print(d)
     pdb.set_trace()
-    C_DDRL2 = [
+    CBuffer = [ i for i in reversed(C.shape()[0]) ] 
+    CTile   = [ i for i in reversed(L2.C.logicalshape)]
+    NCTiles  = [ i for i in reversed(L2.C.shape())] 
+    OFF     = [ i for i in reversed(DDR.C.logicalshape) ]
+    C_DDR_write = [
         Tiling(
-            C.shape()[0],
-            L2CPC.logicalshape,
-            [0,    DDRCPC.logicalshape[1]**j] ,
+            CBuffer,
+            CTile,
+             [OFF[0]*j,0 ] ,
             [
                 Traversal(
                     i,
-                    L2CPC.logicalshape[i],
-                    L2CPC.shape()[i]
+                    CTile[i],
+                    NCTiles[i]
                 ) for i in range(2)
             ],
             -1,
@@ -546,14 +574,14 @@ def Product_3(
     ]
     
     print("C Tiling L3 L2")
-    for d in C_DDRL2: print(d)
+    for d in C_DDR_write: print(d)
     pdb.set_trace()
     
-    print("Main Proble", A,B,C)
-    print("Column Problem", DDRAPC,DDRBPC,DDRCPC)
-    print("Column Problem L2 Tiles", L2APC,L2BPC,L2CPC)
-    print("Column Problem L1 Tiles from L2 ",L1APCfromL2,L1BPCfromL2,L1CPCfromL2)    
-    print("Column Problem L1 Tiles",L1APC,L1BPC,L1CPC)
+    print("### Main Proble\n", A,B,C)
+    print("### Column Problem \n", DDR)
+    print("### Column Problem L2 Tiles \n", L2)
+    print("### Column Problem L1 Tiles\n",L1)
+    print("### Column Problem Register Tiles\n",RegisterTiling)
 
     
     
@@ -669,7 +697,8 @@ if __name__ == "__main__":
     L  = Product_3(
         A, B, D1,
         [args.MT, args.NT, args.KT],  ## L2 tiling 
-        [args.MC, args.NC, args.KC]   ## L1 tiling 
+        [args.MC, args.NC, args.KC],   ## L1 tiling
+        KT=[8,8,8]
     )
     print(L)    
     #    for v in L.left:
