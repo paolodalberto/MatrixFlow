@@ -3,25 +3,55 @@ import numpy as np
 from scipy import special
 import math
 
-def s(x)    :
-    return 1/(1 + np.exp(-x))
+
+
 def gelu(x) :
     return x*(1+special.erf(x/math.sqrt(2)))/2
+
+def s(x)    :
+    y = np.ndarray.astype(x,np.float16)
+    return 1/(1 + np.exp(-y))
+
 def t(x)    :
-    return 0.5*x*(
-        1+ np.tanh(math.sqrt(2/math.pi)*(x+0.044715*x**3))
+
+    y = np.ndarray.astype(x,np.float16)
+    z = np.float16(np.sqrt(2/math.pi))
+    
+    return 0.5*y*(
+        1+ np.tanh(z*(y+0.044715*y**3))
     )
 
+def A(x) :
+    y2 = y * y
+    a = y * (1.0 + y2 * (17325.0/135135.0 + y2 * (378.0 + y2)/135135.0       ))
+    return a
+def B(x) :
+    y2 = y * y
+    b =      1.0 + y2 * (62370.0/135135.0 + y2 * (3150.0 + y2 * 28.0)/135135.0)
+    return b
+
 def ft( x):
-    x2 = x * x
-    a = x * (135135.0 + x2 * (17325.0 + x2 * (378.0 + x2)))
-    b = 135135.0 + x2 * (62370.0 + x2 * (3150.0 + x2 * 28.0))
-    return a / b
+    y = np.ndarray.astype(x,np.float16)
+    y2 = y * y
+
+    k0 = np.float16(17325.0/135135.0)
+    k1 = np.float16(62370.0/135135.0)
+    k2 = np.float16(3150.0/135135.0)
+    k3 = np.float16(28.0/135135.0)
+    
+    #a = y * (135135.0 + y2 * (17325.0 + y2 * (378.0 + y2)))
+    a = y * (1.0 + y2 * (k0 + y2 * (378.0 + y2)/135135.0))
+    #b =      135135.0 + y2 * (62370.0 + y2 * (3150.0 + y2 * 28.0))
+    b =      1.0 + y2 * (k1 + y2 * (k2 + y2 * k3))
+
+    return a/b
 
 
 def t2(x):
     
-    return 0.5*x*(1+ ft(math.sqrt(2/math.pi)*(x+0.044715*x**3)))
+    y = np.ndarray.astype(x,np.float32)
+    z = np.float32(np.sqrt(2/math.pi))
+    return 0.5*y*(1+ ft(z*(y+0.044715*y**3)))
            
 
 
@@ -49,33 +79,36 @@ def q(x):
 if __name__ == "__main__":
     
 
-    #import pdb; pdb.set_trace()
-    x = np.linspace(-5, 5,1000)
+    #
+    x = np.linspace(-4, 4,1000)
     y = gelu(x)
 
 
     y1= x*s(1.702*x)
     y2= t(x)
     y3= q(x)
+
     y4= t2(x)
-    
-    
-                            #print(x)
-    print(y)
-    print(y1)
-    print(y2)
-    print(y2)
-    print(y4)
+
+    print(np.max(A(x)))
+    print(np.max(B(x)))
+    import pdb; pdb.set_trace()
+    #print(x)
+    #print(y)
+    #print(y1)
+    #print(y2)
+    #print(y2)
+    #print(y4)
 
     
     
-    plt.plot(x, y, label = "gelu")
-    plt.plot(x, y1, label="xs(x)")
-    plt.plot(x, y2, label="t(x)") 
-    plt.plot(x, y3, label="q(x)") 
-    plt.plot(x, y4, label="t2(x)") 
-    plt.legend()
-   #plt.savefig("test.png")
+    #plt.plot(x, y, label = "gelu")
+    #plt.plot(x, y1, label="xs(x)")
+    #plt.plot(x, y2, label="t(x)") 
+    #plt.plot(x, y3, label="q(x)") 
+    #plt.plot(x, y4, label="t2(x)") 
+    #plt.legend()
+    #plt.savefig("test.png")
     
     plt.show()
     plt.plot(x, y-y1, label = "gelu-xs")
@@ -84,5 +117,7 @@ if __name__ == "__main__":
     plt.plot(x, y-y4, label = "gelu-t2")
     
     plt.legend()
-
+    plt.title("float 16")
+    plt.xlabel("x")
+    plt.xlabel("signed error")
     plt.show()
