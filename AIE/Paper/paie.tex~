@@ -1,0 +1,861 @@
+
+%%
+%% This is file `sample-sigconf.tex',
+%% generated with the docstrip utility.
+%%
+%% The original source files were:
+%%
+%% samples.dtx  (with options: `sigconf')
+%% 
+%% IMPORTANT NOTICE:
+%% 
+%% For the copyright see the source file.
+%% 
+%% Any modified versions of this file must be renamed
+%% with new filenames distinct from sample-sigconf.tex.
+%% 
+%% For distribution of the original source see the terms
+%% for copying and modification in the file samples.dtx.
+%% 
+%% This generated file may be distributed as long as the
+%% original source files, as listed above, are part of the
+%% same distribution. (The sources need not necessarily be
+%% in the same archive or directory.)
+%%
+%%
+%% Commands for TeXCount
+%TC:macro \cite [option:text,text]
+%TC:macro \citep [option:text,text]
+%TC:macro \citet [option:text,text]
+%TC:envir table 0 1
+%TC:envir table* 0 1
+%TC:envir tabular [ignore] word
+%TC:envir displaymath 0 word
+%TC:envir math 0 word
+%TC:envir comment 0 0
+%%
+%%
+%% The first command in your LaTeX source must be the \documentclass
+%% command.
+%%
+%% For submission and review of your manuscript please change the
+%% command to \documentclass[manuscript, screen, review]{acmart}.
+%%
+%% When submitting camera ready or to TAPS, please change the command
+%% to \documentclass[sigconf]{acmart} or whichever template is required
+%% for your publication.
+%%
+%%
+\documentclass{IEEEtran}
+
+
+%%
+%% \BibTeX command to typeset BibTeX logo in the docs
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+%% Rights management information.  This information is sent to you
+%% when you complete the rights form.  These commands have SAMPLE
+%% values in them; it is your responsibility as an author to replace
+%% the commands and values with those provided to you when you
+%% complete the rights form.
+%\setcopyright{acmlicensed}
+%\copyrightyear{2024}
+%\acmYear{2024}
+%\acmDOI{XXXXXXX.XXXXXXX}
+
+%% These commands are for a PROCEEDINGS abstract or paper.
+%\acmConference[Conference acronym MLCAD]{Make sure to enter the correct
+%  conference title from your rights confirmation emai}{June ,
+%  2024}{San Francisco, CA}
+%%
+%%  Uncomment \acmBooktitle if the title of the proceedings is different
+%%  from ``Proceedings of ...''!
+%%
+%%\acmBooktitle{Woodstock '18: ACM Symposium on Neural Gaze Detection,
+%%  June 03--05, 2018, Woodstock, NY}
+%\acmISBN{TBD} %978-1-4503-XXXX-X/18/06}
+
+
+%%
+%% Submission ID.
+%% Use this when submitting an article to a sponsored event. You'll
+%% receive a unique submission ID from the organizers
+%% of the event, and this ID should be used as the parameter to this command.
+%%\acmSubmissionID{123-A56-BU3}
+
+%%
+%% For managing citations, it is recommended to use bibliography
+%% files in BibTeX format.
+%%
+%% You can then either use BibTeX with the ACM-Reference-Format style,
+%% or BibLaTeX with the acmnumeric or acmauthoryear sytles, that include
+%% support for advanced citation of software artefact from the
+%% biblatex-software package, also separately available on CTAN.
+%%
+%% Look at the sample-*-biblatex.tex files for templates showcasing
+%% the biblatex styles.
+%%
+
+%%
+%% The majority of ACM publications use numbered citations and
+%% references.  The command \citestyle{authoryear} switches to the
+%% "author year" style.
+%%
+%% If you are preparing content for an event
+%% sponsored by ACM SIGGRAPH, you must use the "author year" style of
+%% citations and references.
+%% Uncommenting
+%% the next command will enable that style.
+%%\citestyle{acmauthoryear}
+
+\input{mydef}
+
+%%
+%% end of the preamble, start of the body of the document source.
+\begin{document}
+
+%%
+%% The "title" command has an optional parameter,
+%% allowing the author to define a "short title" to be used in page headers.
+\title{$8\times 8$ Weight Block Sparsity: Training, Compilers, and FPGA-AIE
+  Accelerators }
+
+%%
+%% The "author" command and its associated commands are used to define
+%% the authors and their affiliations.
+%% Of note is the shared affiliation of the first two authors, and the
+%% "authornote" and "authornotemark" commands
+%% used to denote shared contribution to the research.
+%\author{Anonymous} 
+
+\author{Anonymous}
+
+%\author{P. D'\!Alberto, T. Jeong, A. Jain, S. Manjunath, M. Sarmah,
+
+%  S. Hsu, Y. Raparti, and N. Pipralia}
+
+\maketitle
+
+%%
+%% By default, the full list of authors will be used in the page
+%% headers. Often, this list is too long, and will overlap
+%% other information printed in the page headers. This command allows
+%% the author to define a more concise list
+%% of authors' names for this purpose.
+%\renewcommand{\shortauthors}{ D'\!Alberto et al.}
+%\renewcommand{\shortauthors}{ Anonymous  et al.}
+
+%%
+%% The abstract is a short summary of the work to be presented in the
+%% article.
+\begin{abstract}
+We present the main ideas about a vertical system where convolution
+and matrix multiplication weights can be trained to exploit an 8x8
+block sparsity, compilers recognize it for both data compaction and
+computation reduction by a coherent splitting into threads. If we take
+a Resnet50, we can reduce the weight by half with little accuracy
+loss. We can achieve speeds similar to an hypothetical Resnet25. We
+shall present performance estimates by accurate and complete code
+generation for AIE2 configuration sets (AMD Versal FPGAs) using
+Resnet50, Inception V3, and VGG16, in order to highlight necessary
+symbiosis between the HW-overlay designs and the software design in
+order to compile and to execute machine learning applications.
+\end{abstract}
+
+%%
+%% The code below is generated by the tool at http://dl.acm.org/ccs.cfm.
+%% Please copy and paste the code instead of the example below.
+%%
+
+%%
+%% Keywords. The author(s) should pick words that accurately describe
+%% the work being presented. Separate the keywords with commas.
+%\keywords{AI, FPGA, Performance, Sparsity, and Tools}
+%% A "teaser" image appears between the author and affiliation
+%% information and the body of the document, and typically spans the
+%% page.
+
+%\received{TBD}
+%\received[revised]{TBD}
+%\received[accepted]{TBD}
+
+%%
+%% This command processes the author and affiliation and title
+%% information and builds the first part of the formatted document.
+
+
+
+\section{Introduction}
+\label{sec:introduction}
+Block sparsity is an intuitive concept but it can be
+misunderstood. Take a matrix multiplication in Equation \ref{eq:mat}
+\begin{equation}
+  \label{eq:mat}
+  \begin{pmatrix}
+    \Vc{C}_0 & \Vc{C}_1 \\
+    \Vc{C}_2 & \Vc{C}_3 \\ 
+  \end{pmatrix} = 
+  \begin{pmatrix}
+    \Vc{A}_0 & \Vc{A}_1 \\
+    \Vc{A}_2 & \Vc{A}_3 \\ 
+  \end{pmatrix}\\  \begin{pmatrix}
+    \Vc{0}   & \Vc{B}_1 \\
+    \Vc{B}_2 & \Vc{0} \\ 
+  \end{pmatrix}\\
+\end{equation}
+This is the computation {\small \begin{equation} \Vc{C}_0 = \Vc{A}_{1}
+    \Vc{B}_{2}; \; \Vc{C}_1 = \Vc{A}_{0} \Vc{B}_{1}; \; \Vc{C}_2 =
+    \Vc{A}_{3} \Vc{B}_{2}; \; \Vc{C}_3 = \Vc{A}_{2} \Vc{B}_{1}
+\end{equation}}
+and in general with proper $\gamma_i$ (i.e., a mask)
+\begin{equation}
+  \Vc{C}_i = \sum_{k=0}^1 \Vc{A}_{i+ k} \big(\gamma_{2*k+i} \Vc{B}_{2*k+i}\big)
+\end{equation}
+Where the matrix $\Vc{B}$ is constant, diagonal, and each submatrix
+$\Vc{B_2}$ and $\Vc{B}_1$ can split further down and may have even
+smaller zero blocks. In this work, we chose the basic block of
+$\Vc{B}_i = 8\times 8$. It is the smallest for architectures based on
+AMD AIE2 products and we support others (i.e., they are parameters).
+This is a well known data structure in the sparse computation field.
+We can use {\em compress block row} (CBR) or {\em block column} (CBC)
+or a generalization of the {\em coordinate format} (COO). There are standard
+matrix sparse-matrix multiplication interfaces and algorithms for CPU
+and GPUs using this data format (where only one operand is sparse or
+both) \cite{rocSPARSE,cuSPARSE}. There is no counterparts for AIE2 as
+today but they are in the works.
+
+Block sparsity is not found naturally in CNN models. We explore
+training techniques (PyTorch and the Keras).  The most successful is
+the simplest. We take a pre-trained model. We compute a mask $\Gamma$
+of zeros/ones per layer by zeroing the more likely blocks (using a
+Norm). Then we train the model till convergence or accuracy are
+achieved. We take the sparse model and we quantize to 8-bit integers
+by the Vitis-AI quantizer. The final model is a XIR quantized model
+(Xilin intermediate representation). See Section
+\ref{sec:training}. We have a custom compiler that takes the XIR model
+and an abstraction of a AIE2 connected set. See Section
+\ref{sec:compiler}. The compiler computes the maximum sub-volume
+computation per core. By heuristics and following a schedule, it
+computes a memory allocation in memtile (i.e., intermediate scratch
+pad) for input, outputs, and weights . It formats, compresses, and
+organizes the weights exploiting spatial distribution to memtiles and
+cores. We generate all the explicit communications between DDR
+($L_3$), memtile ($L_2$), and cores ($L_1$). These are Gather and
+Scatter instructions with a complete and parametric estimate of their
+execution time by bandwtidh constraints and number of channels. We
+know the subproblem sizes per core, the computation throughput and
+with a clear specification of what is executed in parallel. The data
+movement codes and AIE core codes for simple convolutions were
+simulated and run in hardware for simple layers. Our focus here, we
+can give consistent execution time estimates per layer and of the
+entire network with an accuracy closer to a simulation (realistic
+although optimistic).  We will show estimates for three CNN models and
+eight different AIE designs; see Section \ref{sec:experiments}. To our
+knowledge, we are the first in applying sparsity on AIEs
+systematically. The automatic code generation and time estimates will
+allow to explore optimizations like sub-graph depth-wise tiling
+(presented here) and open the door to advanced and optimal tiling
+optimizations (beyond this scope).
+
+In our context, convolution is our main computation and CNN are
+networks we can train reasonably. This is because of legacy, we want
+to speed up the FPGA work-horses, convolutions provide more
+difficulties than GEMMs (padding, strides, and overlap), have usually
+biases with different precision requirements (weight 8bits and bias
+32), routinely they can deploy different scaling factors per output
+channels, and GEMM is transformed into a $1 \times 1$ convolution
+immediately (although not optimally). 
+
+In the following Section \ref{sec:motivation}, we start with a
+quantitative measure about the advantages of block sparsity.
+
+\section{Block-Sparse Size Matters}
+\label{sec:motivation}
+
+Consider $\Gamma, \Omega \in \{0,1\}^{N\times N}$ and
+$\Vc{A},\Vc{B},\Vc{C} \in \R^{N \times N}$:
+\begin{equation}
+  \Vc{C} = (\Gamma \Vc{A}) * (\Omega \Vc{B})^t
+\end{equation}
+More precisely, consider non-zero blocks of size $k\times k$ so that
+\begin{equation}
+  \Vc{C}_{i*N+j} = \sum_k ( \gamma_{i*N+k} \Vc{A}_{i*N+k} ) (\dot{\omega}_{j*N+k} \dot{\Vc{B}}_{j*N+k})
+\end{equation}
+
+
+Thanks to the sparsity and if we store only non-zeros, then
+$\gamma_{i*N+k}$ and $\dot{\omega}_{j*N+k}$ are contiguous (so their
+counterparts of $\Vc{A}$ and $\Vc{B}$). There will be a meaningful
+product to compute if and only if $\gamma_{i*N+k} =1$ and
+$\dot{\omega}_{j*N+k} =1$.  We merge-sort these vectors.  See how the
+sparse-sparse matrix multiplication using {\em Coordinate list} (COO)
+is applied in Figure \ref{fig:block} where the entry in the list is a
+submatrix.  We provide software to reproduce it. %\cite{PaoloG2020}.
+If we want to achieve a fixed sparsity of 50\% for a square matrix of
+size $N$ and if we can choose the block size $k \times k$. The larger
+$k$ is, the smaller the overhead will be, and it is not all about
+latency.
+
+\doublefigure{0.80}{1x1.png}{8x8.png}{Block 1x1 and 8x8
+  performance}{fig:block}
+
+In Figure \ref{fig:block}, we present two scatter plots: on the
+abscissa the effective multiplication-and-addition number, on the
+ordinate the performance in GFLOPS, when the sparse matrix with dense
+block is $1\times 1$ (above) and $8\times8$ (below). Given the same
+problem, we deploy more threads (more GFLOPS).  With the same number
+of effective operations, the block permits and exploits higher GFLOPS
+per effective operation (Float is 2x faster than Double precision and
+this can be emphasized further \cite{Gray2017GPUKF,li2023popsparse}
+and \cite{pmlr-v119-kurtz20a}). We are working with operands of size 8
+bits and the size $8 \times 8$ will exploit the maximum throughput (8
+bits 256 multiply-add per cycle per AIE core, 16 bits 128 MAC, 32 bits
+64 MAC).
+
+
+\section{Block Sparsity: Training and Quantization}
+\label{sec:training}
+
+We train the network for block sparsity.  A convolution has a weight
+tensor in four dimension: $\Vc{W} \in \R^{c_{out}\times h \times k
+  \times c_{in}}$. In the hyperplane of the $h$ and $k$, we can
+simplify the weight as $\dot{\Vc{W}} \in \R^{c_{out} \times c_{in}}$
+and block sparsity can be simply described by a mask
+$\Gamma\dot{\Vc{W}}$. Although, we speak of a $8\times 8$ of
+non-zeros, this is in practice a $8\times h\times k\times 8$
+block. For the matrix multiply $h=k=1$. We explain the training
+process.
+
+
+\subsection{Keras}
+We shall provide a repository using Keras \cite{chollet2015keras}
+where we implements the contents of this section. %\cite{PaoloK2020}.
+
+We target convolutions only and without quantization. The idea is
+simple: we take any model and we create a copy where we enhance the
+convolution with a (non-trainable) $\Gamma$. A convolution will have
+three parameters (saving the model into a different format).  The
+forward computation is modified so that the weights used for
+convolution are $\Gamma\Vc{W}$. We assume the backward computation
+(i.e., gradient) is done automatically from the forward
+definition. There is no need to change the bias. For example, we take
+Resnet50 from the Keras application repository, we start with a
+$\Gamma=1$, and we trained one epoch using imagenet repository
+\cite{deng2009imagenet}.  The goal is to choose $\Gamma$ in such a way
+we achieve the required sparsity and the minimum loss in accuracy. We
+tested different approaches such as incremental, Fisher measure,
+Hessian, diagonal Hessian, and custom penalty losses. We will give
+full description where space is not a requirement.
+
+\subsection{$\Gamma$ Chosen Once and Full Training Ahead: PyTorch}
+\label{sec:one-mask}
+\label{sec:pytorch}
+Take a convolution with $\Gamma = 1$ and weights $\Vc{W}$. For each
+$\gamma_i$, this will be representative of a block $\Vc{W}_i \in \R^{8
+  \times h \times w \times 8} \sim \R^{8\times 8}$. We can choose the
+$\Vc{W}_i$ using a measure of importance:
+\begin{itemize}
+  \item $L_2 = \sqrt{\sum_k w_k^2}$ with $w_k \in \Vc{W}_i$,
+  \item $L_1 = \sum_k |w_k|$ as above,
+  \item Variance $\sigma^2 = \frac{1}{64}\sum_k (w_k -\mu)^2$ with
+    $\mu = \frac{1}{64}\sum w_k, w_k \in \Vc{W}_i $ or $\frac{1}{N}\sum
+    w_k, w_k \in \Vc{W}$. In signal processing $\sigma^2$ is the power
+    of the signal.
+\end{itemize}
+We can then sort them in ascending order. We set the first half to
+zero.  Then we start re-training. We do this for the entire network or
+for one convolution at a time.
+
+In Table \ref{tab_acc}, we show the results by using one-time mask
+and full training: VGG-16, ResNet-50, Inceptionv3 on ImageNet20 (20
+classes) and ImageNet1k (1000 classes).  We use three samples per
+class for the validation accuracy for ImageNet1k data set; instead, we
+use 50 samples per class for ImageNet20. Fine-tuning sparse networks
+on the original ImageNet data-set \cite{deng2009imagenet} is
+expensive. To reduce the training time, we chose 20 classes (from the
+original 1000 classes) with the least number of images per class in
+the training data-set and this choice will affect the accuracy because
+there are fewer samples for re-training.
+
+
+\begin{table}[ht]
+\caption{Accuracies of the sparsity models}
+\label{tab_acc}
+\begin{center} 
+\scalebox{0.9}
+{
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\rule[-1ex]{0pt}{3.5ex}  Model & Dataset & Baseline  & \multicolumn{3}{c|}{Sparsity}\\
+\rule[-1ex]{0pt}{3.5ex}  {} & {} & Acc.(\%) & block & ratio (\%) & Acc.(\%)    \\\hline\hline
+\rule[-1ex]{0pt}{3.5ex}  Inception-v3 & ImageNet1k & 77.2 & 8x8 & 50 & 75.5  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  ResNet-50 & ImageNet1k & 76.7 & 8x8 & 50 & 74.6  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  VGG-16    & ImageNet1k & 70.6 & 8x8 & 50 & 69.7  \\\hline \hline
+\rule[-1ex]{0pt}{3.5ex}  ResNet-50 & ImageNet20 & 96.1 & 8x8 & 25 & 95.1  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  ResNet-50 & ImageNet20 & 96.1 & 8x8 & 50 & 92.0  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  ResNet-50 & ImageNet20 & 96.1 & 8x8 & 75 & 87.1  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  ResNet-50 & ImageNet20 & 96.1 & 1x1 & 25 & 96.0  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  ResNet-50 & ImageNet20 & 96.1 & 1x1 & 50 & 95.6  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  ResNet-50 & ImageNet20 & 96.1 & 1x1 & 75 & 93.5  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  VGG-16    & ImageNet20 & 92.0 & 8x8 & 50 & 89.6  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  VGG-16    & ImageNet20 & 92.0 & 1x1 & 50 & 92.3  \\\hline
+\rule[-1ex]{0pt}{3.5ex}  VGG-16    & ImageNet20 & 92.0 & 1x1 & 75 & 91.7  \\\hline
+\end{tabular}\vspace{-20pt}
+}
+\end{center}
+\end{table}
+
+Classification accuracy on ImageNet1k drops by only 1 - 2\% after
+applying 50\% sparsity with a $8\times 8$ block (this is without any
+quantization). We experiment with different block shapes such as
+$16\times 4$ and $4\times 16$ on ResNet-50, but the accuracy is
+slightly worse. Fine-grained sparsity ($1\times 1$ block or
+unstructured) does not sacrifice any accuracy (i.e., almost any). This
+is not equivalent to 2 over 4 (or 4 over 8) sparsity now available in
+GPUs, experiments show such constraints make the accuracy drop by more
+than 30 percentage points (we do not report these results).
+
+%We use the sparsified models, we quantize them using Vitis AI, and we
+%use them for time estimates (i.e., Section \ref{sec:experiments}).
+
+
+\section{The Compiler and its Code generation for AIE}
+\label{sec:compiler}
+We take a PyTorch/Keras model, quantize it using Vitis AI, and create
+an intermediate representation that we call Xilinx Intermediate
+Representation (XIR). XIR is a graph where each node is an operation
+that reads tensors and writes one tensor.  A convolution has one
+quantized input INT8 with a position where the fraction starts (power
+of two scale). It computes a tensor using the same layout and with a
+proper scale.  The weights and bias are properties of the
+convolutions. They are tailored and laid out at compile time, they are
+$COUT\times h \times w \times CIN$ ( like the caffe layout
+\cite{Caffe} []).
+%(previously DPUV1 and DPUV3INT8 \cite{10.11451/3473334,abs-2110-04327}).
+
+
+The main differences from our previous compilers are the parameterized
+representation of block sparsity, the capability to split tensors and
+computations accordingly to a parameterized representation of the
+architecture. Our HW abstraction is a Python class, describing a
+variety of systems. All weights are statically prepared into DDR and
+we move them explicitly towards the inner levels. Inputs and outputs
+have designated space in DDR. DDR can and it will be used for tensors
+spills.  The memory allocation to memtile is basically coloring
+algorithms and some heuristics. In this architecture, we do not allow
+{\em streaming} of neither data nor weights (because they share space
+in memtile and input and output have different consumption/production
+rates). 
+
+\subsection{AIE Hardware Abstraction}
+Although, we present a single HW, keep in mind this as a
+representative for presentation purpose.
+
+\singlefigure{0.70}{AIE.png}{4x4 AIE representation}{fig:aie}
+
+See Figure \ref{fig:aie}, we work with a mesh of 4x4 AIE2 cores
+connected by 4 horizontal and 4 vertical interconnections.  We present
+estimates for square 2x2, .. $i\times i$ .. 8x8 and rectangular shapes
+are in the works ($4\times 1$, $4 \times 2$, and $8\times 2$ into a $8
+\times 8$ with 2 memtiles per column). Each core has 8 banks memories
+for a total 64 KB. About six banks are used as input/output/weight
+buffers and two banks are used as temporary space for kernels. Each
+core can request and send data to its direct neighbors (if aware of
+connection and control but this utility is not used here). Double
+buffering using ping/pong is used for inputs and outputs.
+
+There are four memtiles: each 512 KB and each is connected to one
+columns and its direct neighbor column, or it is connected to a row
+and its neighbor. The total amount of space is 2 MB. Memtile is a
+circular buffer to exploit more flexible allocation. Note a $2 \times
+2$ architecture will have one memtile per column and a total of two
+memtiles (1 MB).
+
+A Memtile can broadcast data per column or per row; it is a design
+choice. We can dedicate one memtile for weights, one for activations,
+or we can share it. In this work, we present results for shared
+memtiles. To maximize the computation parallelism, every core will
+write data per column into memtile.
+
+
+\subsection{Subvolumes, Data Compression, and Data Movements}
+The computation is split by memtile and thus by column (cores
+columns). The output tensor is computed and split evenly by
+width. Thus one memtile will store one partial tensor by width, each
+core will compute different output channels, and the computation
+streams the output tensor by rows and using ping/pong double
+buffering. We prioritize to reuse weights in core. The cores set is a
+cohort and we always choose symmetric computations. Activation
+sparsity of inputs and outputs are beyond the scope because we do not
+have any hardware support for the division of a sparse vector so that
+each core will have equivalent work. Also, we do not merge two
+operations like convolution and max-pool.
+
+If we have the inputs, output, and weights in memtile, what is the
+largest computation we can do in the AIE? The minimum computation is
+one output channel and one row (i.e, by height). If this is not
+possible, we try to reduce the size of the width (e.g., shaping the
+tensor in memtile by using DDR spills) and we can manage to split the
+input channels and to split the weights accordingly and prepare for
+accumulattion. We call W-Split the distribution of tensor by columns
+in the AIE mesh. We can COUT-split, this requires the partial transfer
+of weights.  We can CIN-split when we need to split by input channel,
+this is the last resort because it is also the most expensive
+(accumulation of the outputs). CIN split can be implemented as a graph
+optimization by splitting the convolution into two and then use an
+element wise operation to combine the results (this can be done
+recursively).
+
+The subvolume describes the smallest shape of the weights that we need
+to manage and the largest computation in the core. We compress the
+weight accordingly. Any data movement will always be a multiple of the
+subvolume and is a single load. Such a compressed data will have the
+same properties whether it is sparse or dense. We address the optimal
+decomposition in Memtile and core-memory in a different venue.
+
+
+\subsection{Schedule and Memory Allocation}
+During the scheduling of each layer, we evaluate what tensors can fit
+in memtile. Here, activation and weight tensors share the space.  At
+each step, the memory allocation will check if we can allocate
+(inputs, weights, and outputs). If we cannot, we evict all tensors
+into DDR and then split/time the computation.
+
+At the end of this stage, every tensor will have an address in memtile
+or DDR (or both). If there are only DDR addresses, the compiler will
+take the basic layer computation and, by heuristics, will split the
+computation and the output tensor by width, output channel, height,
+and input channel (no necessarily in this order). The heuristics have
+a single objective to find the largest problem fitting the (each)
+memory level. We deploy a recursive approach of tiling.  Formally,
+$\dot{\sum}$ is a parallel loop and a W-split can be written as
+follows:
+\begin{equation}
+  \Vc{Y} =  Conv(\Vc{X},\Vc{W}) = \dot{\sum}_w
+  Conv(\Vc{X}_w,\Vc{W})
+\end{equation}
+The split is a function of the footprint. Before and after each
+convolution, there will be an explicit data movement (optional). At
+this stage each input, output, and weights have addresses associated
+with each sub-computation. Then the code generation of each
+$Conv(\Vc{X}_w,\Vc{W})$ is independent and recursive as needed. This
+is a tree. If the convolution has strides or a large kernel, each
+sub-convolution has overlap data; however, the sub-convolution has
+defined addresses and data movements. For a W-split such as this, we
+are computing the output by rows and the weights are reused (read
+once). Note scheduling and memory allocation we addressed them first.
+
+\subsection{Code Generation }
+The compiler creates a list of operations. These operations are
+smaller and smaller and they can be executed from memtile to
+memtile. There is a further decomposition using only AIE cores and it
+is completely determined by the subvolume. Here, we show how we
+generate code at this level and estimate time as in Figure
+\ref{fig:singleconvestimate}.  This is the computation of a
+convolution with top/bottom padding by height:
+\begin{equation}
+  \label{eq:convpadding}
+  \Vc{Y}_{height} =   Conv(\Vc{X}_{h=0}) \dot{+} \dot{\sum}_{h=1}^9
+  Conv(\Vc{X}_h) \dot{+} Conv(\Vc{X}_{h=10})
+\end{equation}
+
+An important feature of the current system is the concept of {\bf
+  iteration} between memtile and core.  Using locks and chaining the
+locks, we write a single instruction from the prospective of a single
+core (as a SIMD instruction) and driving all cores at once for
+multiple iterations $\dot{\sum}_{h=1}^i Conv(\Vc{X}_w)$ in Equation \ref{eq:convpadding}, the
+ASM-like code follows:
+
+{\footnotesize
+\begin{verbatim}
+  LOADFM Lock k_0 memtile addr core addr iter i
+  CONV iteration      i
+  WRITEFM Lock k_1 memtile addr core addr iter i
+\end{verbatim}
+} There is an implicit lock (say \verb2k_x2) that is used for the pong
+and the system cycles between locks (\verb2k_x2 and \verb2k_02).
+These three operations execute a number of iterations {\em i} and,
+using a ping/pong, they will load different slices of data and compute
+different slices of data. 
+
+Equation \ref{eq:convpadding} is encoded as follows: {%\small
+\footnotesize
+\begin{verbatim}
+  ## Head top pad < 50 us First comp block
+  LOADFM Lock k_0 memtile addr_0 core addr iter 1
+  CONV iteration 1
+  WRITEFM Lock k_1 memtile addr_1 core addr iter 1
+  ## Body iteration > 50 us < 150 us
+  ## k_0 -> k_2 -> k_4 Lock Chain
+  LOADFM Lock k_2 memtile addr_2 core addr iter 9
+  CONV iteration 7
+  WRITEFM Lock k_3 memtile addr_3 core addr iter 9
+  ## tail bottom pad > 150 us Last computation block
+  LOADFM Lock k_4 memtile addr_4 core addr iter 1
+  CONV iteration 1
+  WRITEFM Lock k_5 memtile addr_5 core addr iter 1
+\end{verbatim}
+ } We present in Figure \ref{fig:singleconvestimate} the execution
+estimate of this code. At this stage, we have all the information. Per
+layer, the code generation is a two pass process. First, we generate
+code for the all loads/stores. Second we combine them into chains with
+dependency, logically correct and as fast as possible.
+\singlefigure{0.99}{singledenseconv.png}{Resnet single convolution
+  with padding for 4x4: legend AIE: LOAD activation from DDR to
+  memtile, LOADW weights from DDR to memtile, LOADFM activation from
+  memtile to AIE2 cores, LOADWM weights from memtile to AIE2, WRITE
+  from memtile to DDR, WRITEFM from AIE2 to memtile, COMP Computation.
+}{fig:singleconvestimate}
+
+We could estimate the time execution without a full code
+generation. When we annotate time information to a load, we have
+assurance that the load is a complete description of the DMA
+communication between multiple memories and as complex as the
+architecture. Actually, this is literally translated to a binary
+executable that perform the data movement.
+
+\subsection{Time Estimation}
+We explain how we capture the execution time and visualize it as in
+Figure \ref{fig:singleconvestimate}. We start by the time estimates
+for DDR to memtile communications. We have two communication types:
+activations and weights. Per memtile there are two dedicated channels.
+\begin{itemize}
+ \item If we share activations and weights in the same memtile, we can
+   use one channel for activations and one for weights. Thus the loads
+   from DDR to memtile (LOAD and LOADW) are parallel with a bandwidth
+   of 4 GBps. Writes from memtile to DDR (WRITE) can use both channels
+   (8 GBps).
+
+ \item If activations and weights go to different memtiles (for
+   example weights to memtiles '0' and '3' and activations to '1' and
+   '2'), each load is parallel and 8 GBps. Writes are identical.
+\end{itemize}
+   
+The memtile connections with AIE cores are different. We assume a few
+channels with again 4 GBps bandwidth. One memtile can broadcast inputs
+to a cores column. These communications are for activations
+(LOADFM). One memtile can broadcast to rows of cores, these are for
+weights (LOADWM). We assume that the column and row communications are
+parallel.
+
+Every communication with iteration one is synchronous and sequential.
+The load, convolution, and store is executed one after the other and
+every core is independent.  For synchronization and for bookkeeping,
+we assume that AIE2 weights communications (from memtiles) to cores are
+synchronous and halting (LOADWM).
+
+Every communication with iteration larger than one, we assume that
+load (LOADFM), computation (COMP), and store (WRITEFM) are executed in
+parallel and the overall execution time is the maximum of the
+estimated time multiplied by the number of iterations.
+
+We estimate the execution time of a subvolume (COMP) by the number of
+operations divided by the maximum number of operations per cycle which
+is in our scenario is $4\times 8 \times 8 = 256 $ operations per cycle
+and 1 GHz frequency. Sparsity reduces computation and communication
+time.
+
+We do not account the wait and synchronization which are necessary to
+reprogram the fabric. These are very expensive running on for a few
+milliseconds.
+
+
+\subsection{Sparse Convolution example}
+\singlefigure{0.999}{singlesparseconv.png}{Resnet single convolution
+  with padding and sparsity for 4x4 AIE }{fig:singleconvestimate2}
+
+We present the time estimate for a convolution with padding, dense,
+and with 50\% sparsity, see Figure \ref{fig:singleconvestimate} and
+\ref{fig:singleconvestimate2}.
+
+
+%First, we load the weight and
+%activations in memtiles once (LOAD and LOADW). There are actually one
+%load per memtile for a total of four loads instructions per activation
+%and weight. Because each load is to a different memtile, they are
+%parallel.  The activation and weight communications are using two
+%different channels and they are parallel with 4 GBps bandwidth.  There
+%is a single load of the weights from memtiles to each core
+%(LOADWM). This is done once and it is blocking.
+
+%As before, There are three computations (COMP); that is, top padding,
+%the body, and the bottom padding. For the top padding computation,
+%there is the sequential execution of loads to cores (LOADFM),
+%computation (COMP), and write to memtile (WRITEFM). This computation
+%has iteration 1.
+
+%For the body computation, there are 9 iterations for three
+%instructions: we can see the load, the computation, and the write are
+%parallel. This is a simplification; there will be a little load poking
+%out at the beginning and a writing poking out at the end.  Then we
+%conclude with padding at the bottom of the computation.
+
+For these convolutions, the computation dominates the execution
+time. Sparsity cuts the execution time by half: from 200 $\mu s$ to
+130 $\mu s$. On one hand, there are convolutions that realize up to
+$2\times$ performance; on the other, there are convolutions that are
+dominated by the reading or writing. In the latter case, sparsity
+helps in space saving and probably DDR tensors spilling. In principle,
+we could relax sparsity requirements for those convolutions that are
+communication bound (and restart training).
+
+\section{Depth-wise Tiling}
+Take the subgraph schedule $L_0, L_1, \dots L_j$, for every $i$ $L_i$
+is a layer that produces a single tensor $T_i$. Let us define
+$u_j=1\times1$, where we neglect the {\em channels}, as a sub-tensor
+of layer $L_j$; that is, a sub-vector of $T_j$. A projection $\P$ is a
+function taking $u$ and projects the input sub-tensor needed to
+compute $u$.  In reverse order, starting from $L_j$ compute
+$\P(L_j,u_j)$ and propagate the projection. When a layer $L_m$ and
+tensor $T_m$ feeds two (or more) layers $L_x$ and $L_y$. Then $u_m =
+\max ( \P(L_x,u_x),\P(L_y,u_y))$ when $u_x$ and $u_y$ are defined
+completely and {\em max} mean the largest. We carry the propagation of
+$\P(L_m,u_m)$ and we have $T_{-1} \eq \P(L_0, u_0) = \P(L_0, \P(L_1,
+u_1))= \P(L_0, \dots \P(L_l, u_l)$. At the end of the propagation,
+imagine this is a generalized convolution with kernel size $k =
+\P(L_0, u_0)$. Now if we repeat the process with $\dot{u}_j = 2\times
+2$ ... $k+s = \P(L_0, \dot{u}_0)$. Thus we have an estimate of the
+generalized stride.  Now we can split the computation by selecting a
+non overlapping decomposition of the output tensor: say using M tiles
+each of size $u_o$. The input is split into M tiles of size
+$(u_o-1)s+k$ and we will have an overlap of size $k-1$. We can choose
+a tiling in such a way there is zero DDR communication in between
+$L_0$ and $L_j$.  With input overlap, thus with extra reads, we have
+extra computations. Sparsity will improve weights communication and
+reduce the effect of computations. We use the term generalized
+convolution but it is not a convolution and it is applied to a graph
+computation (with element wise operations and transpose convolutions,
+we do not think it is applicable to height and width softmax or layer
+norms).
+
+
+%\SSinglefigure{2.0}{R4x4-4sharedsparse.png}{Resnet50 for 4x4 AIE with 50\%
+%  sparse weights}{fig:estimate-sparse}
+
+\section{Results}
+\label{sec:experiments}
+\begin{table}[htb]
+  \caption{Execution Time estimates}
+  \label{tab_perf}
+\begin{center} 
+\begin{tabular}{|l|l|l|l|l|}
+  \hline
+  AIE2 & Model  & Dense sec      & Sparse sec      \\ \hline\hline
+  2x2   & Resnet & 2.492347e-02  & 1.582626e-02 \\ \hline
+  3x3   &  & 1.269543e-02  & 8.661490e-03 \\ \hline
+  4x4   &  &  1.077318e-02 & 7.064918e-03 \\ \hline
+  5x5   &  &  failed       & 4.303485e-03 \\ \hline
+  6x6   &  &  5.712521e-03 & 4.490127e-03 \\ \hline
+  7x7   &  &  4.205991e-03 & 3.212234e-03 \\ \hline
+  8x8   &  &  6.376768e-03 & 4.602027e-03 \\ \hline \hline
+  2x2   & IncV3  & 4.283837e-02  & 2.440544e-02 \\ \hline
+  3x3   &   & 2.386600e-02  & 1.422390e-02 \\ \hline
+  4x4   &   &  1.740967e-02 & 1.012540e-02 \\ \hline
+  5x5   &   &  9.690552e-03 & failed       \\ \hline
+  6x6   &   &  1.063962e-02 & 6.439692e-03 \\ \hline
+  7x7   &   &  8.727651e-03 & failed       \\ \hline
+  8x8   &   &  9.093276e-03 & 5.666152e-03 \\ \hline \hline
+  2x2   & VGG16  & 4.476212e-02  & 2.608593e-02 \\ \hline
+  3x3   &   &  2.53343e-02  & 1.002015e-02 \\ \hline
+  4x4   &   &  1.371000e-02 & 8.852128e-03 \\ \hline
+  5x5   &   &  failed       & 4.336479e-03 \\ \hline
+  6x6   &   &  failed       & 5.770197e-03 \\ \hline
+  7x7   &   &  7.455440e-03 & 5.288551e-03 \\ \hline
+  8x8   &   &  9.203393e-03 & 6.502333e-03 \\ \hline \hline
+          
+\end{tabular}
+\end{center}
+\end{table}
+
+In Table \ref{tab_perf}, we present the performance of sparsity
+applied to all the convolutions (except the first one) for Resnet 50,
+Inception V3, and VGG16.
+
+Corner cases are represented as failure in Table \ref{tab_perf}. Some
+cases is because of inability to break the weight tensor evenly.
+Sometime is for incorrect data management especially for prime
+numbers. These are all issues will be address as the technology
+matures. Please, note that VGG16 using 8x8 configuration is slower
+than 7x7 (by using sparse).  For a symmetric computation too small
+sub-volume computations make the computation overall more inefficient
+and requiring more iterations for the same amount of data
+transfers. This is a case where more HW does not improve performance,
+which is interesting and relevant.
+
+\subsection{Results Depth-Wise Tiling for VGG16 3x3}
+\label{sec:res-depth}
+
+We take VGG and we instruct the DDR to be 16 times slower (4GBs/16)
+highlighting the need of fewer DDR communications. We take only the
+part that requires DDR spills for each layer: 0.025s total time.  We
+apply depth-wise tiling using three tiles and we break even at
+0.024s. With two tiles, we achieve better performance at
+0.022s. Sparsity by itself without any tiling can achieve only
+0.021s. Sparsity and tiling improves even further and we achieve
+0.014s. A posteriori, we can appreciate the reduction of activation
+DDR communications thanks to depth-wise tiling and the reduction of
+computation and weights communication by sparsity.
+
+We present results for VGG16 because of simplicity and each layer
+tensor do not fit the three memtile (of a $3\times 3$ system). We can
+apply the same approach to Resnet and inception. The generalized
+convolution idea is applicable.
+
+
+\section{Conclusions and Context}
+This is a multifaceted problem and we present a complete solution from
+training techniques, compilers, code generation, HW definition, and
+time estimations. It is a vertical software system, more complex than
+just a prototype, and it is used for the validation and comparison of
+different HW designs. A few convolutions have been validated in
+simulation and in hardware.
+
+This could be seen as a quantization and sparsification problem. For
+example, how we can reduce the footprint of a CNN network. There are
+post training techniques that are targeting quantization and
+unstructured sparsity \cite{frantar2023gptq} and all the references
+within. We need to be more aggressive and training for it (as starting
+point \cite{abs-2102-11289}).  Our sparsity is not really a property
+of the model, software can describe it, and the hardware can take
+advantage; however, we do not need specific hardware support at
+instruction level. To our knowledge we are the first applying sparsity
+to AIE2 overlays systematically.
+
+This work stemmed from a collaboration between Xilinx and Numenta and
+the idea set forward by the authors in \cite{ahmad2019dense}, where
+the models are too dense. The authors' contribution cannot be
+completely applied using AIE2 systems (no PL for custom operations).
+
+
+The difficulty of generating code for complex architectures can be
+described and solved in different ways. There are recent attempts of
+introducing SW/HW solution for spatial processors like ours
+\cite{Huang2021CoSASB,Russo2023MemoryAwareDA,Cai2023InterlayerSS}.
+Usually major attention is given only to matrix multiplication and
+GPUs \cite{Gray2017GPUKF} \cite{li2023popsparse}, we can work on only
+static sparsity at this time. Matrix multiplication is appealing for
+the application in LLM and application in GPUs. Convolutions is far
+richer in complexity and it is the work-horse for FPGAs based products
+and systolic array systems/computations.
+
+
+
+
+
+
+
+
+%%
+%% The next two lines define the bibliography style to be used, and
+%% the bibliography file.
+\bibliographystyle{IEEEtran}
+\bibliography{ref}
+
+
+
+\end{document}
+\endinput
+%%
+%% End of file `sample-sigconf.tex'.
