@@ -49,8 +49,8 @@ def ft( x):
 
 def t2(x):
     
-    y = np.ndarray.astype(x,np.float32)
-    z = np.float32(np.sqrt(2/math.pi))
+    y = np.ndarray.astype(x,np.float16)
+    z = np.float16(np.sqrt(2/math.pi))
     return 0.5*y*(1+ ft(z*(y+0.044715*y**3)))
            
 
@@ -83,6 +83,7 @@ if __name__ == "__main__":
     x = np.linspace(-4, 4,1000)
     y = gelu(x)
 
+    x = np.ndarray.astype(x,np.float16)
 
     y1= x*s(1.702*x)
     y2= t(x)
@@ -108,9 +109,9 @@ if __name__ == "__main__":
     #plt.plot(x, y3, label="q(x)") 
     #plt.plot(x, y4, label="t2(x)") 
     #plt.legend()
-    #plt.savefig("test.png")
     
-    plt.show()
+    
+    #plt.show()
     plt.plot(x, y-y1, label = "gelu-xs")
     plt.plot(x, y-y2, label = "gelu-t")
     plt.plot(x, y-y3, label = "gelu-q")
@@ -119,5 +120,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.title("float 16")
     plt.xlabel("x")
-    plt.xlabel("signed error")
+    plt.ylabel("signed error")
+    plt.savefig("test.png")
     plt.show()
