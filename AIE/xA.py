@@ -474,7 +474,7 @@ def Product_3(
 
 
     
-    
+    print("########################  A  ################################# ")    
     ## we move data from DDR L2 (there are channels and there are columns)
     ## A -> DDRAPC -> L2APC ( row major layouot but the shape is row,column)
     
@@ -486,7 +486,7 @@ def Product_3(
         Tiling(
             ABuffer,            # The original buffer is the original matrix 
             ATile,              # What we transfer is the L2 tiling
-            [OFF[0]*j,0 ] ,   # This is a spatial partitioning 
+            [OFF[0]*j,0 ] ,     # This is a spatial partitioning 
             [
                 Traversal(
                     i,
@@ -497,20 +497,20 @@ def Product_3(
             -1,1
         ) for j in range(ROWS)
     ]
+    
 
-    print("A L3 read ")
+    print("A L3 read: there is a minimum of 4 channels DDR - L2" )
     for d in A_DDR_read: print(d)
 
-    print(L1)
     ABuffer = ATile
     ATile   = [ i for i in reversed(L1.A.logicalshape)]
     NTiles  = [ i for i in reversed(L1.A.shape())]
     OFF     = [ 0 for i in reversed(DDR.A.Physical.logicalshape) ]
-    A_DDR_read = [
+    A_L2_read = [
         Tiling(
             ABuffer,            # The original buffer is the original matrix 
             ATile,              # What we transfer is the L2 tiling
-            [OFF[0]*j,0 ] ,   # This is a spatial partitioning 
+            [OFF[0]*j,0 ] ,     # This is a spatial partitioning  
             [
                 Traversal(
                     i,
@@ -522,11 +522,38 @@ def Product_3(
         ) for j in range(1)
     ]
 
-    print("A L2 read ")
-    for d in A_DDR_read: print(d)
+    print("A L2 read: there is a minimum of 1 channel L2 - L1 ")
+    for d in A_L2_read: print(d)
+
+
+    print(RegisterTiling.A)
+    ABuffer = ATile
+    ATile   = [ i for i in reversed(RegisterTiling.A.Physical.logicalshape)]
+    NTiles  = [ i for i in reversed(RegisterTiling.A.Physical.shape())]
+    OFF     = [ 0 for i in reversed(RegisterTiling.A.Physical.logicalshape) ]
+    A_L1_write = [
+        Tiling(
+            ABuffer,            # The original buffer is the original matrix 
+            ATile,              # What we transfer is the L2 tiling
+            [OFF[0]*j,0 ] ,     # This is a spatial partitioning  
+            [
+                Traversal(
+                    i,
+                    ATile[i],
+                    NTiles[i]
+                ) for i in range(2)
+            ],
+            -1,1
+        ) for j in range(1)
+    ]
+
+    print("A L1 write: there is a minimum of 1 channel L2 - L1 ")
+    for d in A_L1_write: print(d)
     pdb.set_trace()
 
 
+
+    print("#########################  B  ################################ ")
     
     BBuffer = [ i for i in reversed(B.shape()[0]) ] 
     BTile   = [ i for i in reversed(L2.B.logicalshape)]
