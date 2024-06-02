@@ -88,60 +88,135 @@ import math
 import  pdb
 
 
+## p
+def padding(
+        a : list, ## function call parameter size [shapes, count, pad] 
+        p : list  ## the physical function call we pad 'a' to
+):
+    pad = 0
+    for i in range(len(a[0])):
+        pad += p[0][i]-a[0][i]
+
+    return pad*a[1]
+
+def cost(
+        A : list , ## [shape, count, pads ]
+        s : int ,  ## starting index
+        M : int    ## physical computation index A[M] is the actuall computation
+):        
+    lpad = 0
+    rpad = 0
+
+    ## each problem is computed by A[M]
+    for i in range(s,M):
+        #print(len(A), M, A[i])
+        if A[i][-1]!=0 :
+            A[i][-1] = padding(A[i],A[M])
+
+    ## obviously no need padding if it is done in HW
+    A[M][-1] = 0
+
+    ## the larger problem if they are multiple, they do not need
+    ## padding.
+    for i in range(M+1,len(A)):
+        m = True
+        #print(A[M],len(A[M]),len(A[M][0]))
+        for j in range(len(A[M][0])):
+            if A[i][0][j]%A[M][0][j]!=0:
+                m = False
+        if m :
+            ##  obviously multiple pdb.set_trace()
+            ##  no padding for you
+            A[i][-1] = 0 
+
+def cost_d(
+        A : list , ## [shape, count, pads ]
+        s : int ,  ## starting index
+        M : int    ## physical computation index A[M] is the actuall computation
+):        
+    lpad = 0
+    rpad = 0
+
+    
+    ## each problem is computed by A[M]
+    for i in range(s,M):
+        #print(len(A), M, A[i])
+        lpad = padding(A[i],A[M])
+
+
+    ## the larger problem if they are multiple, they do not need
+    ## padding.
+    for i in range(M+1,len(A)):
+        m = True
+        #print(A[M],len(A[M]),len(A[M][0]))
+        for j in range(len(A[M][0])):
+            if A[i][0][j]%A[M][0][j]!=0:
+                m = False
+        if m :
+            ##  obviously multiple pdb.set_trace()
+            ##  no padding for you
+            rpad = A[i][-1] 
+
+    return lpad-rpad
 
 def partition(
         A : list, ## list of size, count
-        P : list,  ## list of indexes of A
+        P : list,  ## list of indexes of A that we have HW function
+                   ## computation, we just compute the cost of these
 ):
-    #print("P", P)
-    def padding(a, p):
-        pad = 0
-        #print(a,p)
-        for i in range(len(a[0])):
-            pad += p[0][i]-a[0][i]
-        return pad*a[1]
-
-    def cost(A, s,M):
-        lpad = 0
-        rpad = 0
-        
-        for i in range(s,M):
-            #print(len(A), M, A[i])
-            if A[i][-1]!=0 :
-                A[i][-1] = padding(A[i],A[M])
-
-        A[M][-1] = 0
-        for i in range(M+1,len(A)):
-            m = True
-            #print(A[M],len(A[M]),len(A[M][0]))
-            for j in range(len(A[M][0])):
-                if A[i][0][j]%A[M][0][j]!=0:
-                    m = False
-            if m :
-                #print("##", i,M)
-                #pdb.set_trace()
-                A[i][-1] = 0
 
     ## initialize all costs
     for a in A:
         #print(a)
         if len(a)==2: a.append(-1)
-        a[2] = 1000000000
+        a[2] = 1000000000 ## large baby
 
     cost(A, 0,P[0])
     for p in range(1,len(P)):
-        #print(P[p-1],P[p])
         #pdb.set_trace()
         cost(A, P[p-1],P[p])
 
-    cost =0
+    c =0
     for a in A:
-        cost+=a[-1]
+        c+=a[-1]
         
+        
+    return c
+    
+
+def step(
+        A : list , # [shape, count, pad ] 
+        P : list   # indexes of physical comptutation
+):
+
+
+    step =1
+    B = partition(A,P)
+    print("P", P, B)
+    while step >0:
+        step = 0
+
+        for i in range(len(P)):
+            Q = P[i]
+            P[i] = max(Q-1,0 if i==0 else P[i-1])
+            BQ = partition(A,P)
+            if BQ< B:
+                B = BQ
+                step+=1
+            else:
+                P[i] = min(Q+1,len(A)-1 if i==len(P)-1 else P[i+1] )
+                BQ = partition(A,P)
+                if BQ< B:
+                    B = BQ
+                    step+=1
+                else:
+                    P[i]=Q
             
-    return cost
-    
-    
+                
+        print("P",P,B)
+    B = partition(A,P)
+    return B,A,P
+                
         
 if __name__ == "__main__":
     
@@ -235,8 +310,15 @@ if __name__ == "__main__":
     print(len(A))
     Q = 10000000000
     T = None
+
+
+    P = [3,len(A)//3,len(A)//2,len(A)-1]
+    print("step", step(A,P))
+
+    
+    #we create all (n over k) ordered P and we choose the fastest
     for P in itertools.combinations([i for i in range(len(A))], 4):
-        
+
         B = partition(A,P)
         if B<Q:
             Q = B
@@ -244,5 +326,4 @@ if __name__ == "__main__":
     
     print(T,Q)
     B = partition(A,T)
-    for a in A:
-        print(a)
+    print(B,A,T)
