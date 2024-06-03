@@ -128,7 +128,17 @@ def cost(
             ##  obviously multiple pdb.set_trace()
             ##  no padding for you
             A[i][-1] = 0 
-
+        else:
+            #print(A[M])
+            a,c,d = A[M]
+            a = [ i for i in a] 
+            for j in range(len(a)):
+                a[j] = a[j]*math.ceil(A[i][0][j]/a[j])
+            G =  padding(A[i],[a,c,d])
+            if G<0:
+                import pdb; pdb.set_trace()
+            A[i][-1] = min (A[i][-1], padding(A[i],[a,c,d]))
+            
 def cost_d(
         A : list , ## [shape, count, pads ]
         s : int ,  ## starting index
@@ -182,6 +192,8 @@ def partition(
         
         
     return c
+
+
     
 
 def step(
@@ -200,12 +212,14 @@ def step(
             Q = P[i]
             P[i] = max(Q-1,0 if i==0 else P[i-1])
             BQ = partition(A,P)
+            print("L",P,BQ)
             if BQ< B:
                 B = BQ
                 step+=1
             else:
                 P[i] = min(Q+1,len(A)-1 if i==len(P)-1 else P[i+1] )
                 BQ = partition(A,P)
+                print("R", P,BQ)
                 if BQ< B:
                     B = BQ
                     step+=1
@@ -217,7 +231,10 @@ def step(
     B = partition(A,P)
     return B,A,P
                 
-        
+
+
+
+
 if __name__ == "__main__":
     
 
@@ -305,25 +322,67 @@ if __name__ == "__main__":
         [ [ 384], 24 ]
     ]
 
+    def partition_(
+            P : list,  ## list of indexes of A that we have HW function
+                   ## computation, we just compute the cost of these
+            A : list = A
+    ):
+
+        ## initialize all costs
+
+        A = [ a for a in A]
+        for a in A:
+            #print(a)
+            if len(a)==2: a.append(-1)
+            a[2] = 1000000000 ## large baby
+            
+        cost(A, 0,P[0])
+        for p in range(1,len(P)):
+            #pdb.set_trace()
+            cost(A, P[p-1],P[p])
+
+        c =0
+        for a in A:
+            c+=a[-1]
+            
+        
+        return c,P
+
     import itertools
+    from functools import reduce
+    from multiprocessing import Pool
+    import math
 
     print(len(A))
     Q = 10000000000
     T = None
 
 
-    P = [3,len(A)//3,len(A)//2,len(A)-1]
-    print("step", step(A,P))
+    def reduce_(A,B):
+        c0,a0 = A
+        c1, a1 = B
+        return A if c0<c1 else B
 
-    
-    #we create all (n over k) ordered P and we choose the fastest
-    for P in itertools.combinations([i for i in range(len(A))], 4):
+    def binomial_coeff(n, k):
+        return math.factorial(n) // (math.factorial(k) * math.factorial(n - k))
 
-        B = partition(A,P)
-        if B<Q:
-            Q = B
-            T = P
-    
-    print(T,Q)
-    B = partition(A,T)
-    print(B,A,T)
+    #P = [3,len(A)//3,len(A)//2,len(A)-1]
+    #print("step", step(A,P))
+    R = []
+    for k in range(1,8) :
+        print("K", k,  binomial_coeff(len(A), k))
+        #we create all (n over k) ordered P and we choose the fastest
+
+        Space = itertools.combinations([i for i in range(len(A))], k)
+        with Pool(24) as pool:
+            result = pool.map( partition_, Space)
+            f_result = reduce(reduce_, result)
+
+        print(f_result)
+        B = partition(A,f_result[1])
+        print(B,A,f_result)
+        R.append(f_result)
+
+
+    for r in R:
+        print(r)
