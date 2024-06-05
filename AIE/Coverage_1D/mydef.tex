@@ -1,0 +1,268 @@
+%\documentclass[11pt]{article} 
+%\usepackage{times}
+
+%\usepackage{pifont}
+%\usepackage{bm}
+%\usepackage{epsfig}
+%\usepackage{psfig}
+%\usepackage{tabularx}
+%\usepackage{amssymb}
+%\usepackage{latexsym}
+%\usepackage{amsmath}
+%\usepackage{delarray}
+%\usepackage{moreverb}
+%\usepackage{xspace}
+%\usepackage{algorithm}
+%\usepackage{algorithmic}
+
+%\usepackage{lscape}
+%\usepackage{changebar}
+%\usepackage{graphicx}
+%\usepackage{graphics}
+%\usepackage{mflogo}
+%\usepackage{xspace}
+%\usepackage{texnames}
+%\usepackage{rotating}
+%\usepackage{alltt}
+
+%\usepackage{amsmath}
+%\usepackage{epsfig}
+%\usepackage{booktabs,paralist}
+
+
+\usepackage{newtxmath}
+\usepackage{graphicx}
+
+\def\firmopsa{d}
+\def\firmopsb{d}
+\newcommand\AssignTags{TagIt}
+
+
+% Definitions
+% -----------
+\def\x{{\mathbf x}}
+\def\L{{\cal L}}
+\def\spiral{SPIRAL\xspace}
+
+\newcommand{\pred}{{}}
+
+\newcommand{\tensor}[0]{\otimes}
+\newcommand{\inv}[1]{{1{/}{#1}}}
+%\newcommand{\inv}[1]{$\textstyle\frac{1}{#1}$}
+\newcommand{\DFT}{\operatorname{\bf DFT}}
+\newcommand{\WHT}{\operatorname{\bf WHT}}
+\newcommand{\FIR}{\operatorname{\bf FIR}}
+\newcommand{\one}[0]{{I}}
+\newcommand{\eq}[0]{{=}}
+\newcommand{\Tensor}[2]{#1{\tensor}#2}
+\newcommand{\TensorT}[3]{{#1{\tensor}#2}_{#3}}
+\newcommand{\SPw}[2]{{\prec}#1,#2{\succ}}
+\newcommand{\SPr}[2]{{<}#1,#2{>}}
+
+\newcommand{\WTensorI}[2]{\Tensor{\WHT_{#1}}{\one_{#2}}}
+\newcommand{\ITensorW}[2]{\Tensor{\one_{#1}}{\WHT_{#2}}}
+\newcommand{\Wht}[2]{(\WTensorI{\WHT_{#1}}{#2})(\ITensorW{#1}{#2})}
+
+\newcommand{\Times}[2]{{#1}{\times}{#2}}
+\newcommand{\EQ}{{=}}
+\newcommand{\Space}{{ S}}
+\newcommand{\PEQ}{{{+}{=}}}
+\newcommand{\SEQ}{{{-}{=}}}
+\newcommand{\h}{\psi}
+\newcommand{\balpha}{\bm{\alpha}}
+\newcommand{\bgamma}{\bm{\gamma}}
+\newcommand{\bbeta}{\bm{\beta}}
+\newcommand{\bmu}{\bm{\mu}}
+\newcommand{\bsigma}{\bm{\sigma}}
+
+
+\newcommand{\f}{\varphi}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\A}{\mathbb{A}}
+\newcommand{\B}{{\bf B}}
+\newcommand{\X}{\mathbb{X}}
+\newcommand{\T}{\mathbb{T}}
+%\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\CC}{{\Gamma}}
+\newcommand{\D}{\mathbb{D}}
+\newcommand{\M}{\mathbb{M}}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\ST}{\mathbb{S}}
+\newcommand{\Vc}[1]{{\boldsymbol #1}}
+\newcommand{\fl}[1]{{\lfloor {#1} \rfloor}}
+\newcommand{\cl}[1]{{\lceil {#1} \rceil}}
+\newcommand{\half}[1]{{\frac{#1}{2}}}
+\newcommand{\q}[1]{\Times{\cl{#1}}{\cl{#1}}}
+\newcommand{\qq}[1]{\Times{\cl{#1}}{\fl{#1}}}
+\newcommand{\qqq}[1]{\Times{\fl{#1}}{\cl{#1}}}
+\newcommand{\qqqq}[1]{\Times{\fl{#1}}{\fl{#1}}}
+\newcommand{\size}[1]{\sigma(#1)}
+\newcommand{\Size}[3]{\sigma(\Vc{#1})\EQ\Times{#2}{#3}}
+\newcommand{\n}{(\frac{n}{2})}
+\newcommand{\m}{(\frac{n-1}{2})}
+\newcommand{\Ceil}[1]{{\cl{\half{#1}}}}
+\newcommand{\Floor}[1]{{\fl{\half{#1}}}}
+
+\newcommand{\Endash}{{--}}
+\newcommand{\Emdashbegin}{{---}}
+\newcommand{\Emdashend}{{---}~}
+
+\newcommand{\Transducer}[1] {{\mathbf #1 }}
+\newcommand{\Triangle}[1] {{\vartriangle\!\! #1 }}
+
+
+\newcommand{\AO}  {\Times{\Ceil{m}}{\Ceil{n}}}
+\newcommand{\AI} {\Times{\Ceil{m}}{\Floor{n}}}
+\newcommand{\AII}{\Times{\Floor{m}}{\Ceil{n}}}
+\newcommand{\AIII} {\Times{\Floor{m}}{\Floor{n}}}
+\newcommand{\BO}  {\Times{\Ceil{n}}{\Ceil{p}}}
+\newcommand{\BI} {\Times{\Ceil{n}}{\Floor{p}}}
+\newcommand{\BII}{\Times{\Floor{n}}{\Ceil{p}}}
+\newcommand{\BIII} {\Times{\Floor{n}}{\Floor{p}}}
+\newcommand{\CO}  {\Times{\Ceil{m}}{\Ceil{p}}}
+\newcommand{\CI} {\Times{\Ceil{m}}{\Floor{p}}}
+\newcommand{\CII}{\Times{\Floor{m}}{\Ceil{p}}}
+\newcommand{\CIII} {\Times{\Floor{m}}{\Floor{p}}}
+
+\newcommand{\I}[2]{\Times{\Ceil{#1}}{\Ceil{#2}}}
+\newcommand{\II}[2]{\Times{\Ceil{#1}}{\Floor{#2}}}
+\newcommand{\III}[2]{\Times{\Floor{#1}}{\Ceil{#2}}}
+\newcommand{\IV}[2]{\Times{\Floor{#1}}{\Floor{#2}}}
+
+
+\newcommand{\Q}[2]{\Vc{#1}_{#2}}
+
+\newcommand{\QAO}{{\Vc{A}_{0}}}
+\newcommand{\QAI}{\Vc{A}_{1}}
+\newcommand{\QAII}{\Vc{A}_{2}}
+\newcommand{\QAIII} {\Vc{A}_{3}}
+
+\newcommand{\QBO}  {\Vc{B}_{0}}
+\newcommand{\QBI} {\Vc{B}_{1}}
+\newcommand{\QBII}{\Vc{B}_{2}}
+\newcommand{\QBIII} {\Vc{B}_{3}}
+
+\newcommand{\QCO}  {\Vc{C}_{0}}
+\newcommand{\QCI} {\Vc{C}_{1}}
+\newcommand{\QCII}{\Vc{C}_{2}}
+\newcommand{\QCIII} {\Vc{C}_{3}}
+\newcommand{\FIGsize}[2]{{width={#1}, height={#2}}}
+
+\newcommand{\Mod}[2]{{#1}{\text{ \bf mod }}{#2}}
+
+\newcommand{\TableRef}[1]{Table \ref{#1}}
+\newcommand{\FigureRef}[1]{Figure \ref{#1}}
+\newcommand{\SectionRef}[1]{Section \ref{#1}}
+\newcommand{\EquationRef}[1]{Equation \ref{#1}}
+\newcommand{\OnPageRef}[1]{on page \pageref{#1}}
+
+% Formatting
+% ----------
+%\setlength{\evensidemargin}{0mm}
+%\setlength{\oddsidemargin}{0mm}
+%\setlength{\textwidth}{6.5in}
+%\setlength{\textheight}{9.5in}
+%\setlength{\topmargin}{0in}
+%\setlength{\headheight}{0in}
+%\setlength{\headsep}{0mm}
+
+\newenvironment{noinds_itemize}{\begin{list}{$\bullet$}
+{\setlength{\rightmargin}{0em}
+\setlength{\leftmargin}{1.2em}
+\setlength{\itemsep}{0em}
+\setlength{\topsep}{0em}
+\setlength{\parsep}{0em}}}{\end{list}}
+
+
+
+\newcommand{\mypar}[1]{{\bf #1.}}
+\newcommand{\mytag}[2]{[#1]_{#2}}
+\sloppy
+
+%% jan 01, 2009 - dasdan - removed 'final' pdflatex cannot work with it.
+%\usepackage[final=true,bookmarks=true,bookmarkstype=toc,colorlinks=true, linkcolor=blue,citecolor=blue]{hyperref}
+%\usepackage[bookmarks=true,bookmarkstype=toc,colorlinks=true, linkcolor=blue,citecolor=blue]{hyperref}
+
+% width fraction, mflops, relative, caption, label
+\newcommand{\doublefigure}[5]{{\begin{figure}%
+\centering %
+\includegraphics[width=#1\linewidth]{#2}
+\includegraphics[width=#1\linewidth]{#3}%\figurebox{#1\linewidth}{}{}[#2]
+%\figurebox[#1\linewidth]{}{}[#3] %
+\caption{#4}%bio                 
+\label{#5}%
+\end{figure}}}
+
+\newcommand{\Doublefigure}[5]{{\begin{figure*} %
+\centering %
+%\includegraphics[height=#1\linewidth,angle=-90]{#2}%
+%\includegraphics[height=#1\linewidth,angle=-90]{#3} %
+\includegraphics[width=#1\linewidth]{#2} \\  %
+\includegraphics[width=#1\linewidth]{#3}%
+%\figurebox{#1\linewidth}{}{}[#2]
+%\figurebox{#1\linewidth}[#3] %
+\caption{#4}%
+\label{#5}%
+\end{figure*}}}
+
+\newcommand{\DDoublefigure}[5]{{\begin{figure*} %
+\centering %
+%\includegraphics[height=#1\linewidth,angle=-90]{#2}%
+%\includegraphics[height=#1\linewidth,angle=-90]{#3} %
+\includegraphics[width=#1\linewidth, angle=90]{#2}   %
+\includegraphics[width=#1\linewidth, angle=90]{#3}%
+%\figurebox{#1\linewidth}{}{}[#2]
+%\figurebox{#1\linewidth}[#3] %
+\caption{#4}%
+\label{#5}%
+\end{figure*}}}
+
+\newcommand{\DDDoublefigure}[5]{{\begin{figure}[htb] %
+\centering %
+%\includegraphics[height=#1\linewidth,angle=-90]{#2}%
+%\includegraphics[height=#1\linewidth,angle=-90]{#3} %
+\includegraphics[width=#1\linewidth, angle=90]{#2}   %
+\includegraphics[width=#1\linewidth, angle=90]{#3}%
+%\figurebox{#1\linewidth}{}{}[#2]
+%\figurebox{#1\linewidth}[#3] %
+\caption{#4}%
+\label{#5}%
+\end{figure}}}
+
+\newcommand{\Singlefigure}[4]{{\begin{figure*} %
+\centering %
+\includegraphics[width=#1\linewidth]{#2}%\figurebox{#1\linewidth}{}{}[#2]
+\caption{#3}%
+\label{#4}%
+\end{figure*}}}
+
+\newcommand{\SSinglefigure}[4]{{\begin{figure} %
+\centering %
+\includegraphics[width=#1\linewidth,angle=90]{#2}%\figurebox{#1\linewidth}{}{}[#2]
+\caption{#3}%
+\label{#4}%
+\end{figure}}}
+
+\newcommand{\singlefigure}[4]{{\begin{figure}[htb] %
+\centering %
+\includegraphics[width=#1\linewidth]{#2}%
+%\includegraphics[height=#1\linewidth,angle=-90]{#3} %
+%\figurebox{#1\linewidth}{}{}[#2]\\
+\caption{#3}%
+\label{#4}%
+\end{figure}}}
+
+\newcommand{\singlefigurerotate}[4]{{\begin{figure}[htb] %
+\centering %
+\includegraphics[width=#1\linewidth,angle=-90]{#2}%
+%\includegraphics[height=#1\linewidth,angle=-90]{#3} %
+%\figurebox{#1\linewidth}{}{}[#2]\\
+\caption{#3}%
+\label{#4}%
+\end{figure}}}
+
+\newcommand{\orthogonal}{%
+\mathrel{\raisebox{.1em}{%     
+\reflectbox{\rotatebox[origin=c]{90}{$\models$}}}}}

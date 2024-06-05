@@ -1,0 +1,132 @@
+
+%%
+%%
+%% The first command in your LaTeX source must be the \documentclass
+%% command.
+%%
+%% For submission and review of your manuscript please change the
+%% command to \documentclass[manuscript, screen, review]{acmart}.
+%%
+%% When submitting camera ready or to TAPS, please change the command
+%% to \documentclass[sigconf]{acmart} or whichever template is required
+%% for your publication.
+%%
+%%
+\documentclass{IEEEtran}
+\input{mydef}
+\usepackage{amsmath}
+
+%%
+%% \BibTeX command to typeset BibTeX logo in the docs
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+
+
+
+%%
+%% end of the preamble, start of the body of the document source.
+\begin{document}
+
+%%
+%% The "title" command has an optional parameter,
+%% allowing the author to define a "short title" to be used in page headers.
+\title{Library Coverage. Part I: 1D tensors}
+
+
+\author{Paolo D'Alberto}
+
+
+\maketitle
+
+
+%%
+%% The abstract is a short summary of the work to be presented in the
+%% article.
+\begin{abstract}
+We formalize the following problem: We observe a function execution
+during a benchmark and we collect problem sizes and call numbers. Now,
+if we can choose a subset of calls to be done in HW (accelerators)
+what is the best selection to cover all function calls. 
+\end{abstract}
+
+
+
+
+\section{Problem Statement}
+\label{sec:introduction}
+
+We observe the execution of one function during a benchmark. We can
+summarize the benchmark observation by a list
+\begin{equation}
+  A = \{ [s_i, n_i, c_i] \mbox{ with } i \in [0,N-1] \}
+\end{equation}
+We consider all inputs and outputs as one dimensional array. The
+cardinality of the list is $\|A\| = N$. Where $s_i$ is the size of the
+input problem, $n_i$ is the number of time we call the function for
+this problem size, and $c_i$ is the cost. In practice, we give a cost
+as the number of padding we need to introduce to execute this function
+in HW. We initialize the cost by a large number say $10^9$.
+
+We want to find a set $P\subset A$, where we can execute the function
+on such input in HW and thus with cost 0. Then, $\forall [s_i,
+  n_i,c_i] \in A, \exists [p_j,n_j,0] \in P^* $ such that $c_i =
+n_i(p_j -s_i)$.  We imply that there is an extension $p_j$ that is
+larger than $s_i$ and we shall explain in the next section.
+
+  
+
+\section{Solution Formulation}
+Here, we assume that all sets have indices and we imply an increasing
+order by size of the problem.
+\begin{equation}
+  P \subset A \rightarrow \{ p_i = [ s_i,n_i,0 ]\}, \forall s_i \leq s_{N-1}
+\end{equation}
+We do not really need to choose elements of $A$, but it is reasonable
+to start with functions that are used.
+
+Take a $p_i =[s_i, n_i,0]$ and create the following extension:
+\begin{equation}
+  \begin{split}
+    p_i^*  \rightarrow   \{ & p_i = [ ks_i,0,0 ], \\
+    & \forall k \in [1, M]  \mbox{ s.t. } s_i(M-1)< s_{N-1}< s_iM \\
+    &\mbox{ and } [s_i*k,*,*] \not \in P\\
+    &\}
+  \end{split}
+\end{equation}
+If we lay $A$ into a straight line and thus $p_i^*$, we create a step
+of computations that can use the HW call $p_i$ directly. There is some
+extra costs for this but we do not count them. Thus the full extension
+of the HW calls is:
+\begin{equation}
+  P^* = \cup_ip_i^*
+\end{equation}
+We are going to merge $A$ and $P^*$ and sort them by size to create
+$A^*$. We artificially increased the number of entries. We can now
+define the cost of using $P$ hardware function in calling all function
+calls in $A$. 
+
+Cost is  $\sum_i c_i, a_i = [s_i,n_i,c_i] \in A^*$
+\begin{equation}
+  c_i =
+  \begin{cases}
+     0, & \text{if } c_i==0 \\
+     n_i*(s_j-s_i), & \text{where } j = min_{k>0}(i+k) \mbox{ s.t. }c_j==0  
+  \end{cases}
+\end{equation}
+
+
+
+
+%%
+%% The next two lines define the bibliography style to be used, and
+%% the bibliography file.
+\bibliographystyle{IEEEtran} \bibliography{ref}
+
+
+
+\end{document}
+\endinput
+%%
+%% End of file `sample-sigconf.tex'.
