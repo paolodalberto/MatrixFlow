@@ -167,13 +167,9 @@ def partition_3(
 
 
     cost = 0
-    for ai  in range(len(A)):
-        a = A[ai]
+    for a in A:
         b = 10000000000
         for pi in P:
-            if ai ==pi:
-                b=0
-                break
             p = A[pi]
             #print(p,a)
             w = math.ceil(a[0]/p[0])*p[0] - a[0]
