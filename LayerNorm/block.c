@@ -114,6 +114,44 @@ static void MatrixComputationsB(TOperands *args, int len)  {
 
 }
 
+
+
+// Variable number of single-precision accumulators.
+#define NACC 4
+void fast(const Mat* values, size_t len, Mat *res) {
+  Mat sums[NACC] = {};
+  Mat sumss[NACC] = {};
+  
+  const Mat* const end = values + len;
+
+  while (values < end - NACC) {
+    for (size_t i = 0; i < NACC; i++) {
+      Mat x = *values++;
+      sums[i] += x;
+      sumss[i] += x*x;
+    }
+  }
+
+  Mat sum = 0.f;
+  Mat sumq = 0.f;
+
+  while (values < end) { 
+    Mat x =*values++ ;
+    sum += x;
+    sumq += x*x;
+  }
+  for (size_t i = 0; i < NACC; i++) {
+    sum += sums[i];
+    sumq  += sumss[i];
+  }
+  res[0] = sum;
+  res[1] = sumq;
+}
+
+
+
+
+
 inline void psum(SUBMATRIX A, int i,
 		 SUBVECTOR ps ,
 		 SUBVECTOR ps_square) {
@@ -127,6 +165,16 @@ inline void psum(SUBMATRIX A, int i,
   }
   EV(ps,i)      += psum;
   EV(ps_square,i) += psum_square;
+}
+
+inline void psum_(SUBMATRIX A, int i,
+		  SUBVECTOR ps ,
+		  SUBVECTOR ps_square) {
+  int N = A.N;
+  Mat res[2];
+  fast( &EM(A,i,0),N,res);
+  EV(ps,i)      += res[0];
+  EV(ps_square,i) += res[1];
 }
 
 inline void psum_4(SUBMATRIX A, int i,
@@ -185,16 +233,16 @@ static void LN_1(SUBMATRIX A,
   int i=0;
   // for each row 
   for (i=0; i<(M/4)*4; i+=4)  {
-    psum(A,i+0,ps,ps_square);
-    psum(A,i+1,ps,ps_square);
-    psum(A,i+2,ps,ps_square);
-    psum(A,i+3,ps,ps_square);
+    psum_(A,i+0,ps,ps_square);
+    psum_(A,i+1,ps,ps_square);
+    psum_(A,i+2,ps,ps_square);
+    psum_(A,i+3,ps,ps_square);
   }
-  for (; i<M; i++)   psum(A,i,ps,ps_square);
+  for (; i<M; i++)   psum_(A,i,ps,ps_square);
 
 }
 
-inline void psum2(SUBMATRIX A, int i,
+void psum2(SUBMATRIX A, int i,
 		  SUBVECTOR ps ,
 		  SUBVECTOR ps_square,
 		  SUBVECTOR gamma, SUBVECTOR  beta) {
@@ -202,11 +250,18 @@ inline void psum2(SUBMATRIX A, int i,
   int N  = min(A.N,min(gamma.m,beta.m));
   Mat mu, mus, invsigma,psum,psum_square;
 
+  Mat *x = &EM(A,i,0);
+  Mat *g = gamma.val;
+  Mat *b = beta.val;
   psum=EV(ps,i); psum_square = EV(ps_square,i);
   mu = psum/N;
   mus = N*mu*mu;
   invsigma = 1/sqrt((double)(psum_square - mus)/N);
-  for (int j=0; j<N; j++)  EM(A,i,j) = (EM(A,i,j) -mu)*invsigma*EV(gamma,j)+EV(beta,j);
+  mu = mu*invsigma;
+  for (int j=0; j<N; j++)  {
+    *x = (*x*invsigma -mu)*(*g++)+*b++;
+    x++;
+  }
  
 }
 
