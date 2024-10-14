@@ -367,7 +367,7 @@ if __name__ == "__main__":
                 print(map_(x))
                 print(partition(x,A))
         else:
-            with Pool(32) as pool:
+            with Pool(8) as pool:
                 result = pool.imap_unordered( map_, itertools.combinations([i for i in range(len(A))], k))
                 f_result = reduce(reduce_, result)
 
