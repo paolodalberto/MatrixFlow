@@ -471,7 +471,7 @@ SUBMATRIX  LN_P(SUBMATRIX A, SUBVECTOR gamma , SUBVECTOR beta,
 
   for (int i=0;i<Ps;i++) {
     args[i].pi = i;
-    args[i].m = LNS4;
+    args[i].m = LN12;
     args[i].c = Rows[i];
     args[i].g = gamma;
     args[i].b = beta;
