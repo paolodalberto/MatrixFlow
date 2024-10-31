@@ -66,6 +66,43 @@ class Matrix:
         
         return self.set_value(self.value() + A.value())
 
+
+    def __mul__( self, A ):
+        if type(A) is Scalar:
+            ## B = alpha A
+            return Matrix(self.value()*A.value())
+        elif type(A) in [int,float]:
+            ## B = alpha A
+            return Matrix(A*self.value())
+        elif type(A) is Matrix :
+            ## SELF  * A (multiplication)
+            
+            L = self.value()
+            R = A.value()
+            B= numpy.matmul(L,R)
+            C = Matrix(B)
+            C.gpu = True
+            return C
+        elif type(A) is Vector:
+            ## A*v = w
+            return Vector(numpy.matmul(self.value(), A.value()))
+    def __imul__( self, A ):
+
+        if type(A) in [int,float]:
+            ## B = alpha A
+            return self.set_value(A*self.value())
+        elif type(A) is Matrix :
+            ## SELF  * A (multiplication)
+            
+            L = self.value()
+            R = A.value()
+            return  self.set_value(numpy.matmul(L,R))
+        elif type(A) is Vector:
+            ## A*v = w
+            return Vector(numpy.matmul(self.value(), A.value()))
+
+    
+    
     def shapes(self):
         return  self.matrix.shape, self.min, self.max
     def shape(self):

@@ -75,12 +75,13 @@ if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (128,512)
+    shape =  (64,64)
 
 
     if True:
         A = numpy.random.rand(*shape)
         A1 = A*1.0
+        pdb.set_trace()
         
         N = SoftMax()
         N.comp(Matrix(A))

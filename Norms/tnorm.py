@@ -12,6 +12,15 @@ def square(x) : return x*x
 def Pplus(A : Matrix, axis = -1) -> Vector:
     return Vector(numpy.sum(A.value(),axis=axis))
 
+def PRplus(A : Vector, B : Vector) -> Vector:
+    A += B
+    return A
+
+
+def PRplusM(A : Matrix, B : Matrix) -> Matrix:
+    A += B
+    return A
+
 def Pmax(A : Matrix, axis = -1) -> Vector:
     return Vector(numpy.max(A.value(),axis=axis))
 
@@ -38,6 +47,8 @@ def Nplus(A : Matrix, B : Matrix, row = True) -> Matrix:
         A.matrix[A.min[0]:A.max[0],A.min[1]:A.max[1]] += B.value()[:,None]
     return A
 
+
+
 ## example of Scalar operation to a matrix   
 def Gg(A : Matrix, g = square) -> Matrix:
     func = numpy.vectorize(g)
@@ -51,9 +62,12 @@ def Gg(A : Matrix, g = square) -> Matrix:
 class Norm :
     def __init__(
             self,
-            P      = Pplus,
-            N      = Nmul,
-            G      = Gg):
+            P      = Pplus, # Matrix reduction
+            R      = PRplus, # Blocked reduction
+            N      = Nmul,  # matrix broadcast
+            G      = Gg     # internal 
+    ):
+        self.R     = R
         self.P     = P
         self.N     = N
         self.G     = G
@@ -85,7 +99,7 @@ class Norm :
     def comp_visit(self,
                    Ti : Tiling,
                    level : int = 0,
-                   T :Vector  = None)  :
+                   T :Vector  = None) -> Vector  :
         #pdb.set_trace()
 
         ##  [ d, ... r/c]
@@ -109,14 +123,13 @@ class Norm :
                 T = Vector(numpy.zeros(Ti.get_buffer().shape()[0]))
                 for j in range(len(DDRs)-1):
                     d = DDRs[j]
-                    if type(d) is Matrix:    T += self.pass_one(d)
-                    else: T += self.comp_visit(d, level = level+1)
+                    if type(d) is Matrix:    self.R(T,self.pass_one(d))
+                    else: self.R(T,self.comp_visit(d, level = level+1))
                         
                 for j in range(len(DDRs)-1):
                     d = DDRs[j]
-                    if type(d) is Matrix:
-                        self.pass_two(d,T)
-                    else: self.comp_visit(d,T = T)
+                    if type(d) is Matrix:  self.pass_two(d,T)
+                    else:            self.comp_visit(d,T = T)
 
             elif T is None and level>0 :
                 j = 0
@@ -125,26 +138,19 @@ class Norm :
                 T = Vector(numpy.zeros(Ti.get_buffer().shape()[0]))
                 for j in range(len(DDRs)-1):
                     d = DDRs[j]
-                    if type(d) is Matrix:
-                        T += self.pass_one(d)
-                    else:T += self.comp_visit(d, level = level+1)
+                    if type(d) is Matrix:    self.R(T,self.pass_one(d))
+                    else: self.R(T,self.comp_visit(d, level = level+1))
                 return T
             else:
                 for j in range(len(DDRs)-1):
                     d = DDRs[j]
-                    if type(d) is Matrix:
-                        self.pass_two(d,T)
-                    else: self.comp_visit(d,T=T)
+                    if type(d) is Matrix:  self.pass_two(d,T)
+                    else:              self.comp_visit(d,T=T)
                         
             #pdb.set_trace()
         ##print(DDRs[0][0])
         return None
-    
-            
-        
-        
-    
-    
+      
     ## An exercise in building a tiling for norm
     ##
     ## A traversal is composed by a spatial division then by a
@@ -279,16 +285,20 @@ class Norm :
        
         return T
 
+
+
+
     
 
 class LayerNorm(Norm):
     def __init__(
             self,
             P      = Pplus,
+            R      = PRplusM,
             N      = Nmul,
             G      = Gg):
 
-        Norm.__init__(self,P,N,G)
+        Norm.__init__(self,P,R,N,G)
         self.GB = None
         
     ## An exercise in building a tiling for norm
@@ -390,35 +400,17 @@ class LayerNorm(Norm):
                    Wt : Tiling,
                    level : int = 0,
                    T : Matrix = None)  :
-        #pdb.set_trace()
-
-        ##  [ d, ... r/c]
-        ##  d -> [d0] [list] as above
-        ##  or d = matrix 
-
-        #print("---------------------------------------------------------\n",
-        #      level, Ti, Wt)
         DDRs = Ti.get_partition()
         WDDR = Wt.get_partition()
-        #print(level, len(WDDR),len(DDRs))
+
         ty = DDRs[-1]
         if ty.find('r')==0  :
             
             for j in range(len(DDRs)-1):
-                #print("### J ####", j)
-                #print(level, len(WDDR),len(DDRs))
-                #print("---------------------------------------------------------\n",
-                #      level, Ti, Wt)
-                
-                
                 di = DDRs[j]
-                ## spatial ?
                 dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
-                if not type(di) is Matrix:
-                    self.comp_visit(di,dw,
-                                    level=level,
-                                    T = None)
-                else:  self.comp(d)
+                if not type(di) is Matrix: self.comp_visit(di,dw,level=level,T = None)
+                else:                      self.comp(di,dw)
 
         elif ty == 'c' :
             #pdb.set_trace()
@@ -432,12 +424,11 @@ class LayerNorm(Norm):
                 for j in range(len(DDRs)-1):
                     di = DDRs[j];  dw = WDDR[j]
                                      
-                    if type(di) is Matrix: T += self.pass_one(di)
-                    else: T += self.comp_visit(di,dw,level = level+1,T = None)
+                    if type(di) is Matrix:              self.R(T,self.pass_one(di))
+                    else: self.R(T,self.comp_visit(di,dw,level = level+1,T = None))
 
                 # T is computed
                 # Pass two
-                #pdb.set_trace()
                 for j in range(len(DDRs)-1):
                     di = DDRs[j];  dw = WDDR[j]
                            
@@ -454,8 +445,8 @@ class LayerNorm(Norm):
                 for j in range(len(DDRs)-1):
                     di = DDRs[j];   dw = WDDR[j]
 
-                    if type(di) is Matrix:  T += self.pass_one(di)
-                    else: T += self.comp_visit(di,dw,level = level+1,T = None )
+                    if type(di) is Matrix:  self.R(T,self.pass_one(di))
+                    else: self.R(T,self.comp_visit(di,dw,level = level+1,T = None ))
                     
                         
                 return T
@@ -463,20 +454,22 @@ class LayerNorm(Norm):
                 for j in range(len(DDRs)-1):
                     di = DDRs[j]
                     dw = WDDR[j]
-                    if type(di) is Matrix:
-                        self.pass_two(di,dw,T)
-                    else: self.comp_visit(di,dw,level=level,T=T)
+                    if type(di) is Matrix: self.pass_two(di,dw,T)
+                    else:  self.comp_visit(di,dw,level=level,T=T)
                     
                         
             #pdb.set_trace()
         ##print(DDRs[0][0])
         return None
-                
+
+
+
+    
 if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (512,4096*8)
+    shape =  (512,1024)
 
 
     if False:
