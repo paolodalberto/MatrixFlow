@@ -179,7 +179,7 @@ class Tiling:
         if len(partition)!=0:   self.tile_ = self.partition[0]
         self.pred = pred
         self.properties = {}
-
+        self.depth =  1
         
     def getlist(self): return self.partition
 
@@ -249,7 +249,7 @@ class Tiling:
         # concisely how we split the matrix
         L = len(self.partition)-1
 
-        for j in range(min(4,L)):
+        for j in range(min(self.depth,L)):
             d = self.partition[j]
             if type(d) is Matrix:
                 ashape = str(d.shape())

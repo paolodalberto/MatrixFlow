@@ -94,10 +94,14 @@ class Norm :
         self.G     = G
         self.A     = None
 
+        
+        ## parallel
         self.Qr = Qr
-        self.Qr_ = Qr_
+        self.Qr_ = Qr_ 
+        ## Reduction by row (across columns paritions)
         self.Qc = Qc
         self.Qc_ = Qc_
+        ## this is not parallel but the reductions are expressed as a list of "c"
         self.Qrc_ = Qrc_
 
     def t_dim(self, A : Matrix) : return A.shape()[0]
@@ -355,6 +359,7 @@ class LayerNorm(Norm):
         
     def t_dim(self, A : Matrix) : return (2,A.shape()[0])
     def T_dim(self, A : Matrix): return Vector(numpy.zeros((2,A.shape()[0])))
+
     ## An exercise in building a tiling for norm: the weight tiling 
     def comp_wts(self,
                  A    :  Matrix, # original matrix
@@ -366,9 +371,10 @@ class LayerNorm(Norm):
                  ) -> list:
 
         Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+
         
         T = Tiling(A)
-        print(V)
+        ## Tiling by column
         def qc3(A) : return Qc_(A,V[0])#self.
         def qc2(A) : return Qc_(A,V[1])#self.
         def qc1(A) : return Qc_(A,V[2])#self.
@@ -435,13 +441,15 @@ class LayerNorm(Norm):
         self.A = A
         ## compute tiling for IFM
         Pace = self.comp_IFM(A)
+        print("---------------------------------------\nPartition input")
         print(Pace)
                 
         self.GB = GB
         ## compute tiling for the gamma and beta
         V = Pace.max_col()
-        pdb.set_trace()
+        #pdb.set_trace()
         Wts  = self.comp_wts(GB, V=V )
+        print("---------------------------------------\nPartition weights")
         print(Wts)
 
         self.comp_visit(Pace,Wts)
