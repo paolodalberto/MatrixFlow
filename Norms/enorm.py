@@ -1,9 +1,10 @@
-from tnorm import Norm
+from tnorm import Norm, Nmul
 from matrix import Vector, Matrix, Tiling
 import numpy
 import scipy
 import pdb
 
+## SoftMax Projection : Max and partial sums 
 def Pplus(A : Matrix, axis = -1) -> Matrix:
 
     T = A.value()
@@ -16,27 +17,40 @@ def Pplus(A : Matrix, axis = -1) -> Matrix:
     GB = numpy.zeros((2,A.shape()[0]))
     GB[0,:] = M
     GB[1,:] = P
-    
+    #pdb.set_trace()
     return Matrix(GB)
 
-def PRplusM(A : Matrix, P : Matrix) -> Matrix:
-
+## softmax partial projection 
+def PRplusM(A : Matrix, PQ : Matrix) -> Matrix:
+    #print(A)
+    #print(PQ)
     M = A.value()[0,:]
     P = A.value()[1,:]
 
-    PM = P.value()[0,:]
-    PP = P.value()[1,:]
-        
-    M1 = numpy.max(M,PM)
+
+    PM = PQ.value()[0,:]
+    PP = PQ.value()[1,:]
+    #print(M, PM)
+    #pdb.set_trace()
+    M1 = numpy.maximum(M,PM)
     
     S = numpy.exp(M1-M)
     PS = numpy.exp(M1-PM)
     
     P = P/S + PP/PS 
-    
-    return Matrix(GB)
+    A.value()[0,:] = M1
+    A.value()[1,:] = P
+    return A
 
 
+
+###
+## This is to emphasize that SoftMax basic computation is exaclty like
+## Euclidean Norm once we define the proper projection and the
+## normalization is the same. 
+##
+## Tiling algorithm and computation is the same
+###
 
 
 class SoftMax(Norm):
@@ -45,13 +59,13 @@ class SoftMax(Norm):
             self,
             P      = Pplus,
             R      = PRplusM,
-            N      = None,
+            N      = Nmul,
             G      = None):
         
         Norm.__init__(self,P,R,N,G)
         
-                
-    
+    def t_dim(self, A : Matrix): return (2, A.shape()[0])
+    def T_dim(self, A : Matrix): return Matrix(numpy.finfo(A.matrix.dtype).min  * numpy.ones((2,A.shape()[0])))
     def pass_two(self,
                  A      : Matrix,
                  T      : Matrix
@@ -63,9 +77,9 @@ class SoftMax(Norm):
         P = T.value()[1,:]
 
         S = numpy.exp(M)
-        P = P*S
-        
-        A.set_value(A.value()/P[:,None])
+        P = Vector(1/(P*S))
+        self.N(A,P)
+        #A.set_value(A.value()/P[:,None])
 
         return A
     
@@ -75,7 +89,7 @@ if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (64,64)
+    shape =  (512,4096)
 
 
     if True:

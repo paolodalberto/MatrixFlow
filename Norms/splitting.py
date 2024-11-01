@@ -3,8 +3,16 @@ import math
 import numpy
 from matrix import Vector, Matrix, Tiling
 
+## Authors notes: This is based on norm computation and thus Rows are
+## a little special. There are three way to split a matrix
+##
+## By row, By column, Row-column
+##
+
 ## Horizontal partition/views 
-def Qr(A : Matrix, r: int =4 ) -> list:
+def Qr(A : Matrix,
+       r: int =4  ## horizontal number of parts
+       ) -> list:
     ret = []
     M = math.ceil(A.shape()[0]/r)
     
@@ -15,13 +23,15 @@ def Qr(A : Matrix, r: int =4 ) -> list:
     return ret
 
 
-def Qr_(A : Matrix, M: int =4 ) -> list:
+def Qr_(A : Matrix,
+        M: int =4 ## horizontal maximum elements 
+        ) -> list:
     ret = []
     r = math.ceil(A.shape()[0]/M)
     for i in range(r):
         v = [[i*M,(i+1)*M],[0,A.shape()[1]]]
         ret.append(A.part(v))
-    ret.append("r")
+    ret.append("r") 
     return ret
 
 
@@ -37,7 +47,9 @@ def Cr(A : Matrix, r: int =4 ) -> list:
     
 
 ## vertical 
-def Qc(A : Matrix, r : int =4) -> list:
+def Qc(A : Matrix,
+       r : int =4 ## vertical number of parts
+       ) -> list:
     ret = []
     M = math.ceil(A.shape()[1]/r)
     for i in range(r):
@@ -47,7 +59,9 @@ def Qc(A : Matrix, r : int =4) -> list:
     return ret
 
 
-def Qc_(A : Matrix, M : int =4) -> list:
+def Qc_(A : Matrix,
+        M : int =4 ## vertical maximum elements
+        ) -> list:
     ret = []
     r = math.ceil(A.shape()[1]/M)
     for i in range(r):
@@ -60,19 +74,27 @@ def Qc_(A : Matrix, M : int =4) -> list:
 
 
 ## split by row and then by column it is not really spatial temporal
-## it is only temporal
+## it is only temporal, I need to revisit this especially for the
+## corner cases
 def Qrc_(A : Matrix, M: int =4, N: int =2) -> Tiling:
 
     T = Tiling(A)
     def qr(a : Matrix) : Qr_(a,M)
     def qc(a : Matrix) : Qc_(a,N)
 
+    ## is it nice ?
     T.spatial_temporal(qr,qc)
     T.partition[-1] = 'rc'
 
     return T
 
-
+## Assume we have a space constraint (we use L) and if we use this
+## space for a ping pong (2 ping pong 1 only ping).  We have a spatial
+## partition and we wonder what is the largest partition that
+## satisfies the constraints 
+## 
+## This is a splitting problem but it will be used only by an
+## algorithm and the computation of a norm
 
 def fit(spatial : Tiling,
         L, ## level size 
@@ -95,6 +117,7 @@ def fit(spatial : Tiling,
             if (Q is Qr_ and  DDRs[c].shape()[0]%t*gran!=0) or \
                (Q is Qc_ and  DDRs[c].shape()[1]%t*gran!=0):
                 t+=1
+                ## The best partition is without remainder
                 continue
             
             
@@ -120,7 +143,10 @@ def fit(spatial : Tiling,
         
     return spatial
 
-
+## As above but the parition willbe row and column together, in my
+## head is row-column
+##
+##
 def fit_qrc(spatial : Tiling, L, Q, mult, gran_1,gran_2) -> Tiling:
     
     DDRs = spatial.partition
@@ -134,6 +160,7 @@ def fit_qrc(spatial : Tiling, L, Q, mult, gran_1,gran_2) -> Tiling:
             for g2 in range(gran_1,shape[0]+1,gran_2):
                 if (DDRs[c].shape()[0]%g1!=0) or \
                    (DDRs[c].shape()[1]%g2!=0):
+                    ## The best partition is without remainder
                     continue
                 
                 DDRt = Q(DDRs[c],g1,g2)
