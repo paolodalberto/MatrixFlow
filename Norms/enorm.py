@@ -1,5 +1,6 @@
-from tnorm import Norm, Nmul, LayerNorm,PplusE,PRplus, Nplus
+from tnorm import Norm, Nmul, LayerNorm,PplusE,PRplus,PRplusM, Nplus, Gg, square
 from matrix import Vector, Matrix, Tiling
+from splitting import *
 import numpy
 import scipy
 import pdb
@@ -90,14 +91,12 @@ class SoftMax(Norm):
 
 
 ###
-## This is to emphasize that SoftMax basic computation is exaclty like
-## Euclidean Norm once we define the proper projection and the
-## normalization. 
+## This is to emphasize that RMS Norm basic computation is exaclty
+## like Euclidean Norm for the projection and exaclty like Layernorm
+## for normalization.
 ##
-## Tiling algorithm and computation is the same :)
+## Tiling algorithm and computation is the same of Layer Norm:)
 ###
-
-
 
 
 class RMSNorm(LayerNorm):
@@ -145,6 +144,91 @@ class RMSNorm(LayerNorm):
         B = Nplus(B, Vector(GB.value()[1,:]) , row=False)
         return B
 
+
+###
+## to be filled
+###
+
+
+
+## Layer norm projections are sums (to compute mu and sigma)
+def PplusInstance(A : Matrix, axis = 0) -> Vector:
+    return Vector(numpy.sum(A.value(),axis=axis))
+
+
+
+class InstanceNorm(LayerNorm):
+    
+    def __init__(
+            self,
+            P      = PplusInstance,
+            R      = PRplusM,
+            N      = Nmul,
+            G      = Gg):
+        
+        LayerNorm.__init__(self,P,R,N,G)
+        self.Qr = Qc
+        self.Qr_ = Qc_
+        self.Qc = Qr
+        self.Qc_ = Qr_
+        self.Qrc_ = Qcr_
+
+    def t_dim(self, A : Matrix) : return (2,A.shape()[1])
+    def T_dim(self, A : Matrix): return Vector(numpy.zeros((2,A.shape()[1])))
+
+        
+    ## (Kernel computation)
+    def pass_one(self,A      : Matrix) -> Matrix:
+        A.color +=1
+        #pdb.set_trace()
+        SUM  = self.P(A)
+        SUMQ = self.P(self.G(A,square))
+        CSUM= numpy.zeros((2,A.shape()[1]))
+        CSUM[0,:] = SUM.value()
+        CSUM[1,:] = SUMQ.value()
+        return Matrix(CSUM)
+    
+    ## (Kernel computation)
+    def pass_two(self,
+                 A      : Matrix,
+                 GB     : Matrix,
+                 CSUM    :Matrix
+                 ):
+
+        A.color +=1
+        GB.color +=1
+        
+        # sequential and sync with pass one
+        N = max(A.shape()[1],self.A.shape()[1] if self.A else 0)
+        M = max(A.shape()[0],self.A.shape()[0] if self.A else 0)
+
+        ## one pass computation of the mu and sigma
+        mu  = CSUM.value()[0,:]/M
+        mu2 = CSUM.value()[0,:]**2/M
+        #pdb.set_trace()
+        #print(mu)
+        
+        try:
+            s = 1/numpy.sqrt((CSUM.value()[1,:] - mu2)/M)
+        except:
+            pdb.set_trace()
+        #print(s)
+        mu = Vector(-mu*s)
+        s = Vector(s)
+        
+        #print(A.value())
+        B = self.N(A,s, row=False)
+        #print(B.value())
+        B = Nplus(B,mu,row=False)
+        #print(B.value())
+        B = self.N(B,Vector(GB.value()[0,:]),row=False)
+        B = Nplus(B, Vector(GB.value()[1,:]),row=False)
+        #print(B.value())
+        return B
+
+
+    
+  
         
 if __name__ == "__main__":
 
@@ -175,7 +259,7 @@ if __name__ == "__main__":
         print("MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
         pdb.set_trace()
 
-    if True:
+    if False:
         A = numpy.random.rand(*shape)
         Gamma = numpy.ones(shape[1])
         Beta = numpy.zeros(shape[1])
@@ -196,6 +280,42 @@ if __name__ == "__main__":
         
         
         R1 = A*s[:,None]*Gamma + Beta
+
+        print("MAX ERROR A", numpy.max(numpy.fabs(R1-A1)))
+        #pdb.set_trace()
+
+        A2 = A *1.0 + 0.0
+        pdb.set_trace()
+        N.comp_uni(Matrix(A2),GGB)
+    
+    
+        print("MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
+        pdb.set_trace()
+    if True:
+
+        shape =  (128,64)
+        A = numpy.random.rand(*shape)
+        Gamma = numpy.ones(shape[1])
+        Beta = numpy.zeros(shape[1])
+        GB = numpy.zeros((2,shape[1]))
+        GB[0,:] = Gamma
+        GB[1,:] = Beta
+        
+        A1 = A*1.0
+        pdb.set_trace()
+        
+        N = InstanceNorm()
+        AA = Matrix(A1)
+        GGB = Matrix(GB)
+        N.comp(AA,GGB)
+
+        pdb.set_trace()
+        mu = numpy.average(A,axis=0)
+        var = numpy.var(A,axis=0)
+        s = 1/numpy.sqrt(var)
+        
+        
+        R1 = (A-mu)*s*Gamma + Beta
 
         print("MAX ERROR A", numpy.max(numpy.fabs(R1-A1)))
         #pdb.set_trace()

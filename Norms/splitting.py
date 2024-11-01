@@ -88,6 +88,21 @@ def Qrc_(A : Matrix, M: int =4, N: int =2) -> Tiling:
 
     return T
 
+## split by row and then by column it is not really spatial temporal
+## it is only temporal, I need to revisit this especially for the
+## corner cases
+def Qcr_(A : Matrix, M: int =4, N: int =2) -> Tiling:
+
+    T = Tiling(A)
+    def qr(a : Matrix) : Qr_(a,M)
+    def qc(a : Matrix) : Qc_(a,N)
+
+    ## is it nice ?
+    T.spatial_temporal(qc,qr)
+    T.partition[-1] = 'rc'
+
+    return T
+
 ## Assume we have a space constraint (we use L) and if we use this
 ## space for a ping pong (2 ping pong 1 only ping).  We have a spatial
 ## partition and we wonder what is the largest partition that

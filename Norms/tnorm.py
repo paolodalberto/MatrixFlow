@@ -94,6 +94,12 @@ class Norm :
         self.G     = G
         self.A     = None
 
+        self.Qr = Qr
+        self.Qr_ = Qr_
+        self.Qc = Qc
+        self.Qc_ = Qc_
+        self.Qrc_ = Qrc_
+
     def t_dim(self, A : Matrix) : return A.shape()[0]
     def T_dim(self, A : Matrix): return Vector(numpy.zeros(A.shape()[0]))
     
@@ -123,6 +129,16 @@ class Norm :
         ## we compute using the tiling 
         self.comp_visit(DDR)
 
+    def reduction(self,s :str):
+        if self.Qr == Qr and s =="r": return False
+        if self.Qr == Qc and s =="c": return False
+        return True
+
+    def parallel(self,s :str):
+        if self.Qr == Qr and s =="r": return True
+        if self.Qr == Qc and s =="c": return True
+        return False
+        
     ## Basically: row tiles 'r' are parallel computations and 
     ##
     ##            columns   'c' we compute the projection and then the normalization
@@ -137,13 +153,13 @@ class Norm :
 
         DDRs = Ti.get_partition()
         ty = DDRs[-1]
-        if ty.find('r')==0  :
+        if self.parallel(ty[0]) :
             
             for j in range(len(DDRs)-1):
                 d = DDRs[j]
                 if type(d) is Matrix: self.comp(d)
                 else:    self.comp_visit(d)
-        elif ty == 'c' :
+        else: #elif ty == 'c' :
             
             if T is None and level ==0 :
                 ## first 'c'
@@ -208,14 +224,14 @@ class Norm :
         ## we split A into 4 parts spatial
         ## L3 -> L2  spatial 4 By Columns
 
-        def qr(A) : return Qr(A, cols)
+        def qr(A) : return self.Qr(A, cols)
         T.traversal(qr)
            
         ## we try to determine the largest tile in L2 for which we
         ## split by rows and we use ping pong 
         Ts = fit(T,
                  L2,  ## L2 size (tile for L2)
-                 Qr_, ## split by row
+                 self.Qr_, ## split by row
                  2,   ## double buffering 
                  rows ## minimum granularity
                  )
@@ -236,7 +252,7 @@ class Norm :
                 ## parallel split // well broad cast ... 
                 Q = fit( DDRs[s],
                          L1,  ## L1 size 
-                         Qr_, ## split by row 
+                         self.Qr_, ## split by row 
                          1,   ## ping pong
                          rows ## to feed each core 
                         )
@@ -246,7 +262,7 @@ class Norm :
                     ## One row no fit in L1 but we do reduction in L1
                     Q = fit( DDRs[s],
                              L1,  ## L1 size 
-                             Qc_, ## split by column
+                             self.Qc_, ## split by column
                              1,   ## this is ping 
                              V*2   ## 32*2 
                             )  
@@ -255,7 +271,7 @@ class Norm :
                         ## we cannot have all rows at once
                         Q = fit_qrc( DDRs[s],
                                      L1,
-                                     Qrc_,
+                                     self.Qrc_,
                                      1, ## this is ping
                                      rows,
                                      V*2
@@ -289,17 +305,17 @@ class Norm :
             Repetition['L3'] =2
 
             ## we read the whole matrix into columns 
-            Ts = fit(T, L2, Qc_, 2,1)
+            Ts = fit(T, L2, self.Qc_, 2,1)
             DDRs = Ts.getlist()
             ## L2 -> L1 if there is core splitting there will be spatial
             ## and then temporal, 
             for s in range(len(DDRs)-1):
                 
-                Q = fit( DDRs[s], L1, Qc_, 1, 1)
+                Q = fit( DDRs[s], L1, self.Qc_, 1, 1)
                 if Q is None:
                     print(" We should not be here! ########")
                     pdb.set_trace()
-                    Q = fit_qrc( DDRs[s], L1, Qrc_, 1, rows,1)
+                    Q = fit_qrc( DDRs[s], L1, self.Qrc_, 1, rows,1)
                     if Q is None:
                         
                         return None
@@ -353,9 +369,9 @@ class LayerNorm(Norm):
         
         T = Tiling(A)
         print(V)
-        def qc3(A) : return Qc_(A,V[0])
-        def qc2(A) : return Qc_(A,V[1])
-        def qc1(A) : return Qc_(A,V[2])
+        def qc3(A) : return Qc_(A,V[0])#self.
+        def qc2(A) : return Qc_(A,V[1])#self.
+        def qc1(A) : return Qc_(A,V[2])#self.
 
         Q = [qc3,qc2,qc1]
         T.rec_traversal(Q)
@@ -424,10 +440,10 @@ class LayerNorm(Norm):
         self.GB = GB
         ## compute tiling for the gamma and beta
         V = Pace.max_col()
-        
+        pdb.set_trace()
         Wts  = self.comp_wts(GB, V=V )
         print(Wts)
-        
+
         self.comp_visit(Pace,Wts)
 
     ###
@@ -446,7 +462,7 @@ class LayerNorm(Norm):
         WDDR = Wt.get_partition()
 
         ty = DDRs[-1]
-        if ty.find('r')==0  :
+        if self.parallel(ty[0]) : # ty.find('r')==0  :
             ## paralle computation 
             for j in range(len(DDRs)-1):
                 di = DDRs[j]
@@ -454,7 +470,7 @@ class LayerNorm(Norm):
                 if not type(di) is Matrix: self.comp_visit(di,dw,level=level,T = None)
                 else:                      self.comp(di,dw)
 
-        elif ty == 'c' :
+        else: #elif ty == 'c' :
             ## boom recursive projections 
             if T is None and level ==0 :
 
