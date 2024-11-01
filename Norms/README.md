@@ -71,7 +71,16 @@ We show that SoftMax is a simple extension of Norm. We show that
 RMSNorm and Instance norm is an extension of LayerNorm.
 
 
+### Testing
 
+The testing follows a simple format. We have a numpy implementation,
+which is the golden standard. We have a simplified two-pass
+implementation using basic matrices. Then we have a multi staged
+tiling computations.
+
+
+cheers
+Paolo
 
 
 
