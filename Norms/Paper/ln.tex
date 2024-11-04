@@ -244,12 +244,9 @@ its row by a square norm:
     \end{algorithmic}
 \end{algorithm}
 The above algorithm is just a rework of the definition providing
-little extra information. Now let us introduce the partition and how
-the computation can be described in parallel and sequential parts.
-
-As soon as we define $P_+(\Vc{X})_i = \sum_j x_{i,j}$ and $N_*(\Vc{X},
-\Vc{T})_{i,j} = x_{i,j}*t_i$, we have the complete computation of the
-norm.
+little extra information.  As soon as we define $P_+(\Vc{X})_i =
+\sum_j x_{i,j}$ and $N_*(\Vc{X}, \Vc{T})_{i,j} = x_{i,j}*t_i$, we have
+the complete computation of the norm.
 
 \begin{algorithm}
     \caption{$SoftMax(\Vc{X})$ algorithm}
@@ -353,7 +350,62 @@ will require the computation of two projections so that average
 
 
 \section{Computation Modes} 
-Here we discuss the implementation and computation of 
+The mathematical notation provides a clear description of the
+computation and it two pass nature. Also, the normalization factor and
+its computation can be used when we would like to fuse the norm
+operation with the following (or the previous) computation.
+
+Here, we are more interested in describing how we would implement the
+norm computation using different engine: GPU, GPU, and AIE FGPA
+engines. We show direct implementations for CPU and AIE and we present
+a short discussion about the GPUs. This is always related to AMD chips
+and codes.
+
+The main difference is about the computation of the Projection and how
+the hardware implicitly helps the computation. Let's start with the
+GPU that uses heavily the associativity for parallelization of the
+computation.
+
+\subsection{GPU conversation}
+The projection is associative and we can exploit the parallelism by
+blocking the computation in warps, compute independent and separated
+$\Vc{T}_i = P_+(\Vc{X}_{i,j})$, then reduce the computation in cores
+by using a tree like computation and built in HW utilities.
+
+\begin{equation}
+  \begin{matrix}
+    \Vc{T}_1 = P_+(\Vc{X}_{i,1}), & ... &  \Vc{T}_n = P_+(\Vc{X}_{i,n}) \\ 
+    \Vc{T}_1 = \Vc{T}_1+\Vc{T}_2, & ... &  \Vc{T}_{\frac{n}{2}} = \Vc{T}_{\frac{n}{2}} + \Vc{T}_{\frac{n}{2}+1} \\
+    \Vc{T}_1 = \Vc{T}_1 + \Vc{T}_2, & ... &  \Vc{T}_{\frac{n}{4}} = \Vc{T}_{\frac{n}{4}} + \Vc{T}_{\frac{n}{4}+1} \\
+    \dots  & ... & ... \\ 
+    \Vc{T}_1 = \Vc{T}_1 + \Vc{T}_2 & & \\
+  \end{matrix}
+\end{equation}
+
+The small size of the computation that can be done as unit and the HW
+support for the reduction makes this computation
+appealing. Numerically, the binary three computation make the
+computation balanced and well partitioned. If there is no use of high
+precision accumulators this will have numerical advantages and will
+make it highly parallel.
+
+For a Layer Norm of size $512 \times 768$ on a MI100 with 1.2 TB/s
+HBM2 we can achieve 9 us latency (800GBs) for layer norm in fp16 and
+fp32 precision. This is the fastest performance across the AMD
+products at our disposal.
+
+\subversion{CPU conversation}
+CPUs are highly general and also they have tricks up theirs sleeves
+for the efficient computation of inner products by highly vectorizable
+extensions such as 
+
+ 
+
+
+
+
+
+
 
 
 
