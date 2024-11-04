@@ -4,6 +4,7 @@ from splitting import *
 import numpy
 import scipy
 import pdb
+import copy
 
 ## SoftMax Projection : Max and partial sums 
 def PplusMax(A : Matrix, axis = -1) -> Matrix:
@@ -68,7 +69,10 @@ class SoftMax(Norm):
         Norm.__init__(self,P,R,N,G)
         
     def t_dim(self, A : Matrix): return (2, A.shape()[0])
-    def T_dim(self, A : Matrix): return Matrix(numpy.finfo(A.matrix.dtype).min  * numpy.ones((2,A.shape()[0])))
+    def T_dim(self, A : Matrix): return Matrix(
+            numpy.finfo(A.matrix.dtype).min  *
+            numpy.ones((2,A.shape()[0]),dtype=A.matrix.dtype)
+    )
     def pass_two(self,
                  A      : Matrix,
                  T      : Matrix
@@ -111,7 +115,9 @@ class RMSNorm(LayerNorm):
         LayerNorm.__init__(self,P,R,N,G)
         
     def t_dim(self, A : Matrix) : return A.shape()[0]
-    def T_dim(self, A : Matrix): return Vector(numpy.zeros(A.shape()[0]))
+    def T_dim(self, A : Matrix): return Vector(
+            numpy.zeros(A.shape()[0]).astype(A.matrix.dtype)
+    )
 
     ## base projection of a matrix (Kernel computation)
     def pass_one(self, A  : Matrix):
@@ -174,8 +180,11 @@ class InstanceNorm(LayerNorm):
         self.Qrc_ = Qcr_
 
     def t_dim(self, A : Matrix) : return (2,A.shape()[1])
-    def T_dim(self, A : Matrix): return Vector(numpy.zeros((2,A.shape()[1])))
+    def T_dim(self, A : Matrix): return Vector(
+            numpy.zeros((2,A.shape()[1])).astype(A.matrix.dtype)
+    )
 
+    def direction(self): return 1
         
     ## (Kernel computation)
     def pass_one(self,A      : Matrix) -> Matrix:
@@ -235,12 +244,12 @@ if __name__ == "__main__":
 
     #import pdb
     shape =  (512,4096)
-
+    dt = numpy.float64
 
     if False:
-        A = numpy.random.rand(*shape)
+        A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0
-        pdb.set_trace()
+        #pdb.set_trace()
         
         N = SoftMax()
         N.comp(Matrix(A))
@@ -248,27 +257,27 @@ if __name__ == "__main__":
         
         R1 = scipy.special.softmax(A1,1)
 
-        print("MAX ERROR A", numpy.max(numpy.fabs(R1-A)))
+        print("SM MAX ERROR A", numpy.max(numpy.fabs(R1-A)))
         #pdb.set_trace()
 
         A2 = A1 *1.0 + 0.0
-        pdb.set_trace()
+        #pdb.set_trace()
         N.comp_uni(Matrix(A2))
     
     
-        print("MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
+        print("SM MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
         pdb.set_trace()
 
     if False:
-        A = numpy.random.rand(*shape)
-        Gamma = numpy.ones(shape[1])
-        Beta = numpy.zeros(shape[1])
+        A = numpy.random.rand(*shape).astype(dt)
+        Gamma = numpy.ones(shape[1]).astype(dt)
+        Beta = numpy.zeros(shape[1]).astype(dt)
         GB = numpy.zeros((2,shape[1]))
         GB[0,:] = Gamma
         GB[1,:] = Beta
         
         A1 = A*1.0
-        pdb.set_trace()
+        #pdb.set_trace()
         
         N = RMSNorm()
         AA = Matrix(A1)
@@ -281,49 +290,47 @@ if __name__ == "__main__":
         
         R1 = A*s[:,None]*Gamma + Beta
 
-        print("MAX ERROR A", numpy.max(numpy.fabs(R1-A1)))
+        print("RMS MAX ERROR A", numpy.max(numpy.fabs(R1-A1)))
         #pdb.set_trace()
 
         A2 = A *1.0 + 0.0
-        pdb.set_trace()
+        #pdb.set_trace()
         N.comp_uni(Matrix(A2),GGB)
     
     
-        print("MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
+        print("RMS MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
         pdb.set_trace()
     if True:
-
-        shape =  (128,64)
-        A = numpy.random.rand(*shape)
-        Gamma = numpy.ones(shape[1])
-        Beta = numpy.zeros(shape[1])
-        GB = numpy.zeros((2,shape[1]))
+        ## instance Norm
+        shape =  (4096,512)
+        A = numpy.random.rand(*shape).astype(dt)
+        A1 = A*1.0 + 0.0
+        Gamma = numpy.random.rand(shape[1]).astype(dt)
+        Beta = numpy.random.rand(shape[1]).astype(dt)
+        GB = numpy.zeros((2,shape[1])).astype(dt)
         GB[0,:] = Gamma
         GB[1,:] = Beta
         
-        A1 = A*1.0
-        pdb.set_trace()
         
-        N = InstanceNorm()
-        AA = Matrix(A1)
-        GGB = Matrix(GB)
-        N.comp(AA,GGB)
-
-        pdb.set_trace()
+        #Computation using numpy
         mu = numpy.average(A,axis=0)
         var = numpy.var(A,axis=0)
         s = 1/numpy.sqrt(var)
         
-        
-        R1 = (A-mu)*s*Gamma + Beta
+        mu = mu*s
+        R1 = (A*s-mu)*Gamma + Beta
 
-        print("MAX ERROR A", numpy.max(numpy.fabs(R1-A1)))
+        N = InstanceNorm()
+        AA = Matrix(copy.deepcopy(A))
+        GGB = Matrix(GB)
+
+        ## computation as matrix
+        N.comp(AA,GGB)
+        print("IN MAX ERROR A", numpy.max(numpy.fabs(R1-AA.value())))
         #pdb.set_trace()
 
-        A2 = A *1.0 + 0.0
-        pdb.set_trace()
-        N.comp_uni(Matrix(A2),GGB)
-    
-    
-        print("MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
+        BB = Matrix(copy.deepcopy(A))
+        #pdb.set_trace()
+        N.comp_uni(BB,GGB)
+        print("IN MAX ERROR B", numpy.max(numpy.fabs(R1-BB.value())))
         pdb.set_trace()

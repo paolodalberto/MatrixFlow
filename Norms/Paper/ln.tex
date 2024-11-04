@@ -438,15 +438,52 @@ naturally and without the need to much careful blocking. However,
 threading is heavy and they are really applicable only for very large
 matrices.
 
-By writing the code so that the compiler can exploit AVX operation for
-the projections and normalization and EPYC processor can achieve 147us
-using a single core for $512 \times 768$.
+{\small \begin{verbatim}
+Vendor ID:               AuthenticAMD
+  Model name:            AMD EPYC 7F52 16-Core Processor
+    CPU family:          23
+    Model:               49
+    Thread(s) per core:  2
+    Core(s) per socket:  16
+    Socket(s):           2
+    Stepping:            0
+    BogoMIPS:            6986.62
+Caches (sum of all):     
+  L1d:                   1 MiB (32 instances)
+  L1i:                   1 MiB (32 instances)
+  L2:                    16 MiB (32 instances)
+  L3:                    512 MiB (32 instances)
+\end{verbatim} }
+
+By writing naive code for x86 ISA and using as reference the $512
+\times 768$, the base code reference is about 600 us. By exploiting a
+different style in exploiting parallel row computations and using the
+AVX instructions (using {\em --fast-math}), then we can achieve 163 us
+using a single core and float point 32bits.
+
+\section{AIE Tiling generation and validation}
+As matter of fact, we use float 64bit precision in the code generation
+presented in this repository. However, the AIE instruction set has
+vector operations per core (like GPU), for int8, int16, bfloat16 and
+float32. The AIE system has a three level memory hierarchy: L3
+connected to four L2 (memtile one for each column) and each L2 is
+connected with one column of four cores L1 and one specific row with
+four core L1.
+
+The reduction using GPU style codes is possible and encouraged for
+each core internally but there is no simple equivalent for extra-core
+reduction. The suggested Norm computation on AIE is similar to the CPU
+in the sense that we use the memory hierarchy to stream rows and
+accumulate in core the projections. Then, we do another pass. The main
+difference that the data movement has to be orchestrated explicitly
+because there is not hardware assisted data replacement policy.
 
 
-\subsection{AIE Tiling generation and validation}
-The AIE instruction set has vector operations per core (like GPU), a
-relatively large data cache but it has poor inter core programmable
-interconnectivity (often we have to use L2 and L3 for intercore communications).
+
+
+
+
+
 
 
 

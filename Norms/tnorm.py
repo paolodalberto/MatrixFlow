@@ -105,7 +105,11 @@ class Norm :
         self.Qrc_ = Qrc_
 
     def t_dim(self, A : Matrix) : return A.shape()[0]
-    def T_dim(self, A : Matrix): return Vector(numpy.zeros(A.shape()[0]))
+    def T_dim(self, A : Matrix): return Vector(
+            numpy.zeros(A.shape()[0]).astype(A.matrix.dtype)
+    )
+
+    def direction(self): return 0
     
     ## base projection of a matrix (Kernel computation)
     def pass_one(self, A  : Matrix):
@@ -293,7 +297,7 @@ class Norm :
                         ## we compute all rows, hurrah
                         Repetition['L1'] =1
                         Repetition['L2'] =2
-                        print("L2 repetition =2 ")
+                        #print("L2 repetition =2 ")
                 else:
                     ## One row will fit in L1, thus there is no
                     ## repetition in L2 (only in L1)
@@ -305,7 +309,7 @@ class Norm :
             
             ## we need to change strategy and we have to read L3 twice
             ## the order is important because 
-            print("L3 repetition =2 ")
+            #print("L3 repetition =2 ")
             Repetition['L3'] =2
 
             ## we read the whole matrix into columns 
@@ -327,7 +331,7 @@ class Norm :
                 DDRs[s] = Q
 
 
-        print(Repetition)
+        #print(Repetition)
         return T
 
 
@@ -358,7 +362,9 @@ class LayerNorm(Norm):
         self.GB = None
         
     def t_dim(self, A : Matrix) : return (2,A.shape()[0])
-    def T_dim(self, A : Matrix): return Vector(numpy.zeros((2,A.shape()[0])))
+    def T_dim(self, A : Matrix): return Vector(
+            numpy.zeros((2,A.shape()[0])).astype(A.matrix.dtype)
+    )
 
     ## An exercise in building a tiling for norm: the weight tiling 
     def comp_wts(self,
@@ -488,7 +494,7 @@ class LayerNorm(Norm):
                 T = self.T_dim(Ti.get_buffer())
                 #T = Vector(numpy.zeros(self.t_dim(Ti.get_buffer())))
                 for j in range(len(DDRs)-1):
-                    di = DDRs[j];  dw = WDDR[j]
+                    di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
                                      
                     if type(di) is Matrix:              self.R(T,self.pass_one(di))
                     else: self.R(T,self.comp_visit(di,dw,level = level+1,T = None))
@@ -496,7 +502,7 @@ class LayerNorm(Norm):
                 # T is computed
                 # Pass two
                 for j in range(len(DDRs)-1):
-                    di = DDRs[j];  dw = WDDR[j]
+                    di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
                            
                     if type(di) is Matrix: self.pass_two(di,dw,T)
                     else:  self.comp_visit(di,dw,level =level+1,T = T)
@@ -509,7 +515,7 @@ class LayerNorm(Norm):
                 #T = Vector(numpy.zeros((2,Ti.get_buffer().shape()[0])))
                 T = self.T_dim(Ti.get_buffer()) #T = Vector(numpy.zeros(self.t_dim(Ti.get_buffer())))
                 for j in range(len(DDRs)-1):
-                    di = DDRs[j];   dw = WDDR[j]
+                    di = DDRs[j];   dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
 
                     if type(di) is Matrix:  self.R(T,self.pass_one(di))
                     else: self.R(T,self.comp_visit(di,dw,level = level+1,T = None ))
@@ -519,7 +525,7 @@ class LayerNorm(Norm):
             else:
                 for j in range(len(DDRs)-1):
                     di = DDRs[j]
-                    dw = WDDR[j]
+                    dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
                     if type(di) is Matrix: self.pass_two(di,dw,T)
                     else:  self.comp_visit(di,dw,level=level,T=T)
                     
@@ -536,12 +542,12 @@ if __name__ == "__main__":
 
     #import pdb
     shape =  (512,4096)
+    dt = numpy.float64
 
-
-    if True:
+    if False:
         ## Euclidean Norm !
         
-        A = numpy.random.rand(*shape)
+        A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0
 
         ## computation as single matrix 
@@ -551,23 +557,26 @@ if __name__ == "__main__":
         ## computation using numpy
         M = 1/numpy.sqrt(numpy.sum(A1**2, axis=-1)/A1.shape[1])
         R1 = A1*M[:,None]
-        print("MAX ERROR A", numpy.max(numpy.fabs(R1-A)))
+        print("MAX ERROR NORM", numpy.max(numpy.fabs(R1-A)))
         pdb.set_trace()
 
         ## computation using tiling 
         A2 = A1 *1.0 + 0.0
         N.comp_uni(Matrix(A2))
-        print("MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
+        print("MAX ERROR NORM", numpy.max(numpy.fabs(R1-A2)))
         pdb.set_trace()
 
         
     if True:
         ## Layer Norm
         
-        A = numpy.random.rand(*shape)
+        A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0 + 0.0
-        Gamma = numpy.ones(shape[1])
-        Beta = numpy.zeros(shape[1])
+        Gamma = numpy.random.rand(shape[1]).astype(dt)
+        Beta  = numpy.random.rand(shape[1]).astype(dt)
+        GB = numpy.random.rand(2,A.shape[1]).astype(dt)
+        GB[0,:] = Gamma
+        GB[1,:] = Beta
 
 
         ## computation using numpy 
@@ -578,22 +587,16 @@ if __name__ == "__main__":
         mu = mu*s
         R1 = (A1*s[:,None]-mu[:, None])*Gamma + Beta
 
-        GB = numpy.zeros((2,A.shape[1]))
-        GB[0,:] = Gamma
-        GB[1,:] = Beta
-
-        #pdb.set_trace()
         LN = LayerNorm()
         AA = Matrix(copy.deepcopy(A))
         GGB = Matrix(GB)
 
         ## computation as matrix
         R = LN.comp(AA,GGB)
-        print("MAX ERROR", numpy.max(numpy.fabs(R1-R.value())))
-        pdb.set_trace()
+        print("MAX ERROR LN", numpy.max(numpy.fabs(R1-R.value())))
 
         ## computation using tiling
         BB = Matrix(copy.deepcopy(A))
-        LN.comp_uni(BB, Matrix(GB))
-        print(numpy.max(numpy.fabs(R1-BB.value())))
+        LN.comp_uni(BB, GGB)
+        print("MAX ERROR LN ",numpy.max(numpy.fabs(R1-BB.value())))
         pdb.set_trace()
