@@ -116,46 +116,52 @@
 
 \maketitle
 
-\section{Some Mathematic definitions} 
+\section{A few  definitions} 
 \label{sec:introduction}
-Here, we are interested only in matrices $X \in \R^{M \times
-  N}$. Together with this paper, there will be code implementing and
-compute every expression presented here for matrices.
 
-A matrix norm is composed into two parts. We have a {\em projection}
+A matrix is $\Vc{X} \in \R^{M \times N}$ with $M$ rows and $N$ columns
+and a single scalar element is $x_{i,j}$ with obvious bounds. A
+vectors is $\Vc{V} \in \R^{M}$ with scalar element $v_i$.  Last, a
+scalar is $\alpha \in \R$.
+
+
+A matrix norm is a two-part computation. We have a {\em projection}
 where we compute a factor, a vector, and then a {\em normalization}
-where we take the projected factor and distribute it back. In the
-literature and implementations may appears with different names:
-Projection is often call reduction because it is frequently associated
-with sums, dot products. Normalization is often call broadcast because
-it is very often based on a Matrix by scalar operations. Now that we
-have a name and association to other well known term, let us define
-them formally.
+where we take the projected factor and distribute it back to the
+elements of the matrix. In the literature and implementations, these
+computations have also other names: Projection is a reduction because
+it is frequently associated with sums, dot products. Normalization is
+a broadcast. Now that we have a names, let us define them formally and
+constructively.
 
-
-We need an operation that address scalar operations:
+Let us start with scalar operations on Matrix/Vectors:
 \begin{definition}
-  A scalar operation
+  A scalar operation on a matrix $\Vc{X}$
   \begin{equation}
-    G_f: X \rightarrow Y \text{ and }  y_{i,j} = f(x_{i,j})
+    G_f: \Vc{X} \rightarrow \Vc{Y} \text{ and }  y_{i,j} = f(x_{i,j})
   \end{equation}
 \end{definition}
-This could be used for both projection and normalization. For example,
-we will use $x_{i,j}^2$ and $\exp(x_{i,j})$
+
+For example, we will use $G_{x*x}(\Vc{X}) = x_{i,j}^2$ and
+$G_{\exp}(\Vc{X}) = \exp(x_{i,j})$. 
 
 
 \begin{definition}
-An associative projection $P_+: \Vc{X}\in\R^{M\times N} \rightarrow
-\Vc{F} \in \R^{M}$, is a function where the element $f_i =
-\sum_{j=1}^N x_{i,j}$. The $+/\sum$ sign is not in general a
-summation, but it is a natural for the associative property we
-require: $f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j})) =
-((\sum_{j=1}^{N-1} x_{i,j}) + x_{i,N}) $.
-\end{definition}
+An associative Projection $P_+: \Vc{X}\in\R^{M\times N} \rightarrow
+\Vc{F} \in \R^{M}$, is a function where the element
+\[ f_i = \sum_{j=1}^N x_{i,j}. \]
+The $+/\sum$ sign is not in general a summation, We choose it because
+this is a natural symbol for the associative property:
+\[
+f_i = (x_{i,1}) + (\sum_{j=2}^N x_{i,j}) = (\sum_{j=1}^{N-1} x_{i,j}) + (x_{i,N}).
+\]
 
-Although the definition is assuming a row projection, we present at
-least one projection by columns.  Let us digest our formalism a
-little.  As we will read our matrix, we are going to maintain the
+\end{definition}
+The definition is a row projection.  There are norms where the
+projection is by column. The formalism can easily take care of that by
+specifying a direction (i.e., the code does introduce) or just
+considering the transpose of the matrix.  Let us digest our formalism
+a little.  As we will read our matrix, we are going to maintain the
 order and projecting of matrix $\Vc{X}$ (row elements $x_{i,*}$). We
 do not need the projection to be commutative in general but all the
 projections of interests are. Also, we require the computation of
@@ -165,45 +171,52 @@ We abuse the notation of the symbol $+$ in the associative expression
 $f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j}))$, in the sense that the
 combination of the temporary sub-projection may require some extra
 work during the computation or at the end when we have a complete
-projection into a proper normalization factor.
+projection into a proper normalization factor. However, such
+simplification does not detract any information and the implementation
+can address it.
 
-We present, $P_+(G_f(X))$. That is, we apply scalar operations and
-then projection. The associativity is a property of the projection and
-not of the value of the matrix.
-
+What could $P_+(G_f(X))$ be? That is, we apply scalar operations and
+then projection. The associativity should be a property of the
+projection and not of the value of the matrix. SoftMax Norm in finite
+precision is an example where we have {\em to work} to enforce the
+associativity (e.g., $\exp(x)$ can be large and in finite precision
+overflow easily especially their sum).
 
 \begin{definition}
   An optional summary function $S_+: \{\Vc{F}\}_i\in\R^{ M}
-  \rightarrow \Vc{E} \in \R^{M}$
+  \rightarrow \Vc{E} \in \R^{M}$ and  $\Vc{F}_i = P_i(G_{f_i}(\Vc{X}))$
 \end{definition}
 So we can summarize the first part of the computation by an
-associative projection (or a set of projections) and an optional
-summary function for the final composition of the normalization
-factors.
+associative projection or a set of projections and an optional summary
+function for the final composition of the normalization factors.
 
+Now let start formulating the normalization computation.
 
 \begin{definition}
-  We have two normalization functions by row and by column
+  We have two normalization functions by row 
   \begin{equation}
-    N_*: \Vc{X}\in\R^{M\times N}, \Vc{T}\in \R^M \rightarrow \Vc{Y}
+    N_*: \Vc{X}\in\R^{M\times N} \times \Vc{T}\in \R^M \rightarrow \Vc{Y}
     \in \R^{M\times N}, \text{ where } y_{i,j} = x_{i,j}*t_i
   \end{equation}
+  and by column
   \begin{equation}
-    N_*: \Vc{X}\in\R^{M\times N}, \Vc{S}\in \R^N \rightarrow \Vc{Y}
+    N_*: \Vc{X}\in\R^{M\times N} \times  \Vc{S}\in \R^N \rightarrow \Vc{Y}
     \in \R^{M\times N}, \text{ where } y_{i,j} = x_{i,j}*s_j
   \end{equation}
   Again the $*$ is not necessarily a multiplication and the
   normalization can be by row or by column. For presentation purpose
-  we will use a single symbol unless it will be confusing.
+  we will use a single symbol (unless confusing).
 \end{definition}
 
 If we extend the normalizing factor $\Vc{F}$ into a diagonal matrix in
-$\Vc{D}_F \in  \R^{M\times M}$ (or $\R^{N\times N}$), then the normalization above
-are the following matrix products
-
+$\Vc{D}_F \in \R^{M\times M}$ so that $[\Vc{D}_F]_{i,i} = f_i$ and
+zero everywhere else (same idea for $\R^{N\times N}$), and the
+normalization is a based on a scalar product, then we reduce the
+computation to matrix-matrix multiplication products. 
 \begin{equation}
-  \Vc{D}_f * \Vc{X} \text{ and }  \Vc{X} * \Vc{D}_f 
+  \Vc{D}_F * \Vc{X} \text{ and } \Vc{X} * \Vc{D}_F
 \end{equation}
+
 Notice that using matrix multiplication we can see that a row
 normalization is associative $(\Vc{D}_f * \Vc{X}) * \Vc{Y} = \Vc{D}_f
 * (\Vc{X} * \Vc{Y})$ then giving an hint how the normalization could
@@ -230,44 +243,47 @@ We introduce the last definiition, a matrix partition.
     \end{pmatrix}\\
   \end{equation}
 \end{definition}
-
-
 If we want to take a matrix $\Vc{X} \in \R^{M\times N}$ and normalize
-its row by a square norm:
+its row by a square norm see Algorithm \ref{alg:l2}. As we define
+$P_+(\Vc{X})_i$ as the summation $\sum_j x_{i,j}$ and $N_*(\Vc{X},
+\Vc{T})_{i,j} = x_{i,j}*t_i$, we have the complete computation of the
+norm : $f_i = \sqrt{\frac{1}{N}\sum_{j=1}^N x_{i,j}^2}$ and $x_{i,j}
+= \frac{x_{i,j}}{f_i}$.
+
 \begin{algorithm}
     \caption{$\Vc{X}/||\Vc{X}||_2$ algorithm}
     \label{alg:l2}
     \begin{algorithmic}
-      \STATE $\Vc{T} = P_+(G_{x*x}(\Vc{X}))$\\
-      \STATE $\Vc{T} = \sqrt{\Vc{T}/N}$    \\
-      \STATE $\Vc{X} = N_*(\Vc{X},\Vc{T})$ \\
-    \end{algorithmic}
-\end{algorithm}
-The above algorithm is just a rework of the definition providing
-little extra information.  As soon as we define $P_+(\Vc{X})_i =
-\sum_j x_{i,j}$ and $N_*(\Vc{X}, \Vc{T})_{i,j} = x_{i,j}*t_i$, we have
-the complete computation of the norm.
-
-\begin{algorithm}
-    \caption{$SoftMax(\Vc{X})$ algorithm}
-    \label{alg:l2_2}
-    \begin{algorithmic}
-      \STATE $\Vc{M} = P_{max}(\Vc{X})$\\
-      \STATE $\Vc{T} = P_+(G_{exp}(\Vc{X})*G_{exp}(-\Vc{M}))$\\
-      \STATE $\Vc{T} = \Vc{T}*\exp{\Vc{M}}$    \\
-      \STATE $\Vc{X} = N_*(G_{exp}(\Vc{X}),\Vc{T})$ \\
+      \STATE $\Vc{T} = P_+(G_{x*x}(\Vc{X}))$
+      \STATE --------------------------------
+      \STATE $\Vc{T} = \sqrt{\Vc{T}/N}$    \COMMENT{ \# Summary} 
+      \STATE --------------------------------
+      \STATE $\Vc{X} = N_*(\Vc{X},\Vc{T})$  
     \end{algorithmic}
 \end{algorithm}
 
 When we introduce a new projections $P_{max}(\Vc{X})_i =
 \max{x_{i,*}}$, which is associative, and we normalize the additive
 projection with the result of the new projection, we can see that the
-Softmax computation has the same properties and composition.
+Softmax computation has the same properties and composition (Algorithm \ref{alg:l2_2}).
+
+\begin{algorithm}
+    \caption{$SoftMax(\Vc{X})$ algorithm}
+    \label{alg:l2_2}
+    \begin{algorithmic}
+      \STATE $\Vc{M} = P_{max}(\Vc{X})$
+      \STATE $\Vc{T} = P_+(G_{exp}(\Vc{X})*G_{exp}(-\Vc{M}))$
+      \STATE --------------------------------
+      \STATE $\Vc{T} = \Vc{T}*\exp{\Vc{M}}$    \COMMENT{ \# Summary}
+      \STATE --------------------------------
+      \STATE $\Vc{X} = N_*(G_{exp}(\Vc{X}),\Vc{T})$ 
+    \end{algorithmic}
+\end{algorithm}
+
 
 Let us go back using the original notations and block the input matrix
-so that to exploit its natural composition.
-
-
+so that to exploit its natural composition, independent computations
+by row and we exploit the associativity of the projection in Algorithm \ref{alg:l2_3}
 
 \begin{algorithm}
     \caption{Blocked $3\times 3$}
@@ -280,14 +296,16 @@ so that to exploit its natural composition.
           \Vc{X}_{3,1} &    \Vc{X}_{3,2}&    \Vc{X}_{3,3}  \\
         \end{pmatrix}
       \] \\
-      \WHILE{$i$ in [1,2,3] }
-          \STATE $\Vc{T} = \Vc{0} $  \COMMENT{Zero element for $P_+$}
-          \WHILE {$j$ in [1, 2,3] }
-              \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$ \COMMENT{Projection + Reduction}  
+      \WHILE{$i$ in [1,2,3] \# Independent } 
+          \STATE $\Vc{T} = \Vc{0} $  \COMMENT{ \# Zero element for $P_+$}
+          \WHILE {$j$ in [1, 2,3] \# Projection }
+              \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$ \COMMENT{   \# Reduction}  
           \ENDWHILE
-          \STATE $\Vc{T}  =   S_+(\Vc{T})$       \COMMENT{Summary, scalar}
-          \WHILE {$j$ in [1,2,3] }
-             \STATE $ \Vc{X}_{i,j} = N_*(\Vc{X}_{i,j},\Vc{T})$  \COMMENT{Normalization}
+          \STATE --------------------------------     
+          \STATE $\Vc{T}  =   S_+(\Vc{T})$       \COMMENT{ \# Summary}
+          \STATE --------------------------------     
+          \WHILE {$j$ in [1,2,3] \# Normalization }
+             \STATE $ \Vc{X}_{i,j} = N_*(\Vc{X}_{i,j},\Vc{T})$  
           \ENDWHILE
       \ENDWHILE
     \end{algorithmic}
@@ -336,8 +354,10 @@ will require the computation of two projections so that average
               \STATE $\Vc{T} = \Vc{T} +P_+(\Vc{X}_{i,j})$             \COMMENT{Projection + sum}  
               \STATE $\Vc{S} = \Vc{T} +P_+(G_{x*x}(\Vc{X}_{i,j}))$ \COMMENT{Projection + sum squares}  
           \ENDWHILE
+          \STATE --------------------------------     
           \STATE $\Vc{T}  =   \Vc{T}/N$       \COMMENT{Summary, scalar}
           \STATE $\Vc{S}  =   (\Vc{S} - \Vc{T}^2/N)/N$       \COMMENT{Summary, scalar}
+          \STATE --------------------------------     
           \WHILE {$j$ in [1,2,3] }
              \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}-\Vc{T}$  \COMMENT{Normalization Row}
              \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}/\Vc{S}$   
@@ -351,9 +371,10 @@ will require the computation of two projections so that average
 
 \section{Computation Modes} 
 The mathematical notation provides a clear description of the
-computation and it two pass nature. Also, the normalization factor and
-its computation can be used when we would like to fuse the norm
-operation with the following (or the previous) computation.
+computation, clearly pedantic but constructive in nature. Also, the
+normalization factor and its computation can be used when we would
+like to fuse the norm operation with the following (or the previous)
+computation.
 
 Here, we are more interested in describing how we would implement the
 norm computation using different engine: GPU, GPU, and AIE FGPA
@@ -370,7 +391,8 @@ computation.
 The projection is associative and we can exploit the parallelism by
 blocking the computation in warps, compute independent and separated
 $\Vc{T}_i = P_+(\Vc{X}_{i,j})$, then reduce the computation in cores
-by using a tree like computation and built in HW utilities.
+by using a tree like computation and built in HW utilities (register
+computations). 
 
 \begin{equation}
   \begin{matrix}
@@ -386,20 +408,56 @@ The small size of the computation that can be done as unit and the HW
 support for the reduction makes this computation
 appealing. Numerically, the binary three computation make the
 computation balanced and well partitioned. If there is no use of high
-precision accumulators this will have numerical advantages and will
-make it highly parallel.
+precision accumulators this will have numerical advantages. That is, a
+balanced binary tree with $N$ elements has the longest addition path
+length of only $K = \log_2(N)$ and the fish spine tree has $K = N-1$
+and for additions we accumulate an error of $O(K)$. 
 
 For a Layer Norm of size $512 \times 768$ on a MI100 with 1.2 TB/s
-HBM2 we can achieve 9 us latency (800GBs) for layer norm in fp16 and
-fp32 precision. This is the fastest performance across the AMD
-products at our disposal.
+HBM2 we can achieve 9 us (microseconds) latency (bandwidth utilization
+800GBs) for layer norm in fp16 and fp32 precision. This is the fastest
+performance across the AMD products at our disposal.
 
-\subversion{CPU conversation}
-CPUs are highly general and also they have tricks up theirs sleeves
-for the efficient computation of inner products by highly vectorizable
-extensions such as 
+\subsection{CPU conversation}
+CPUs have deep memory hierachies to exploit temporal locality. If we
+observe the norm computations there is little temporal locality. Each
+row is read twice, but there will be $N$ accesses in between. As soon
+as we realize that $\Vc{T} += P_+(\Vc{X}_{i,j})$ has consecutive
+accecesses to fast L1 caches we can exploit the AVX instruction set to
+transform scalar operations into parallel vector operations.
 
- 
+The partition on $\Vc{X}$ will associate a set of row to a
+thread/core. We stream the input rows and we store in the core the
+temporary $T$ (registers), we compute the factor(s), then we stream
+the rows again for the propagation of the normalization factor(s). We
+exploit temporal locality because the largest cache in the memory
+hierarchy containing the rows will be read twice naturally without any
+further assistance. When the computation moves to the next rows, we
+clear the memory hierarch safely. C threads can deploy this strategy
+naturally and without the need to much careful blocking. However,
+threading is heavy and they are really applicable only for very large
+matrices.
+
+By writing the code so that the compiler can exploit AVX operation for
+the projections and normalization and EPYC processor can achieve 147us
+using a single core for $512 \times 768$.
+
+
+\subsection{AIE Tiling generation and validation}
+The AIE instruction set has vector operations per core (like GPU), a
+relatively large data cache but it has poor inter core programmable
+interconnectivity (often we have to use L2 and L3 for intercore communications).
+
+
+
+
+
+
+
+
+
+
+
 
 
 
