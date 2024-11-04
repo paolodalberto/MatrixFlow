@@ -14,6 +14,8 @@
 
 %% as manuscript for review this will create line number 
 \usepackage{lineno}
+\usepackage{algorithm}
+\usepackage{algorithmic}
 %\linenumbers
 
 %%  Always include hyperref last
@@ -114,38 +116,50 @@
 
 \maketitle
 
-\section{A Mathematics First} 
+\section{Some Mathematic definitions} 
 \label{sec:introduction}
 Here, we are interested only in matrices $X \in \R^{M \times
   N}$. Together with this paper, there will be code implementing and
 compute every expression presented here for matrices.
 
-A matrix norm is composed by two parts. We have a {\em projection}
+A matrix norm is composed into two parts. We have a {\em projection}
 where we compute a factor, a vector, and then a {\em normalization}
 where we take the projected factor and distribute it back. In the
-literature and implementations these can take different names:
+literature and implementations may appears with different names:
 Projection is often call reduction because it is frequently associated
 with sums, dot products. Normalization is often call broadcast because
 it is very often based on a Matrix by scalar operations. Now that we
 have a name and association to other well known term, let us define
 them formally.
 
+
+We need an operation that address scalar operations:
+\begin{definition}
+  A scalar operation
+  \begin{equation}
+    G_f: X \rightarrow Y \text{ and }  y_{i,j} = f(x_{i,j})
+  \end{equation}
+\end{definition}
+This could be used for both projection and normalization. For example,
+we will use $x_{i,j}^2$ and $\exp(x_{i,j})$
+
+
 \begin{definition}
 An associative projection $P_+: \Vc{X}\in\R^{M\times N} \rightarrow
 \Vc{F} \in \R^{M}$, is a function where the element $f_i =
 \sum_{j=1}^N x_{i,j}$. The $+/\sum$ sign is not in general a
-summation, but it is a nice anchor for the associative property we
-require: $f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j})) = ((\sum_{j=1}^{N-1}
-x_{i,j}) + x_{i,N}) $.
+summation, but it is a natural for the associative property we
+require: $f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j})) =
+((\sum_{j=1}^{N-1} x_{i,j}) + x_{i,N}) $.
 \end{definition}
 
-Let us digest the formalism a little. We could use a different symbol
-but $+$ has inherently a positive influence. As we will read our
-matrix, we are going to maintain the order and projecting of matrix
-$\Vc{X}$. We do not need the projection to be commutative in general
-but all the projection of interests are. Also, in general we may
-require the computation of multiple projections. In practice, here we
-will present examples with one and two projections.
+Although the definition is assuming a row projection, we present at
+least one projection by columns.  Let us digest our formalism a
+little.  As we will read our matrix, we are going to maintain the
+order and projecting of matrix $\Vc{X}$ (row elements $x_{i,*}$). We
+do not need the projection to be commutative in general but all the
+projections of interests are. Also, we require the computation of
+multiple projections for the computation of the normalization factor.
 
 We abuse the notation of the symbol $+$ in the associative expression
 $f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j}))$, in the sense that the
@@ -153,8 +167,23 @@ combination of the temporary sub-projection may require some extra
 work during the computation or at the end when we have a complete
 projection into a proper normalization factor.
 
+We present, $P_+(G_f(X))$. That is, we apply scalar operations and
+then projection. The associativity is a property of the projection and
+not of the value of the matrix.
+
+
 \begin{definition}
-  We foresee two Normalization
+  An optional summary function $S_+: \{\Vc{F}\}_i\in\R^{ M}
+  \rightarrow \Vc{E} \in \R^{M}$
+\end{definition}
+So we can summarize the first part of the computation by an
+associative projection (or a set of projections) and an optional
+summary function for the final composition of the normalization
+factors.
+
+
+\begin{definition}
+  We have two normalization functions by row and by column
   \begin{equation}
     N_*: \Vc{X}\in\R^{M\times N}, \Vc{T}\in \R^M \rightarrow \Vc{Y}
     \in \R^{M\times N}, \text{ where } y_{i,j} = x_{i,j}*t_i
@@ -168,13 +197,166 @@ projection into a proper normalization factor.
   we will use a single symbol unless it will be confusing.
 \end{definition}
 
-We need a scalar operation that we define as it follows.
+If we extend the normalizing factor $\Vc{F}$ into a diagonal matrix in
+$\Vc{D}_F \in  \R^{M\times M}$ (or $\R^{N\times N}$), then the normalization above
+are the following matrix products
+
+\begin{equation}
+  \Vc{D}_f * \Vc{X} \text{ and }  \Vc{X} * \Vc{D}_f 
+\end{equation}
+Notice that using matrix multiplication we can see that a row
+normalization is associative $(\Vc{D}_f * \Vc{X}) * \Vc{Y} = \Vc{D}_f
+* (\Vc{X} * \Vc{Y})$ then giving an hint how the normalization could
+be postponed if neceesary.  Also a column mormalization in combination
+with a matrix multiplication $(\Vc{X}* \Vc{D}_f) * \Vc{Y} = \Vc{X}*
+(\Vc{D}_f * \Vc{Y})$ is actually a row normalization of the following
+operand.
+
+We introduce the last definiition, a matrix partition.
 \begin{definition}
-  A scalar operation
+  A row partition of a matrix is simply defined as
   \begin{equation}
-    G_f: X \rightarrow Y \text{ and }  y_{i,j} = f(x_{i,j})
+    [\Vc{X} ]_{r=2} = \
+    \begin{pmatrix}
+      \Vc{X}_1  \\
+      \Vc{X}_2  \\
+    \end{pmatrix}\\
+  \end{equation}
+  and a column partition
+  \begin{equation}
+    [\Vc{X} ]_{c=2} = \
+    \begin{pmatrix}
+      \Vc{X}_1  & \Vc{X}_2  \\
+    \end{pmatrix}\\
   \end{equation}
 \end{definition}
+
+
+If we want to take a matrix $\Vc{X} \in \R^{M\times N}$ and normalize
+its row by a square norm:
+\begin{algorithm}
+    \caption{$\Vc{X}/||\Vc{X}||_2$ algorithm}
+    \label{alg:l2}
+    \begin{algorithmic}
+      \STATE $\Vc{T} = P_+(G_{x*x}(\Vc{X}))$\\
+      \STATE $\Vc{T} = \sqrt{\Vc{T}/N}$    \\
+      \STATE $\Vc{X} = N_*(\Vc{X},\Vc{T})$ \\
+    \end{algorithmic}
+\end{algorithm}
+The above algorithm is just a rework of the definition providing
+little extra information. Now let us introduce the partition and how
+the computation can be described in parallel and sequential parts.
+
+As soon as we define $P_+(\Vc{X})_i = \sum_j x_{i,j}$ and $N_*(\Vc{X},
+\Vc{T})_{i,j} = x_{i,j}*t_i$, we have the complete computation of the
+norm.
+
+\begin{algorithm}
+    \caption{$SoftMax(\Vc{X})$ algorithm}
+    \label{alg:l2_2}
+    \begin{algorithmic}
+      \STATE $\Vc{M} = P_{max}(\Vc{X})$\\
+      \STATE $\Vc{T} = P_+(G_{exp}(\Vc{X})*G_{exp}(-\Vc{M}))$\\
+      \STATE $\Vc{T} = \Vc{T}*\exp{\Vc{M}}$    \\
+      \STATE $\Vc{X} = N_*(G_{exp}(\Vc{X}),\Vc{T})$ \\
+    \end{algorithmic}
+\end{algorithm}
+
+When we introduce a new projections $P_{max}(\Vc{X})_i =
+\max{x_{i,*}}$, which is associative, and we normalize the additive
+projection with the result of the new projection, we can see that the
+Softmax computation has the same properties and composition.
+
+Let us go back using the original notations and block the input matrix
+so that to exploit its natural composition.
+
+
+
+\begin{algorithm}
+    \caption{Blocked $3\times 3$}
+    \label{alg:l2_3}
+    \begin{algorithmic}
+      \STATE \[
+        \Vc{X}  =   \begin{pmatrix}
+          \Vc{X}_{1,1} &    \Vc{X}_{1,2}&    \Vc{X}_{1,3}  \\
+          \Vc{X}_{2,1} &    \Vc{X}_{2,2}&    \Vc{X}_{2,3}  \\
+          \Vc{X}_{3,1} &    \Vc{X}_{3,2}&    \Vc{X}_{3,3}  \\
+        \end{pmatrix}
+      \] \\
+      \WHILE{$i$ in [1,2,3] }
+          \STATE $\Vc{T} = \Vc{0} $  \COMMENT{Zero element for $P_+$}
+          \WHILE {$j$ in [1, 2,3] }
+              \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$ \COMMENT{Projection + Reduction}  
+          \ENDWHILE
+          \STATE $\Vc{T}  =   S_+(\Vc{T})$       \COMMENT{Summary, scalar}
+          \WHILE {$j$ in [1,2,3] }
+             \STATE $ \Vc{X}_{i,j} = N_*(\Vc{X}_{i,j},\Vc{T})$  \COMMENT{Normalization}
+          \ENDWHILE
+      \ENDWHILE
+    \end{algorithmic}
+\end{algorithm}
+
+The application of the blocked algorithm for the Euclidean Norm and
+for Softmax requires very little re-work, just remember that softmax
+will require two projections:
+
+\begin{equation} \Vc{M}_0 = -\infty; \Vc{T}_0 = 0 \end{equation}
+\begin{equation} \Vc{M}_{j+1} = max(M_j, P_{max}(\Vc{X}_{i,j}) \end{equation}
+\begin{equation} \Vc{T}_{j+1} = \Vc{T}_j*(exp(-(\Vc{M}_{j+1}-\Vc{M}_j))) + P_+(G_{\exp}(\Vc{X}_{i,j}-\Vc{M}_{j+1})) \end{equation}
+
+But once the obstacle of recognizing the particular projection is
+surmounted, the matching of the proper computation should be
+natural. Also, the layer norm $(x_{i,j} - \mu_i)/\sqrt{\sigma^2_i}$
+(without column scaling) will follow the softmax algorithm because it
+will require the computation of two projections so that average
+($\mu$) and variance ($\sigma^2$) can be computed in a single pass (Algorithm \ref{alg:l2_4}).
+
+\begin{algorithm}
+    \caption{Layer Norm $3\times 3$ with $\gamma, \beta$}
+    \label{alg:l2_4}
+    \begin{algorithmic}
+      \STATE \[
+        \Vc{X}  =   \begin{pmatrix}
+          \Vc{X}_{1,1} &    \Vc{X}_{1,2}&    \Vc{X}_{1,3}  \\
+          \Vc{X}_{2,1} &    \Vc{X}_{2,2}&    \Vc{X}_{2,3}  \\
+          \Vc{X}_{3,1} &    \Vc{X}_{3,2}&    \Vc{X}_{3,3}  \\
+        \end{pmatrix}
+      \] 
+      \STATE \[
+        \Vc{\gamma}  =   \begin{pmatrix}
+          \Vc{\gamma}_{1} &    \Vc{\gamma}_{2}&    \Vc{\gamma}_{3}  \\
+        \end{pmatrix}
+      \] 
+      \STATE \[
+        \Vc{\beta}  =   \begin{pmatrix}
+          \Vc{\beta}_{1} &    \Vc{\beta}_{2}&    \Vc{\beta}_{3}  \\
+        \end{pmatrix}
+      \] 
+      \WHILE{$i$ in [1,2,3] }
+          \STATE $\Vc{T} = \Vc{0} $ 
+          \STATE $\Vc{S} = \Vc{0} $ 
+          \WHILE {$j$ in [1, 2,3] }
+              \STATE $\Vc{T} = \Vc{T} +P_+(\Vc{X}_{i,j})$             \COMMENT{Projection + sum}  
+              \STATE $\Vc{S} = \Vc{T} +P_+(G_{x*x}(\Vc{X}_{i,j}))$ \COMMENT{Projection + sum squares}  
+          \ENDWHILE
+          \STATE $\Vc{T}  =   \Vc{T}/N$       \COMMENT{Summary, scalar}
+          \STATE $\Vc{S}  =   (\Vc{S} - \Vc{T}^2/N)/N$       \COMMENT{Summary, scalar}
+          \WHILE {$j$ in [1,2,3] }
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}-\Vc{T}$  \COMMENT{Normalization Row}
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}/\Vc{S}$   
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}*\gamma_j$   \COMMENT{Normalization Column}
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j} + \beta_j$   
+          \ENDWHILE
+      \ENDWHILE
+    \end{algorithmic}
+\end{algorithm}
+
+
+\section{Computation Modes} 
+Here we discuss the implementation and computation of 
+
+
+
 
 
 
