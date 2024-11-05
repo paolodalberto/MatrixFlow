@@ -36,7 +36,7 @@ double duration;
   //  printf("clock time %e s \n", duration); 
 #endif
 
-#define MEASURE(X,T)   { START_CLOCK;  X;   END_CLOCK; printf("COLD %f \n", duration); \
+#define MEASURE(X,T)   { START_CLOCK;  X;   END_CLOCK; printf("COLD %f s\n", duration); \
     START_CLOCK;  for (int t=0; t<T; t++)  X;   END_CLOCK;		\
   }
 inline static double OPS(SUBMATRIX A) {
