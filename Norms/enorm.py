@@ -140,7 +140,7 @@ class RMSNorm(LayerNorm):
         ## one pass computation of the mu and sigma
         s  = CSUM.value()/N
         try:
-            s = 1/numpy.sqrt(s)
+            s = 1/numpy.sqrt(numpy.finfo(A.matrix.dtype).resolution +s)
         except:
             pdb.set_trace()
         s = Vector(s)
@@ -213,12 +213,12 @@ class InstanceNorm(LayerNorm):
 
         ## one pass computation of the mu and sigma
         mu  = CSUM.value()[0,:]/M
-        mu2 = CSUM.value()[0,:]**2/M
+        mu2 = (CSUM.value()[0,:]/numpy.sqrt(M))**2
         #pdb.set_trace()
         #print(mu)
         
         try:
-            s = 1/numpy.sqrt((CSUM.value()[1,:] - mu2)/M)
+            s = 1/numpy.sqrt(numpy.finfo(A.matrix.dtype).resolution +(CSUM.value()[1,:] - mu2)/M)
         except:
             pdb.set_trace()
         #print(s)
@@ -244,9 +244,9 @@ if __name__ == "__main__":
 
     #import pdb
     shape =  (512,4096)
-    dt = numpy.float64
+    dt = numpy.float32
 
-    if False:
+    if True:
         A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0
         #pdb.set_trace()
@@ -285,7 +285,7 @@ if __name__ == "__main__":
         N.comp(AA,GGB)
         
         var = numpy.average(A**2,axis=-1)
-        s = 1/numpy.sqrt(var)
+        s = 1/numpy.sqrt(numpy.finfo(A.dtype).resolution +var)
         
         
         R1 = A*s[:,None]*Gamma + Beta
@@ -302,11 +302,18 @@ if __name__ == "__main__":
         pdb.set_trace()
     if True:
         ## instance Norm
-        shape =  (4096,512)
-        A = numpy.random.rand(*shape).astype(dt)
+
+        shape =  (512,4096)
+        A = numpy.random.rand(*shape).astype(dt).transpose()
+        shape =  A.shape
         A1 = A*1.0 + 0.0
-        Gamma = numpy.random.rand(shape[1]).astype(dt)
-        Beta = numpy.random.rand(shape[1]).astype(dt)
+        if False:
+            Gamma = numpy.random.rand(shape[1]).astype(dt)
+            Beta = numpy.random.rand(shape[1]).astype(dt)
+        else:
+            Gamma = numpy.ones(shape[1]).astype(dt)
+            Beta = numpy.zeros(shape[1]).astype(dt)
+            
         GB = numpy.zeros((2,shape[1])).astype(dt)
         GB[0,:] = Gamma
         GB[1,:] = Beta
@@ -315,7 +322,7 @@ if __name__ == "__main__":
         #Computation using numpy
         mu = numpy.average(A,axis=0)
         var = numpy.var(A,axis=0)
-        s = 1/numpy.sqrt(var)
+        s = 1/numpy.sqrt(numpy.finfo(A.dtype).resolution +var)
         
         mu = mu*s
         R1 = (A*s-mu)*Gamma + Beta

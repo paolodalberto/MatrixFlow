@@ -118,7 +118,8 @@ class Norm :
     ## base normalization of a matrix + factor T  (Kernel computation)
     def pass_two(self, A:Matrix, T:Matrix):
         L = self.A.shape()[1] if self.A else A.shape()[1]
-        TT = Vector(1/numpy.sqrt(T.vector/L)) # average and sqrt
+        TT = Vector(1/numpy.sqrt(
+            numpy.finfo(A.matrix.dtype).resolution + T.vector/L)) # average and sqrt
         self.N(A, TT)
         return A
 
@@ -417,9 +418,11 @@ class LayerNorm(Norm):
 
         ## one pass computation of the mu and sigma
         mu  = CSUM.value()[0,:]/N
-        mu2 = CSUM.value()[0,:]**2/N
+        mu2 = (CSUM.value()[0,:]/numpy.sqrt(N))**2
+
         try:
-            s = 1/numpy.sqrt((CSUM.value()[1,:] - mu2)/N)
+            eps = numpy.finfo(A.matrix.dtype).resolution
+            s = 1/numpy.sqrt(eps +(CSUM.value()[1,:] - mu2)/N)
         except:
             pdb.set_trace()
         mu = Vector(-mu*s)
@@ -542,7 +545,7 @@ if __name__ == "__main__":
 
     #import pdb
     shape =  (512,4096)
-    dt = numpy.float64
+    dt = numpy.float16
 
     if False:
         ## Euclidean Norm !
@@ -555,7 +558,7 @@ if __name__ == "__main__":
         N.comp(Matrix(A))
         
         ## computation using numpy
-        M = 1/numpy.sqrt(numpy.sum(A1**2, axis=-1)/A1.shape[1])
+        M = 1/numpy.sqrt(numpy.finfo(A.dtype).resolution + numpy.sum(A1**2, axis=-1)/A1.shape[1])
         R1 = A1*M[:,None]
         print("MAX ERROR NORM", numpy.max(numpy.fabs(R1-A)))
         pdb.set_trace()
@@ -572,8 +575,13 @@ if __name__ == "__main__":
         
         A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0 + 0.0
-        Gamma = numpy.random.rand(shape[1]).astype(dt)
-        Beta  = numpy.random.rand(shape[1]).astype(dt)
+        if False:
+            Gamma = numpy.random.rand(shape[1]).astype(dt)
+            Beta  = numpy.random.rand(shape[1]).astype(dt)
+        else:
+            Gamma = numpy.ones(shape[1]).astype(dt)
+            Beta  = numpy.zeros(shape[1]).astype(dt)
+            
         GB = numpy.random.rand(2,A.shape[1]).astype(dt)
         GB[0,:] = Gamma
         GB[1,:] = Beta
@@ -582,7 +590,7 @@ if __name__ == "__main__":
         ## computation using numpy 
         mu  = numpy.average(A1,axis=-1)
         var = numpy.var(A1,axis=-1)
-        s = 1/numpy.sqrt(var)
+        s = 1/numpy.sqrt(numpy.finfo(A.dtype).resolution +var)
         
         mu = mu*s
         R1 = (A1*s[:,None]-mu[:, None])*Gamma + Beta
