@@ -406,12 +406,12 @@ computations).
 
 The small size of the computation that can be done as unit and the HW
 support for the reduction makes this computation
-appealing. Numerically, the binary three computation make the
+appealing. Numerically, the binary three computation makes the
 computation balanced and well partitioned. If there is no use of high
 precision accumulators this will have numerical advantages. That is, a
 balanced binary tree with $N$ elements has the longest addition path
 length of only $K = \log_2(N)$ and the fish spine tree has $K = N-1$
-and for additions we accumulate an error of $O(K)$. 
+and for additions we accumulate an error of $O(K)$.
 
 For a Layer Norm of size $512 \times 768$ on a MI100 with 1.2 TB/s
 HBM2 we can achieve 9 us (microseconds) latency (bandwidth utilization
@@ -466,7 +466,7 @@ Caches (sum of all):
 \end{verbatim} }
 we can achieve 269 us.
 
-\section{AIE Tiling generation and validation}
+\section{AIE Core computation, Tiling generation, and validation}
 As matter of fact, we use float 64bit precision in the code generation
 presented in this repository. However, the AIE instruction set has
 vector operations per core (like GPU), for int8, int16, bfloat16 and
@@ -478,12 +478,16 @@ four core L1.
 The reduction using GPU style codes is possible and encouraged for
 each core internally but there is no simple equivalent for extra-core
 reduction. We suggest a Norm computation on AIE similar to the CPU in
-the sense that we use the memory hierarchy to stream rows and
-accumulate in core the projections. Then, we do another pass. The main
-difference that the data movement has to be orchestrated explicitly
-because there is not hardware assisted data replacement policy.
+the sense that we use the memory hierarchy to stream row partitions
+and accumulate in core the projections. Then, we do another pass. The
+main difference that the data movement has to be orchestrated
+explicitly because there is not hardware assisted data replacement
+policy.
 
-Let us rewrite the blocked algorithm here
+Let us rewrite the blocked algorithm here once again to show the
+logical division of the computation but we want to wraw attention to
+the same inner loop reading the input.
+
 {\small \begin{algorithm}
     \caption{Blocked $3\times 3$}
     \label{alg:l2_5}
@@ -510,9 +514,21 @@ Let us rewrite the blocked algorithm here
     \end{algorithmic}
 \end{algorithm} }
 
-We want to focus on the loops for the Reduction and Normalization. The
-loops read the same input in the same order and with the same
-partition. We highlight this by introducing a repetition loop. 
+
+\subsection{Core computation}
+Take the prospective of a core $C_i$ that, somehow, can access from a
+stream of data a block $\Vc{X_{i,k}}$. In a CPU implementation, the
+core starts the reading of the block by a load and the HW may go as
+far the OS page to procure the data. By the AIE programming model,
+imagine we create a stream where $\Vc{X_{i,1}}$ ... $\Vc{X_{i,N}}$ is
+send through and it is repeated twice, we call the location where data
+arrives $L_1$.  The core just need to wait for the block, release the
+block when done, and wait for the next. Now by literally counting, the
+core knows when to do the projection, the summary, and the
+normalization. The Algorithm \ref{alg:l2_6} provides a clear boundary
+of the core computation as a kernel and how the functionality is based
+on counting the number of partitions read and when to write.
+
 
 {\small \begin{algorithm}
     \caption{Blocked $3\times 3$}
@@ -533,6 +549,115 @@ partition. We highlight this by introducing a repetition loop.
       \ENDWHILE
     \end{algorithmic}
 \end{algorithm} }
+
+Using a common terminology for the AIE programming: $r$ is the
+repetition, $\Vc{X}$ is the buffer, $\Vc{X}_{i,k}$ is the tile, and
+$\Vc{X_{i,1}}$ ... $\Vc{X_{i,N}}$ is the (time) traversal of the
+buffer by tiles with the specified repetition. In this particular
+norm, Projection and Reduction require the same memory foot print
+because they both read $\Vc{X_{i,N}}$ and only one write
+$\Vc{X_{i,N}}$. If we introduce column normalization such as in
+Algorithm \ref{alg:l2_4}, the normalization pass will require to read
+$\Vc{X_{i,k}}$, $\gamma_k$, and $\beta_k$. We will address space
+constraints and tiling in the next section.
+
+\subsection{Tiling generation}
+\singlefigure{0.50}{AIE.png}{4x4 AIE representation}{fig:aie}
+
+Let us start with our interpretation of tiling by using an abstract
+representation of the memory hierarchy and connections as in Figure
+\ref{fig:aie}: L3 = DDR = infinity, L2 is composed of four memtile of
+512KB, and each memtile has a connection to one column of cores and
+one different connection to a row. For this paper, we assume that the
+connections are broadcasts: the same data is broadcast to all cores and
+the core will select a subpart. Each Core has eight banks of 8KB each
+composing the lowest level L1, we give two banks for inputs for ping
+pong, two for weights, two for outputs, and two banks for Temporary
+Space.
+
+Intuitively, Tiling is a {\em spatial} and a {\em temporal}
+partition. Where, partition describe a way to take a matrix and split
+into parts. 
+
+\begin{definition}
+  We assume a layout: row major.  Consider a matrix $\Vc{X} \in
+  \R^{M\times N}$, a row partition is easily specified by a offset
+  address.
+  \begin{equation}
+    [\Vc{X} ]_{r=4} = \
+    \begin{pmatrix}
+      \Vc{X}_1  \\
+      \Vc{X}_2  \\
+      \Vc{X}_3  \\
+      \Vc{X}_4  \\
+    \end{pmatrix}\\
+  \end{equation}
+  then Address($\Vc{X}_i$) = $(i-1)*\frac{M}{4}*N$ and we could easily
+  represent this as a $\dot\sum_i^r \Vc{X}^i$.
+  \begin{equation}
+    [\Vc{X} ]_{c=4} = \
+    \begin{pmatrix}
+      \Vc{X}_1  & \Vc{X}_2  &  \Vc{X}_3  &   \Vc{X}_4  \\
+    \end{pmatrix}
+  \end{equation}
+  then Address($\Vc{X}_i$) = $(i-1)*\frac{N}{4}$ and we could easily
+  $\dot\sum_i^c \Vc{X}^i$.  This represent a {\bf spatial partition}, each
+  partition has a buffer $\Vc{X}^i$ and each is independent.
+\end{definition}
+
+
+\begin{definition}
+  Consider a buffer $\Vc{X}^k$ and partition it into tiles
+  $\Vc{X}_{i,j}$ and the temporal partition $\Vc{X}^k =
+  \sum_{i,j}^{rc}\Vc{X}^k_{i,j}$. Think of a stream where
+  $\Vc{X}^k_{i,j}$ is dump into in order so that the whole buffer
+  eventually has been touched/transfer ($\sum_{i}^c\Vc{X}^k_{i}$ by
+  column and $\sum_{i}^r\Vc{X}^k_{i}$ by row).
+\end{definition}
+
+\begin{definition}
+  The L3 to L2 traversal of a matrix $\Vc{X}$ is the composition of a
+  spatial and temporal partition: For example, $T(\Vc{X}) =
+  \dot\sum_k^r \Vc{X}^k = \dot\sum_k^r\sum_{i}^r\Vc{X}^k_{i}$.
+  $\Vc{X}$ is the original buffer, there are four spatial tiles
+  $\Vc{X}^k$, each is the buffer that will be streamed by temporal
+  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ with
+  further split by row. ($\sum_{i}^c\Vc{X}^k_{i}$ by column or both
+  $\sum_{i,j}^{rc}\Vc{X}^k_{i,j}$).
+\end{definition}
+
+\begin{definition}
+  The L3 to L2 traversal of a matrix $\Vc{X}$ is the composition of a
+  spatial and temporal partition: For example, $T(\Vc{X}) =
+  \dot\sum_k^r \Vc{X}^k = \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i}$.
+  $\Vc{X}$ is the original buffer, there are four spatial tiles
+  $\Vc{X}^k$, each is the buffer that will be streamed by temporal
+  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ (by row and by row)
+\end{definition}
+A L3 to L2 traversal is valid if the tile size fits L2 (without
+context and without double buffering). More constraints are introduced
+when more information are available. For Norms we need double
+buffering and we stream at very least $\Vc{X}$ and the output of the
+Norm $\dot{\Vc{X}}$
+
+
+In general a complete tiling for L3, L2, and L1 could be summarized by
+\begin{equation}
+T(\Vc{X}) = \dot\sum_k^r \Vc{X}^k =
+\dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i} =
+\dot\sum_k^r\sum_{i}^{r}\dot\sum_l^r\Vc{X}^{k,l}_{i} =
+\dot\sum_k^r\sum_{i}^r\dot\sum_l^r\sum_{m}^r\Vc{X}^{k,l}_{i,m}.
+\end{equation}
+
+But because the nature of the broadcast, there is not second spatial
+partition
+\begin{equation}
+\dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}.
+\end{equation}
+
+Because of the nature of the computation and its associativity of the
+projection, when any spatial or temporal partition is by column, then
+all the following are by column.
 
 
 
