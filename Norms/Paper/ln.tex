@@ -485,7 +485,7 @@ explicitly because there is not hardware assisted data replacement
 policy.
 
 Let us rewrite the blocked algorithm here once again to show the
-logical division of the computation but we want to wraw attention to
+logical division of the computation but we want to draw attention to
 the same inner loop reading the input.
 
 {\small \begin{algorithm}
@@ -501,7 +501,7 @@ the same inner loop reading the input.
       \] \\
       \WHILE{$i$ in [1,2,3] \# Independent } 
           \STATE $\Vc{T} = \Vc{0} $  \COMMENT{ \# Zero element for $P_+$}
-          \WHILE {$j$ in [1, 2,3] \# Projection }
+          \WHILE {$j$ in [1,2,3] \# Projection }
               \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$ \COMMENT{   \# Reduction}  
           \ENDWHILE
           \STATE --------------------------------     
@@ -561,48 +561,53 @@ Algorithm \ref{alg:l2_4}, the normalization pass will require to read
 $\Vc{X_{i,k}}$, $\gamma_k$, and $\beta_k$. We will address space
 constraints and tiling in the next section.
 
-\subsection{Tiling generation}
+\subsection{Tiling}
+\label{sec:tiling}
 \singlefigure{0.50}{AIE.png}{4x4 AIE representation}{fig:aie}
 
 Let us start with our interpretation of tiling by using an abstract
 representation of the memory hierarchy and connections as in Figure
-\ref{fig:aie}: L3 = DDR = infinity, L2 is composed of four memtile of
-512KB, and each memtile has a connection to one column of cores and
-one different connection to a row. For this paper, we assume that the
-connections are broadcasts: the same data is broadcast to all cores and
-the core will select a subpart. Each Core has eight banks of 8KB each
-composing the lowest level L1, we give two banks for inputs for ping
-pong, two for weights, two for outputs, and two banks for Temporary
-Space.
+\ref{fig:aie}: L3 = DDR = infinity, L2 is composed of four mem-tiles
+of 512KB, and each mem-tile has a connection to one column of cores
+and one different connection to a row. Here, we assume that the
+connections are broadcasts: the same data is broadcast to all cores
+and the core will select a subpart (if it likes). Each core has eight
+banks of 8KB each composing the lowest level L1, we give two banks for
+inputs for ping pong, two for weights, two for outputs, and two banks
+for Temporary Space. We use this information in the following Tiling
+generation section \ref{} 
 
 Intuitively, Tiling is a {\em spatial} and a {\em temporal}
-partition. Where, partition describe a way to take a matrix and split
-into parts. 
+partition. Where, a partition describes a way to take a matrix and
+split into (non-overlapping) parts in order to cover the whole
+original matrix and in principle move it. We assume a row-major
+layout.
 
 \begin{definition}
-  We assume a layout: row major.  Consider a matrix $\Vc{X} \in
-  \R^{M\times N}$, a row partition is easily specified by a offset
-  address.
+   Consider a matrix $\Vc{X} \in
+  \R^{M\times N}$, 
   \begin{equation}
-    [\Vc{X} ]_{r=4} = \
+    \Vc{X}  = \
     \begin{pmatrix}
       \Vc{X}_1  \\
       \Vc{X}_2  \\
       \Vc{X}_3  \\
       \Vc{X}_4  \\
-    \end{pmatrix}\\
+    \end{pmatrix} = \dot\sum_i^r \Vc{X}^i
   \end{equation}
-  then Address($\Vc{X}_i$) = $(i-1)*\frac{M}{4}*N$ and we could easily
-  represent this as a $\dot\sum_i^r \Vc{X}^i$.
+  a row partition is easily specified by an offset address
+  Address($\Vc{X}_i$) = $(i-1)\frac{M}{4}N$ and the tiles are in
+  contiguous memory addresses.
   \begin{equation}
-    [\Vc{X} ]_{c=4} = \
+    \Vc{X}  = \
     \begin{pmatrix}
       \Vc{X}_1  & \Vc{X}_2  &  \Vc{X}_3  &   \Vc{X}_4  \\
-    \end{pmatrix}
+    \end{pmatrix} = \dot\sum_i^c \Vc{X}^i
   \end{equation}
-  then Address($\Vc{X}_i$) = $(i-1)*\frac{N}{4}$ and we could easily
-  $\dot\sum_i^c \Vc{X}^i$.  This represent a {\bf spatial partition}, each
-  partition has a buffer $\Vc{X}^i$ and each is independent.
+  then Address($\Vc{X}_i$) = $(i-1)\frac{N}{4}$ and the tiles are
+  stored in a strided space.  These represent {\bf spatial
+    partitions}, each partition has a buffer $\Vc{X}^i$ and each is
+  independent.
 \end{definition}
 
 
@@ -610,21 +615,12 @@ into parts.
   Consider a buffer $\Vc{X}^k$ and partition it into tiles
   $\Vc{X}_{i,j}$ and the temporal partition $\Vc{X}^k =
   \sum_{i,j}^{rc}\Vc{X}^k_{i,j}$. Think of a stream where
-  $\Vc{X}^k_{i,j}$ is dump into in order so that the whole buffer
-  eventually has been touched/transfer ($\sum_{i}^c\Vc{X}^k_{i}$ by
-  column and $\sum_{i}^r\Vc{X}^k_{i}$ by row).
+  $\Vc{X}^k_{i,j}$ is streamed in order so that the whole buffer
+  eventually has been touched/transfer. There is
+  $\sum_{i}^c\Vc{X}^k_{i}$ by column and $\sum_{i}^r\Vc{X}^k_{i}$ by
+  row temporal partition.
 \end{definition}
 
-\begin{definition}
-  The L3 to L2 traversal of a matrix $\Vc{X}$ is the composition of a
-  spatial and temporal partition: For example, $T(\Vc{X}) =
-  \dot\sum_k^r \Vc{X}^k = \dot\sum_k^r\sum_{i}^r\Vc{X}^k_{i}$.
-  $\Vc{X}$ is the original buffer, there are four spatial tiles
-  $\Vc{X}^k$, each is the buffer that will be streamed by temporal
-  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ with
-  further split by row. ($\sum_{i}^c\Vc{X}^k_{i}$ by column or both
-  $\sum_{i,j}^{rc}\Vc{X}^k_{i,j}$).
-\end{definition}
 
 \begin{definition}
   The L3 to L2 traversal of a matrix $\Vc{X}$ is the composition of a
@@ -632,16 +628,19 @@ into parts.
   \dot\sum_k^r \Vc{X}^k = \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i}$.
   $\Vc{X}$ is the original buffer, there are four spatial tiles
   $\Vc{X}^k$, each is the buffer that will be streamed by temporal
-  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ (by row and by row)
+  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ (by row, by column,  and both)
 \end{definition}
+
+
 A L3 to L2 traversal is valid if the tile size fits L2 (without
 context and without double buffering). More constraints are introduced
 when more information are available. For Norms we need double
 buffering and we stream at very least $\Vc{X}$ and the output of the
-Norm $\dot{\Vc{X}}$
+Norm $\Vc{Y}$
 
 
-In general a complete tiling for L3, L2, and L1 could be summarized by
+In general a complete tiling/traversal for L3, L2, and L1 could be
+summarized by loops by
 \begin{equation}
 T(\Vc{X}) = \dot\sum_k^r \Vc{X}^k =
 \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i} =
@@ -655,9 +654,133 @@ partition
 \dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}.
 \end{equation}
 
-Because of the nature of the computation and its associativity of the
-projection, when any spatial or temporal partition is by column, then
-all the following are by column.
+\begin{itemize}
+\item Because of the nature of the computation and its associativity
+  of the projection, when any spatial or temporal partition is by
+  column, then all the following are by column. Intuitively, when we
+  start the associative computation of the projection and the partial
+  projection is in a set of registers, we would like to finish the
+  computation reusing the registers completely. Otherwise we need more
+  temporary space, we need to distinguish what part we did not reach
+  completion, and temporal locality is harder to track.
+\item If we observe just the tiling and the first partition using
+  split by column, this split marks the beginning of temporal reuse,
+  the computation will come back for the normalization and this split
+  will be {\em repeated} twice.
+
+\item this implies reuse in L1 
+  \begin{equation}
+    \begin{matrix}
+    \dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}, & 
+    \dot\sum_k^r\sum_{i}^r\sum_{m}^C\Vc{X}^{k}_{i,m}, & 
+    \dot\sum_k^r\sum_{i}^r\sum_{m}^{RC}\Vc{X}^{k}_{i,m}. \\
+    \end{matrix}
+  \end{equation}
+  
+\item   this implies reuse in L2
+  \begin{equation}
+    \begin{matrix}
+    \dot\sum_k^r\sum_{i}^{C}\sum_{m}^c\Vc{X}^{k}_{i,m}, & 
+    \dot\sum_k^r\sum_{i}^{RC}\sum_{m}^c\Vc{X}^{k}_{i,m}. \\
+    \end{matrix}
+  \end{equation}
+
+\item   this implies reuse in L3 
+  \begin{equation}
+    \dot\sum_k^{C}\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}.
+  \end{equation}
+\end{itemize}
+
+The AIE traversal implementation is more like the notation above. That
+is, the inner loops describe only one sub partition simplifying the
+implementation and enforcing a partition that has same shapes.
+
+However, The logical partitioning of any matrix is a tool completely
+general and with some experience, is applicable for different levels
+and connections. We use it for the representation of bilinear matrix
+multiplication algorithms in the past.
+
+In practice, we implement Tiling as recursive function, and the data
+structure is like a tree once built and unfolded.
+\begin{equation}
+\dot\sum_k^r\sum_{i}^r\sum_{m}^r T(\Vc{X}^{k}_{i,m}).
+\end{equation}
+
+
+\subsection{Tiling generation}
+\label{sec:tiling-generation}
+There are always computation and hardware constraints that enforce
+granularity in the shape and size of the tiles. At this time we do
+not aim to an optimal tiling but we explore and present
+constraints-based heuristics. Two main ideas are applied: a top down
+partition and double buffering is preferred.
+
+We have a fit function 
+
+
+
+{\tiny
+  \begin{algorithm}
+    \caption{Fit : Tiling, L, SplitFunction, multiplicity, granularity }
+    \label{alg:fit}
+    \begin{algorithmic}
+      \STATE Components = Tiling.spatial-parts    \# list of matrices 
+      \WHILE{ c in Components}
+        \STATE T  = None;  t = 1;         q = True
+        \WHILE{ q is True}
+        \IF {t*gran is too large}   
+            \STATE q = False; continue
+        \ENDIF
+        \IF {t*gran has reminder }  
+            \STATE continue
+        \ENDIF
+        \STATE t = SplitFunction(c,t*gran) 
+        \STATE A = t[0]   \COMMENT{The first is the largest}
+        \IF{A is None}
+        \STATE q = False
+        \ELSIF {multiplicity*A.space()<L} 
+        \STATE T = A
+        \ENDIF
+        \STATE t+=1
+        \ENDWHILE
+      \STATE c = Tiling(c, T) 
+      \ENDWHILE
+    \end{algorithmic}
+  \end{algorithm}
+}
+
+We choose the largest partition for which the tiles size fit the level
+capacity L with or without double buffering (multiplicity=1 or
+2). Making sure that the size of the tile has a proper granularity is
+to make sure that the following tiles may have the same granularity
+satisfied without awkward reminder making the index computation and
+problem size not properly balanced.
+
+In general, we start by trying splitting the computation by row
+$\dot\sum_k^r\sum_{i}^r T(\Vc{X}^{k}_{i})$. We fit recursively the
+Tiling. If it does not fit, then we try by column
+$\dot\sum_k^c\sum_{i}^c T(\Vc{X}^{k}_{i})$ and we know that the rest
+will be by column.
+
+
+What is the implication of the latter case, when we start splitting
+temporally by columns? We split the matrix in space by row in L3 into
+4 parts. Each spatial partition will transfer at least a complete
+column, this will be transfer to L2 as it is, and to L1 (broad cast).
+L1 is 8 KB of data, if we assume that each element is two Bytes, L1
+and double buffering can hold 4*K elements, if we have a single
+projection, we are good to go and we can handle a $M=16K$ elements.
+For layer norm, we need to keep two projections and thus the maximum
+size is 2*K read elements and thus ($M = 8K$). For even larger, we
+need to split the computation into several Layer Norms.
+
+
+
+
+
+
+
+
 
 
 
