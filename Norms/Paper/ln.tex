@@ -811,11 +811,11 @@ for k in K:
 \begin{verbatim}
 # ----
 for k in K: 
-    T = 0
     for i in I do: 
+        T = 0 # the first time we start the projection      
         for m in J: 
             T+= Projection(X[k,i,m]) 
-        T = S(T)
+        T = S(T) # the first time we start the normalization
         for m in J: 
             X[k,i,m] = X[k,i,m]/T
 # ----
@@ -824,11 +824,11 @@ for k in K:
 \begin{verbatim}
 # ----
 for k in K: 
-    T = 0
+    T = 0# the first time we start the projection 
     for i in I do: 
         for m in J: 
             T+= Projection(X[k,i,m]) 
-    T = S(T)
+    T = S(T)  # the first time we start the normalization
     for i in I do: 
         for m in J: 
             X[k,i,m] = X[k,i,m]/T
@@ -837,12 +837,12 @@ for k in K:
 \item $\dot\sum_k^c\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}$. 
 \begin{verbatim}
 # ----
-T=0
+T=0 # the first time we start the projection
 for k in K: 
     for i in I do: 
         for m in J: 
             T+= Projection(X[k,i,m]) 
-T = S(T)
+T = S(T) # the first time we start the normalization
 for k in K: 
     for i in I do: 
         for m in J: 
@@ -852,56 +852,27 @@ for k in K:
 \end{itemize}
 
 In practice, we formulate the computation as a recursive descent visit
-into the tiling data structure. Also whether the computation is
-parallel like by row or by column (instance norm) is again property of
-the tiling and the way we split the computation.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+into the tiling data structure. Instance Norm has parallel computation
+by columns and other Norms  are by row. 
 
 
 
 
 \section{Conclusion}
+In this work, we show that Norms can be abstracted in such a way that
+mathematical and computation properties can be easily represented.
 
+\begin{enumerate}
+  \item We show that Tiling (for AIE) of every Norm can be generated
+    by a single heuristics.
+  \item The tiling is correct,
+  \item We can perform actual computations to validate in practice the
+    solution
+  \item the code for this project shows that the analysis help in the
+    writing of concise codes.
+\end{enumerate}
 
   
-
-
-
-
-
-
 
 %\input{conclusion.tex}
 
