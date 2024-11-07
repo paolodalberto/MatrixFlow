@@ -703,7 +703,7 @@ multiplication algorithms in the past.
 In practice, we implement Tiling as recursive function, and the data
 structure is like a tree once built and unfolded.
 \begin{equation}
-\dot\sum_k^r\sum_{i}^r\sum_{m}^r T(\Vc{X}^{k}_{i,m}).
+  T[L3\rightarrow L2](X) = \dot\sum_k^r\sum_{i}^rT[L2\rightarrow L1](\Vc{X}^{k}_{i}).
 \end{equation}
 
 
@@ -773,6 +773,88 @@ projection, we are good to go and we can handle a $M=16K$ elements.
 For layer norm, we need to keep two projections and thus the maximum
 size is 2*K read elements and thus ($M = 8K$). For even larger, we
 need to split the computation into several Layer Norms.
+
+\subsection{Tiling: $gamma$ and $beta$ }
+Notice in Algorithm \ref{alg:l2_4} and \ref{alg:l2_6}, the input is
+$\Vc{X}_{i,j}$, it is read twice, it is written once and every
+normalized $\Vc{X}_{i,j}*\gamma_j + \beta_j$. For a broad cast
+communication $\Vc{X}_{i,j}$ takes at least space $4\times k$, we need
+$2\times k$ for the parameters $\gamma$ and $\beta$, and the partial
+results for the reduction (for these norms) is about $2$. We can see
+that the tiling of the $\Vc{X}$ really drives the tiling of the the
+weights. In fact, consider
+\begin{equation}
+\dot\sum_k^x\sum_{i}^y\sum_{m}^z\Vc{X}^{k}_{i,m}.
+\end{equation}
+then the column partition will be the same
+\begin{equation}
+  \dot\sum_k^x\sum_{i}^y\sum_{m}^z\Vc{{\gamma|\beta}}^{k}_{i,m}.
+\end{equation}
+
+\subsection{Tiling: Computation Validation}
+For simplicity, assume we have a Tiling and remember that the
+temporary space for the partial projection computation will be
+actually done in core without spills.
+\begin{itemize}
+\item $\dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+for k in K: 
+    for i in I do: 
+        for m in J: 
+            T= Projection(X[k,i,m]) 
+            T = S(T)
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim} 
+\item $\dot\sum_k^r\sum_{i}^r\sum_{m}^c\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+for k in K: 
+    T = 0
+    for i in I do: 
+        for m in J: 
+            T+= Projection(X[k,i,m]) 
+        T = S(T)
+        for m in J: 
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim} 
+\item $\dot\sum_k^r\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+for k in K: 
+    T = 0
+    for i in I do: 
+        for m in J: 
+            T+= Projection(X[k,i,m]) 
+    T = S(T)
+    for i in I do: 
+        for m in J: 
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim} 
+\item $\dot\sum_k^c\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+T=0
+for k in K: 
+    for i in I do: 
+        for m in J: 
+            T+= Projection(X[k,i,m]) 
+T = S(T)
+for k in K: 
+    for i in I do: 
+        for m in J: 
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim}
+\end{itemize}
+
+In practice, we formulate the computation as a recursive descent visit
+into the tiling data structure. Also whether the computation is
+parallel like by row or by column (instance norm) is again property of
+the tiling and the way we split the computation.
 
 
 
