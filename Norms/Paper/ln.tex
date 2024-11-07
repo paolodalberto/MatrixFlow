@@ -100,29 +100,29 @@
 
   Layer Norms are important tools in today's AI systems.  Also, they
   are the little pesky layers that inference-engine tools have often
-  problems in either fusing with other layers for speed-up or
-  introducing of numerical unwanted oddities.  Norms have linear
-  complexity, they are communication bound, they require to read the
-  input at least twice, and there is a satisfying asymmetry of the
-  computation (i.e., row Gaussian normalization and column scaling).
+  problems in either fusing them with other layers for speed-up or
+  because they introduce numerical unwanted oddities at low precision.
+  Norms have linear complexity. That is, they are communication bound,
+  they require to read the input at least twice, and there is a
+  satisfying and contrasting asymmetry of the computation (i.e., row
+  Gaussian normalization and column scaling).
   
-  Here, we formalize the norms using a unified formalism. We do so to
-  clarify the general computation, the opportunity to fuse other
-  computations, to highlight non obvious properties and give an
-  unified computation model. So we can generate consistent and correct
-  code for our AIE AMD computes.
+  Here, we unify the norm formalism. We want to clarify the general
+  computation, the opportunities for fusion, and numerical
+  properties. So we can generate consistent and correct code for our
+  AIE AMD computes.
   
 \end{abstract}
 
 \maketitle
 
-\section{A few  definitions} 
+\section{Definitions and computations } 
 \label{sec:introduction}
 
 A matrix is $\Vc{X} \in \R^{M \times N}$ with $M$ rows and $N$ columns
-and a single scalar element is $x_{i,j}$ with obvious bounds. A
-vectors is $\Vc{V} \in \R^{M}$ with scalar element $v_i$.  Last, a
-scalar is $\alpha \in \R$.
+and we represent a single scalar element as $x_{i,j}$ with obvious
+bounds. A vectors is $\Vc{V} \in \R^{M}$ with scalar element $v_i$.
+Last, a scalar is $\alpha \in \R$.
 
 
 A matrix norm is a two-part computation. We have a {\em projection}
@@ -159,13 +159,13 @@ f_i = (x_{i,1}) + (\sum_{j=2}^N x_{i,j}) = (\sum_{j=1}^{N-1} x_{i,j}) + (x_{i,N}
 \end{definition}
 The definition is a row projection.  There are norms where the
 projection is by column. The formalism can easily take care of that by
-specifying a direction (i.e., the code does introduce) or just
-considering the transpose of the matrix.  Let us digest our formalism
-a little.  As we will read our matrix, we are going to maintain the
-order and projecting of matrix $\Vc{X}$ (row elements $x_{i,*}$). We
-do not need the projection to be commutative in general but all the
-projections of interests are. Also, we require the computation of
-multiple projections for the computation of the normalization factor.
+specifying a direction (i.e., in the code we introduce it).  Let us
+digest our formalism a little.  As we will read our matrix, we are
+going to maintain the order and projecting of matrix $\Vc{X}$ (row
+elements $x_{i,*}$). We do not need the projection to be commutative
+in general but all the projections of interests are. Also, we require
+the computation of multiple projections for the computation of the
+normalization factor.
 
 We abuse the notation of the symbol $+$ in the associative expression
 $f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j}))$, in the sense that the
@@ -244,11 +244,11 @@ We introduce the last definiition, a matrix partition.
   \end{equation}
 \end{definition}
 If we want to take a matrix $\Vc{X} \in \R^{M\times N}$ and normalize
-its row by a square norm see Algorithm \ref{alg:l2}. As we define
-$P_+(\Vc{X})_i$ as the summation $\sum_j x_{i,j}$ and $N_*(\Vc{X},
-\Vc{T})_{i,j} = x_{i,j}*t_i$, we have the complete computation of the
-norm : $f_i = \sqrt{\frac{1}{N}\sum_{j=1}^N x_{i,j}^2}$ and $x_{i,j}
-= \frac{x_{i,j}}{f_i}$.
+its rows by a square norm $||x||_2$, see Algorithm \ref{alg:l2}. As we
+define $P_+(\Vc{X})_i$ as the summation $\sum_j x_{i,j}$ and
+$N_*(\Vc{X}, \Vc{T})_{i,j} = x_{i,j}*t_i$, we have the complete
+computation of the norm : $f_i = \sqrt{\frac{1}{N}\sum_{j=1}^N
+  x_{i,j}^2}$ and $x_{i,j} = \frac{x_{i,j}}{f_i}$.
 
 \begin{algorithm}
     \caption{$\Vc{X}/||\Vc{X}||_2$ algorithm}
@@ -315,16 +315,23 @@ The application of the blocked algorithm for the Euclidean Norm and
 for Softmax requires very little re-work, just remember that softmax
 will require two projections:
 
-\begin{equation} \Vc{M}_0 = -\infty; \Vc{T}_0 = 0 \end{equation}
-\begin{equation} \Vc{M}_{j+1} = max(M_j, P_{max}(\Vc{X}_{i,j}) \end{equation}
-\begin{equation} \Vc{T}_{j+1} = \Vc{T}_j*(exp(-(\Vc{M}_{j+1}-\Vc{M}_j))) + P_+(G_{\exp}(\Vc{X}_{i,j}-\Vc{M}_{j+1})) \end{equation}
+\begin{center}
+  \begin{tabular}{l}
+    \hline
+    SoftMax associative projections \\
+    \hline 
+    $\Vc{M}_0 = -\infty; \Vc{T}_0 = 0$ \\ 
+    $\Vc{M}_{j+1} = max(M_j, P_{max}(\Vc{X}_{i,j})$ \\
+    $\Vc{T}_{j+1} = \Vc{T}_j*(exp(-(\Vc{M}_{j+1}-\Vc{M}_j))) + P_+(G_{\exp}(\Vc{X}_{i,j}-\Vc{M}_{j+1}))$ \\
+  \end{tabular}
+\end{center}
 
-But once the obstacle of recognizing the particular projection is
-surmounted, the matching of the proper computation should be
-natural. Also, the layer norm $(x_{i,j} - \mu_i)/\sqrt{\sigma^2_i}$
-(without column scaling) will follow the softmax algorithm because it
-will require the computation of two projections so that average
-($\mu$) and variance ($\sigma^2$) can be computed in a single pass (Algorithm \ref{alg:l2_4}).
+Once we recognizing the particular projection, the matching of the
+proper computation should be natural. Also, the layer norm $(x_{i,j} -
+\mu_i)/\sqrt{\sigma^2_i}$ will require the computation of two
+projections so that average ($\mu$) and variance ($\sigma^2$) can be
+computed in a single pass but with two projections (Algorithm
+\ref{alg:l2_4}).
 
 \begin{algorithm}
     \caption{Layer Norm $3\times 3$ with $\gamma, \beta$}
@@ -348,7 +355,7 @@ will require the computation of two projections so that average
         \end{pmatrix}
       \] 
       \WHILE{$i$ in [1,2,3] }
-          \STATE $\Vc{T} = \Vc{0} $ 
+          \STATE $\Vc{T} = \Vc{0} $  
           \STATE $\Vc{S} = \Vc{0} $ 
           \WHILE {$j$ in [1, 2,3] }
               \STATE $\Vc{T} = \Vc{T} +P_+(\Vc{X}_{i,j})$             \COMMENT{Projection + sum}  
@@ -356,7 +363,7 @@ will require the computation of two projections so that average
           \ENDWHILE
           \STATE --------------------------------     
           \STATE $\Vc{T}  =   \Vc{T}/N$       \COMMENT{Summary, scalar}
-          \STATE $\Vc{S}  =   (\Vc{S} - \Vc{T}^2/N)/N$       \COMMENT{Summary, scalar}
+          \STATE $\Vc{S}  =   (\Vc{S} - (\frac{\Vc{T}}{\sqrt{N}})^2)/N$       \COMMENT{Summary, scalar}
           \STATE --------------------------------     
           \WHILE {$j$ in [1,2,3] }
              \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}-\Vc{T}$  \COMMENT{Normalization Row}
@@ -430,13 +437,13 @@ The partition on $\Vc{X}$ will associate a set of row to a
 thread/core. We stream the input rows and we store in the core the
 temporary $T$ (registers), we compute the factor(s), then we stream
 the rows again for the propagation of the normalization factor(s). We
-exploit temporal locality because the largest cache in the memory
-hierarchy containing the rows will be read twice naturally without any
-further assistance. When the computation moves to the next rows, we
-clear the memory hierarch safely. C threads can deploy this strategy
-naturally and without the need to much careful blocking. However,
-threading is heavy and they are really applicable only for very large
-matrices.
+exploit temporal locality because the smallest and fastest cache in
+the memory hierarchy containing the rows will be read twice naturally
+without any further assistance. When the computation moves to the next
+rows, we clear the memory hierarchy safely. C threads can deploy this
+strategy naturally and without the need to much careful
+blocking. However, threading is heavy and they are really applicable
+only for very large matrices.
 
 {\tiny  \begin{verbatim}
 Vendor ID:               AuthenticAMD
@@ -486,10 +493,13 @@ policy.
 
 Let us rewrite the blocked algorithm here once again to show the
 logical division of the computation but we want to draw attention to
-the same inner loop reading the input.
+the same inner loop reading the input. A reminder the temporary
+projections, summary, and normalizing factors will be store in core
+(L1). We will have a section related to the case when and where we
+must spill (to L2).
 
 {\small \begin{algorithm}
-    \caption{Blocked $3\times 3$}
+    \caption{Blocked $3\times 3$ (Projection in L1)}
     \label{alg:l2_5}
     \begin{algorithmic}
       \STATE \[
@@ -519,15 +529,16 @@ the same inner loop reading the input.
 Take the prospective of a core $C_i$ that, somehow, can access from a
 stream of data a block $\Vc{X_{i,k}}$. In a CPU implementation, the
 core starts the reading of the block by a load and the HW may go as
-far the OS page to procure the data. By the AIE programming model,
-imagine we create a stream where $\Vc{X_{i,1}}$ ... $\Vc{X_{i,N}}$ is
-send through and it is repeated twice, we call the location where data
-arrives $L_1$.  The core just need to wait for the block, release the
-block when done, and wait for the next. Now by literally counting, the
-core knows when to do the projection, the summary, and the
-normalization. The Algorithm \ref{alg:l2_6} provides a clear boundary
-of the core computation as a kernel and how the functionality is based
-on counting the number of partitions read and when to write.
+far the OS page to procure the data (page, DRAM Row, L3, L2, L1d). By
+the AIE programming model, imagine we create a stream where
+$\Vc{X_{i,1}}$ ... $\Vc{X_{i,N}}$ is send through and it is repeated
+twice, we call the location where data arrives $L_1$.  The core just
+need to wait for the block, release the block when done, and wait for
+the next. Now by literally counting to $N$, the core knows when to do
+the projection, the summary, and the normalization. The Algorithm
+\ref{alg:l2_6} provides a clear boundary of the core computation as a
+kernel and how the functionality is based on counting the number of
+partitions read and when to write.
 
 
 {\small \begin{algorithm}
@@ -535,10 +546,12 @@ on counting the number of partitions read and when to write.
     \label{alg:l2_6}
     \begin{algorithmic}
       \WHILE{$i$ in [1,2,3] \# Independent } 
-          \STATE $\Vc{T} = \Vc{0} $  \COMMENT{ \# Zero element for $P_+$}
-          \WHILE {$r$ in [1,2] and $j$ in [1, 2, 3] }
+          
+          \WHILE {$r$ in [1,2] followed $j$ in [1, 2, 3] }
              \STATE \COMMENT{ \# Core Computation} 
-             \IF{$r ==1$ }
+             \IF{$r*j==1$ }
+             \STATE $\Vc{T} = \Vc{0} $  \COMMENT{ \# Zero element for $P_+$}
+             \ELSIF{$r ==1$ }
              \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$  
              \ELSIF {$r==2$  and $j==1$}
              \STATE $\Vc{T}  =   S_+(\Vc{T})$      
@@ -614,9 +627,9 @@ layout.
 \begin{definition}
   Consider a buffer $\Vc{X}^k$ and partition it into tiles
   $\Vc{X}_{i,j}$ and the temporal partition $\Vc{X}^k =
-  \sum_{i,j}^{rc}\Vc{X}^k_{i,j}$. Think of a stream where
-  $\Vc{X}^k_{i,j}$ is streamed in order so that the whole buffer
-  eventually has been touched/transfer. There is
+  \sum_{i,j}^{rc}\Vc{X}^k_{i,j}$ (by row and then columns). Think of a
+  stream where $\Vc{X}^k_{i,j}$ is streamed in order so that the whole
+  buffer eventually has been touched/transfer. There is
   $\sum_{i}^c\Vc{X}^k_{i}$ by column and $\sum_{i}^r\Vc{X}^k_{i}$ by
   row temporal partition.
 \end{definition}
@@ -636,11 +649,8 @@ A L3 to L2 traversal is valid if the tile size fits L2 (without
 context and without double buffering). More constraints are introduced
 when more information are available. For Norms we need double
 buffering and we stream at very least $\Vc{X}$ and the output of the
-Norm $\Vc{Y}$
-
-
-In general a complete tiling/traversal for L3, L2, and L1 could be
-summarized by loops by
+Norm $\Vc{Y}$ In general a complete tiling/traversal for L3, L2, and
+L1 could be summarized by loops by
 \begin{equation}
 T(\Vc{X}) = \dot\sum_k^r \Vc{X}^k =
 \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i} =
@@ -648,8 +658,10 @@ T(\Vc{X}) = \dot\sum_k^r \Vc{X}^k =
 \dot\sum_k^r\sum_{i}^r\dot\sum_l^r\sum_{m}^r\Vc{X}^{k,l}_{i,m}.
 \end{equation}
 
-But because the nature of the broadcast, there is not second spatial
-partition
+Note, the second spatial partition is a way to take the matrix in L2,
+split it so that it will feed each core L1 separately, but because we
+use broadcast, there is not second spatial partition and all core
+share the same data:
 \begin{equation}
 \dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}.
 \end{equation}
@@ -689,13 +701,20 @@ partition
   \begin{equation}
     \dot\sum_k^{C}\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}.
   \end{equation}
+
+\item this implies Two separate passes and spill to L2/L3 of
+  $P_+(\Vc{X})$ for which 
+  \begin{equation}
+    \sum_\ell^{r}\dot\sum_k^{C}\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{\ell,i,m}.
+  \end{equation}
 \end{itemize}
 
 The AIE traversal implementation is more like the notation above. That
 is, the inner loops describe only one sub partition simplifying the
-implementation and enforcing a partition that has same shapes.
+implementation and enforcing a partition that has same shapes. Also
+some repetition are not possible 
 
-However, The logical partitioning of any matrix is a tool completely
+However, the logical partitioning of any matrix is a tool completely
 general and with some experience, is applicable for different levels
 and connections. We use it for the representation of bilinear matrix
 multiplication algorithms in the past.
@@ -710,16 +729,11 @@ structure is like a tree once built and unfolded.
 \subsection{Tiling generation}
 \label{sec:tiling-generation}
 There are always computation and hardware constraints that enforce
-granularity in the shape and size of the tiles. At this time we do
-not aim to an optimal tiling but we explore and present
-constraints-based heuristics. Two main ideas are applied: a top down
-partition and double buffering is preferred.
-
-We have a fit function 
-
-
-
-{\tiny
+granularity in the shape and size of the tiles. At this time we do not
+aim to an optimal tiling but we explore and present constraints-based
+heuristics. Two main ideas are applied: a top down partition and
+double buffering is preferred. We have a fit function, see Algorithm
+\ref{algo:fit}.  {\small
   \begin{algorithm}
     \caption{Fit : Tiling, L, SplitFunction, multiplicity, granularity }
     \label{alg:fit}
@@ -730,16 +744,15 @@ We have a fit function
         \WHILE{ q is True}
         \IF {t*gran is too large}   
             \STATE q = False; continue
-        \ENDIF
-        \IF {t*gran has reminder }  
+        \ELSIF {t*gran has reminder }  
             \STATE continue
         \ENDIF
         \STATE t = SplitFunction(c,t*gran) 
-        \STATE A = t[0]   \COMMENT{The first is the largest}
-        \IF{A is None}
-        \STATE q = False
-        \ELSIF {multiplicity*A.space()<L} 
-        \STATE T = A
+        \STATE A = t[0]   \COMMENT{ \# Assume the first partition is the largest}
+        \IF{multiplicity*A.space()>L}
+           \STATE q = False
+        \ELSE 
+           \STATE T = A
         \ENDIF
         \STATE t+=1
         \ENDWHILE
@@ -772,17 +785,22 @@ and double buffering can hold 4*K elements, if we have a single
 projection, we are good to go and we can handle a $M=16K$ elements.
 For layer norm, we need to keep two projections and thus the maximum
 size is 2*K read elements and thus ($M = 8K$). For even larger, we
-need to split the computation into several Layer Norms.
+need to split the computation into several Layer Norms.  Other oddity
+to consider for the space constraints is the addressable space, often
+we need to read at least 4 Bytes (if not 32B) so in L1 we need to read
+at least two columns (reducing $M$).
+
+
 
 \subsection{Tiling: $gamma$ and $beta$ }
 Notice in Algorithm \ref{alg:l2_4} and \ref{alg:l2_6}, the input is
-$\Vc{X}_{i,j}$, it is read twice, it is written once and every
-normalized $\Vc{X}_{i,j}*\gamma_j + \beta_j$. For a broad cast
-communication $\Vc{X}_{i,j}$ takes at least space $4\times k$, we need
-$2\times k$ for the parameters $\gamma$ and $\beta$, and the partial
-results for the reduction (for these norms) is about $2$. We can see
-that the tiling of the $\Vc{X}$ really drives the tiling of the the
-weights. In fact, consider
+$\Vc{X}_{i,j}$, it is read twice, it is written once and normalized
+$\Vc{X}_{i,j}*\gamma_j + \beta_j$. For a broad cast communication
+$\Vc{X}_{i,j}$ takes at least space $4\times k$, we need $2\times k$
+for the parameters $\gamma$ and $\beta$, and the partial results for
+the reduction (for these norms) is about $2$. We can see that the
+tiling of the $\Vc{X}$ really drives the tiling of the the weights. In
+fact, consider
 \begin{equation}
 \dot\sum_k^x\sum_{i}^y\sum_{m}^z\Vc{X}^{k}_{i,m}.
 \end{equation}
