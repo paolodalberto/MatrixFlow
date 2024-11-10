@@ -2,6 +2,7 @@
 import math
 import numpy
 from matrix import Vector, Matrix, Tiling
+import copy
 
 ## Authors notes: This is based on norm computation and thus Rows are
 ## a little special. There are three way to split a matrix
@@ -39,7 +40,7 @@ def Qr_(A : Matrix,
 def Cr(A : Matrix, r: int =4 ) -> list:
     ret = []
     for i in range(r):
-        v = A
+        v = copy.deepcopy(A)
         ret.append(v)
     ret.append("r+")
     return ret

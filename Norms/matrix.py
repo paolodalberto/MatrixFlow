@@ -183,6 +183,15 @@ class Tiling:
         
     def getlist(self): return self.partition
 
+    def leaf_count(self):
+        L = len(self.partition)
+        for j in range(L-1):
+            if type(d) in  [Matrix,str] :
+                return d.color
+            else:
+                return leaf_count(d)
+        return 1
+    
     ## Q is a splitting function: A -> list [ A0, A1 ... ]
     def traversal(self, Q):
         self.partition = Q(self.buffer_)
@@ -253,14 +262,14 @@ class Tiling:
             d = self.partition[j]
             if type(d) is Matrix:
                 ashape = str(d.shape())
-                a = "%s-%d/%d " % ( ashape,j,L-1)
+                a = "%s-%d/%d I:%d" % ( ashape,j,L-1,d.color)
                 res +=  ident+"a "+a
                 continue
             else:
                 # Left buffer
                 #import pdb; pdb.set_trace()
                 ashape = str((d.get_buffer()).shape()  )
-                a = "%s+ %d/%d " % ( ashape,j,L-1)
+                a = "%s+ %d/%d" % ( ashape,j,L-1)
                 b = d.visit(level+1)
             res+= ident+"a "+a
             res+= ident+"b "+b
@@ -289,6 +298,30 @@ class Tiling:
                 res.append(d)
             else:
                 res += d.flat()
+        return res
+
+    ## Collecting all the leaves of the partition
+    def stream(self):
+        res = []
+        L = len(self.partition)
+        if L<=1 : return []
+        res.append([self.partition[L-1],L-1])
+        ty = self.partition[L-1]
+        for j in range(L-1):
+            d = self.partition[j]
+            if type(d) in  [Matrix,str] :
+                res.append(d)
+            else:
+                C = d.flat()
+                F = d.leaf_count()
+                if ty[0] in ["r"] and d.partition[-1] in ['c']:
+                    for i in range(F):
+                        T +=  C
+                else:
+                    T = C
+
+                res += T
+                
         return res
 
     ## we like to visualize the Data Structure 

@@ -361,10 +361,14 @@ class LayerNorm(Norm):
 
         Norm.__init__(self,P,R,N,G)
         self.GB = None
-        
+
+    ## the partial results will need temporary tensors these are also
+    ## the accumulators and we may use different precisions
     def t_dim(self, A : Matrix) : return (2,A.shape()[0])
-    def T_dim(self, A : Matrix): return Vector(
-            numpy.zeros((2,A.shape()[0])).astype(A.matrix.dtype)
+    def T_dim(self, A : Matrix, prec = 0): return Vector(
+            numpy.zeros((2,A.shape()[0])).astype(
+                numpy.float32 if prec==0 else A.matrix.dtype
+            )
     )
 
     ## An exercise in building a tiling for norm: the weight tiling 
@@ -378,15 +382,26 @@ class LayerNorm(Norm):
                  ) -> list:
 
         Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+        T = Tiling(A)
+
+        ## Tiling by column if the tiling takes all the columns, thus
+        ## we want to highlight that the single block is by row, so we
+        ## have a marker that the comptution as an asymmetric feel and
+        ## the r -> c switch is caught during the comptuation.
 
         
-        T = Tiling(A)
-        ## Tiling by column
-        def qc3(A) : return Qc_(A,V[0])#self.
-        def qc2(A) : return Qc_(A,V[1])#self.
-        def qc1(A) : return Qc_(A,V[2])#self.
-
-        Q = [qc3,qc2,qc1]
+        def qc3(A) : return Qc_(A,V[0])   #self.
+        def qc3_(A) : return Cr(A)   #self.
+        def qc2(A) : return Qc_(A,V[1]) #self.
+        def qc2_(A) : return Qr(A,1) #self.
+        def qc1(A) : return Qc_(A,V[2]) #self.
+        def qc1_(A) : return Qr(A,1) #self.
+        import pdb; pdb.set_trace()
+        print(V,A.shape())
+        Q = [qc3 if A.shape()[1]>V[0] else qc3_,
+             qc2 if A.shape()[1]>V[1] else qc2_,
+             qc1 if A.shape()[1]>V[2] else qc1_]
+        print(Q)
         T.rec_traversal(Q)
        
         return T
@@ -462,7 +477,11 @@ class LayerNorm(Norm):
         print(Wts)
 
         self.comp_visit(Pace,Wts)
+        print("---------------------------------------\n With Colors")
+        print(Pace)
+        print(Wts)
 
+        
     ###
     ##  You can see how the recursive computation follows the same
     ##  comptutation of the Norm but now there is a "wts".  The tiling
@@ -544,7 +563,7 @@ if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (512,4096)
+    shape =  (512*2,4096*8)
     dt = numpy.float16
 
     if False:
@@ -575,7 +594,7 @@ if __name__ == "__main__":
         
         A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0 + 0.0
-        if False:
+        if True:
             Gamma = numpy.random.rand(shape[1]).astype(dt)
             Beta  = numpy.random.rand(shape[1]).astype(dt)
         else:
