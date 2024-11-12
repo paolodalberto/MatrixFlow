@@ -324,6 +324,226 @@ class Tiling:
                 
         return res
 
+    ## this is a template how to visit the Tiling data structure and
+    ## will be used for the norm computation. Here is used mostly to
+    ## represent as string the data structure.
+
+
+    """
+    from GELU
+    
+    Paolo Notes:
+    Split transfer per column, there are 4 and there is an offset for
+    gelu every thing is 1D
+  
+// IFM L3, 
+std::vector<uint32_t> ifm_L3_dim = {L3_SZ};
+std::vector<adf::access_pattern> ifm_L3_pattern_out = {
+    adf::tiling({.buffer_dimension = ifm_L3_dim,
+            .tiling_dimension = ifm_L2_dim,
+            .offset = {0 * (L3_SZ / COLS)},
+            .tile_traversal = {{.dimension = 0, .stride = ifm_L2_dim[0], .wrap = ifm_L3_dim[0]/ifm_L2_dim[0]/COLS}}}),
+    adf::tiling({.buffer_dimension = ifm_L3_dim,
+            .tiling_dimension = ifm_L2_dim,
+            .offset = {1 * (L3_SZ / COLS)},
+            .tile_traversal = {{.dimension = 0, .stride = ifm_L2_dim[0], .wrap = ifm_L3_dim[0]/ifm_L2_dim[0]/COLS}}}),
+    adf::tiling({.buffer_dimension = ifm_L3_dim,
+            .tiling_dimension = ifm_L2_dim,
+            .offset = {2 * (L3_SZ / COLS)},
+            .tile_traversal = {{.dimension = 0, .stride = ifm_L2_dim[0], .wrap = ifm_L3_dim[0]/ifm_L2_dim[0]/COLS}}}),
+    adf::tiling({.buffer_dimension = ifm_L3_dim,
+            .tiling_dimension = ifm_L2_dim,
+            .offset = {3 * (L3_SZ / COLS)},
+            .tile_traversal = {{.dimension = 0, .stride = ifm_L2_dim[0], .wrap = ifm_L3_dim[0]/ifm_L2_dim[0]/COLS}}})
+};
+    Paolo Notes:
+    There are 4 cores and the communication is split spatially. 
+
+// IFM L2 
+std::vector<uint32_t> ifm_L2_dim = {L2_SZ};
+uint32_t ifm_L2_ping_addr = 0;
+uint32_t ifm_L2_pong_addr = 262144;
+
+std::vector<adf::access_pattern> ifm_L2_pattern_out = {
+    adf::tiling({.buffer_dimension = ifm_L2_dim,
+            .tiling_dimension = {L1_SZ},
+            .offset = {0},
+            .tile_traversal = {{.dimension = 0,
+                                .stride = L1_SZ * ROWS,
+                                .wrap = ifm_L2_dim[0]/L1_SZ/ROWS}}}),
+
+    adf::tiling({.buffer_dimension = ifm_L2_dim,
+            .tiling_dimension = {L1_SZ},
+            .offset = {L1_SZ},
+            .tile_traversal = {{.dimension = 0,
+                                .stride = L1_SZ * ROWS,
+                                .wrap = ifm_L2_dim[0]/L1_SZ/ROWS}}}),
+
+    adf::tiling({.buffer_dimension = ifm_L2_dim,
+            .tiling_dimension = {L1_SZ},
+            .offset = {2 * L1_SZ},
+            .tile_traversal = {{.dimension = 0,
+                                .stride = L1_SZ * ROWS,
+                                .wrap = ifm_L2_dim[0]/L1_SZ/ROWS}}}),
+
+    adf::tiling({.buffer_dimension = ifm_L2_dim,
+            .tiling_dimension = {L1_SZ},
+            .offset = {3 * L1_SZ},
+            .tile_traversal = {{.dimension = 0,
+                                .stride = L1_SZ * ROWS,
+                                .wrap = ifm_L2_dim[0]/L1_SZ/ROWS}}})
+};
+std::vector<adf::access_pattern> ifm_L2_pattern_in = {
+    adf::tiling({.buffer_dimension = ifm_L2_dim,
+            .tiling_dimension = ifm_L2_dim,
+            .offset = {0}})};
+
+
+
+    """
+
+    """
+    from layer Norm
+    
+    From L3 -> L2 the IFM is a single memory of size 3x512KB
+    So actually the tiling is temporal first 
+
+    // L3 ifm
+    std::vector<adf::access_pattern> input_ddr_read_pattern = {
+        tiling({.buffer_dimension = {INNER_DIM, OUTER_DIM},
+                .tiling_dimension = {INNER_DIM, OUTER_DIM / OUTER_ITER_P2},
+                .offset = {0, 0},
+                .tile_traversal = {
+                    {.dimension = 0, .stride = INNER_DIM, .wrap = 1},
+                    {.dimension = 1, .stride = OUTER_DIM / OUTER_ITER_P2, .wrap = OUTER_ITER_P2}}})};
+
+    std::vector<adf::access_pattern> input_ddr_write_pattern = {
+        tiling({.buffer_dimension = {INNER_DIM, OUTER_DIM / OUTER_ITER_P2},
+                .tiling_dimension = {INNER_DIM, OUTER_DIM / OUTER_ITER_P2},
+                .offset = {0, 0},
+                .tile_traversal = {
+                    {.dimension = 0, .stride = 0, .wrap = 1},
+                    {.dimension = 1, .stride = 0, .wrap = 1}}})};
+
+
+    // L2 ifm
+    Now the L2 tile above is now split spatially and then by temporal
+    
+
+    std::vector<adf::access_pattern> ifm_pattern = {
+        tiling({
+            .buffer_dimension = {INNER_DIM, OUTER_DIM / OUTER_ITER_P2},
+            .tiling_dimension = {INNER_SV_DIM, OUTER_DIM / OUTER_ITER_P2 / COLS}, // FIXME: inner dim may need 64 align
+            .offset = {0, OUTER_DIM / OUTER_ITER_P2 / COLS * 0},
+            .tile_traversal = {{.dimension = 0, .stride = INNER_SV_DIM, .wrap = INNER_DIM / INNER_SV_DIM}, //
+                               {.dimension = 1, .stride = OUTER_DIM / OUTER_ITER_P2 / COLS, .wrap = 1}},
+            .packet_port_id = -1,
+            .repetition = 1,
+        }),
+        tiling({
+            .buffer_dimension = {INNER_DIM, OUTER_DIM / OUTER_ITER_P2},
+            .tiling_dimension = {INNER_SV_DIM, OUTER_DIM / OUTER_ITER_P2 / COLS}, // FIXME: inner dim may need 64 align
+            .offset = {0, OUTER_DIM / OUTER_ITER_P2 / COLS * 1},
+            .tile_traversal = {{.dimension = 0, .stride = INNER_SV_DIM, .wrap = INNER_DIM / INNER_SV_DIM}, //
+                               {.dimension = 1, .stride = OUTER_DIM / OUTER_ITER_P2 / COLS, .wrap = 1}},
+            .packet_port_id = -1,
+            .repetition = 1,
+        }),
+        tiling({
+            .buffer_dimension = {INNER_DIM, OUTER_DIM / OUTER_ITER_P2},
+            .tiling_dimension = {INNER_SV_DIM, OUTER_DIM / OUTER_ITER_P2 / COLS}, // FIXME: inner dim may need 64 align
+            .offset = {0, OUTER_DIM / OUTER_ITER_P2 / COLS * 2},
+            .tile_traversal = {{.dimension = 0, .stride = INNER_SV_DIM, .wrap = INNER_DIM / INNER_SV_DIM}, //
+                               {.dimension = 1, .stride = OUTER_DIM / OUTER_ITER_P2 / COLS, .wrap = 1}},
+            .packet_port_id = -1,
+            .repetition = 1,
+        }),
+        tiling({
+            .buffer_dimension = {INNER_DIM, OUTER_DIM / OUTER_ITER_P2},
+            .tiling_dimension = {INNER_SV_DIM, OUTER_DIM / OUTER_ITER_P2 / COLS}, // FIXME: inner dim may need 64 align
+            .offset = {0, OUTER_DIM / OUTER_ITER_P2 / COLS * 3},
+            .tile_traversal = {{.dimension = 0, .stride = INNER_SV_DIM, .wrap = INNER_DIM / INNER_SV_DIM},
+                               {.dimension = 1, .stride = OUTER_DIM / OUTER_ITER_P2 / COLS, .wrap = 1}},
+            .packet_port_id = -1,
+            .repetition = 1,
+        })};
+    """
+
+    ## L3 -> L2  spatial + temporal 
+    ## L2 -> L1  temporal (because of the broadcast) 
+    def traversal_mladf(self, level : int =0, at : int = 0):
+             
+        ## description of the head shape, type, level
+        ident =  "\n"+"\t".join(["" for i in range(level+1) ])
+        # the last element in the partition is a str describing
+        # concisely how we split the matrix
+        L = len(self.partition)-1
+
+        if level == at:
+            pdb.set_trace()
+            B = self.get_buffer()
+
+            R = []
+            for p in range(L):
+                
+                
+                if level ==0 :
+                    ## spatial tile + temporal tile
+                    P = self.partition[0].partition[0]
+                else:
+                    ## temporal tile
+                    P = self.partition[0]
+
+                T = P.get_buffer() if not type(P) is Matrix else P 
+                tiling = {
+                    '.buffer_dimension' : B.shape(),
+                    '.tiling_dimension' : T.shape(),
+                    '.offset'           : [ T.min[i]-B.min[i] for i in (range(len(T.min)))],
+                    '.tile_traversal'   : [
+                        {
+                            '.dimension' : len(T.min) - i-1,
+                            '.stride' : T.shape()[i],
+                            '.wrap'   : B.shape()[i]/ T.shape()[i]
+                        }
+                        for i in range(len(T.min))
+                    ],
+                    '.packet_port_id'   : -1,
+                    '.repetition'       : 1
+                }
+                #print(tiling)
+                R.append(tiling)
+                if self.partition[L] == 'c':
+                    ## this is only temporal 
+                    return R
+            #print(R)
+            return R
+                    
+            
+        else:
+            j =0
+            d = self.partition[j]
+            if not type(d) is Matrix:
+                return   d.traversal_mladf(level+1,at)
+
+        print(level, at)
+        return None
+
+
+    def full_traversal(self) :
+        L3 = self.traversal_mladf(0,0)
+        print("L3 -> L2\n")
+        for l in L3:
+            print(l)
+        
+        L2 = self.traversal_mladf(0,2)
+        print("L2 -> L1\n")
+        for l in L2:
+            print(l)
+        #L1 = self.traversal_mladf(0,2)
+        #print(L1)
+        
+        return L3 + L2 
+        
     ## we like to visualize the Data Structure 
     def __str__(self):
         #import pdb; pdb.set_trace()

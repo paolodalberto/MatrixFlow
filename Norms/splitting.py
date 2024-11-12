@@ -10,6 +10,12 @@ import copy
 ## By row, By column, Row-column
 ##
 
+
+def Identity(A: Matrix): return [A, 'i']
+
+
+
+
 ## Horizontal partition/views 
 def Qr(A : Matrix,
        r: int =4  ## horizontal number of parts

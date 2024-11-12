@@ -5,7 +5,7 @@ import pdb
 import copy
 
 from matrix import Vector, Matrix, Tiling
-from splitting import Qr, Qr_, Qc, Qc_, Qrc_,Cr, fit, fit_qrc
+from splitting import Qr, Qr_, Qc, Qc_, Qrc_,Cr, fit, fit_qrc, Identity
 
 
 def square(x) : return x*x
@@ -93,7 +93,7 @@ class Norm :
         self.N     = N
         self.G     = G
         self.A     = None
-
+        self.comp_IFM = self.comp_IFM_unified_overlay
         
         ## parallel
         self.Qr = Qr
@@ -137,6 +137,8 @@ class Norm :
         print(DDR)
         ## we compute using the tiling 
         self.comp_visit(DDR)
+        print("---------------------------------------\n With Colors")
+        print(DDR)
 
     def reduction(self,s :str):
         if self.Qr == Qr and s =="r": return False
@@ -216,7 +218,7 @@ class Norm :
     ##
     ## A traversal is composed by a spatial division then by a
     ## temporal division (traversal of the spatial by a tile and order
-    def comp_IFM(self,
+    def comp_IFM_(self,
                 A    :  Matrix, # original matrix
                 rows : int =4,   # cores per column
                 cols : int =4,   # cores per row
@@ -235,7 +237,8 @@ class Norm :
 
         def qr(A) : return self.Qr(A, cols)
         T.traversal(qr)
-           
+
+        pdb.set_trace()
         ## we try to determine the largest tile in L2 for which we
         ## split by rows and we use ping pong 
         Ts = fit(T,
@@ -320,11 +323,11 @@ class Norm :
             ## and then temporal, 
             for s in range(len(DDRs)-1):
                 
-                Q = fit( DDRs[s], L1, self.Qc_, 1, 1)
+                Q = fit( DDRs[s], L1, self.Qc_, 1, 2)
                 if Q is None:
                     print(" We should not be here! ########")
                     pdb.set_trace()
-                    Q = fit_qrc( DDRs[s], L1, self.Qrc_, 1, rows,1)
+                    Q = fit_qrc( DDRs[s], L1, self.Qrc_, 1, rows,2)
                     if Q is None:
                         
                         return None
@@ -333,6 +336,116 @@ class Norm :
 
 
         #print(Repetition)
+        return T
+    ## An exercise in building a tiling for norm
+    ##
+    ## A traversal is composed by a spatial division then by a
+    ## temporal division (traversal of the spatial by a tile and order
+    def comp_IFM_unified_overlay(
+            self,
+            A    :  Matrix, # original matrix
+            rows : int =4,   # cores per column
+            cols : int =4,   # cores per row
+            L2   : int = 128*1024,  # size in elements L2 IFM
+            L1   : int = 4*1024,    # size in elements Ping/Bank
+            H    : int = 16,
+            V    : int = 32
+    ) -> list:
+
+        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+
+        T = Tiling(A)
+
+        ## there is no spatial split so we make a identity partition
+
+        T.traversal(Identity)
+
+        pdb.set_trace()
+        ## we try to determine the largest tile in L2 for which we
+        ## split by rows and we use ping pong 
+        Ts = fit(T,
+                 L2,       ## L2 size (tile for L2)
+                 self.Qr_, ## split by row (parallel)
+                 2,        ## double buffering 
+                 rows*cols ## minimum granularity
+                 )
+
+        if Ts:
+            # T.partition[0] is the temporal tiling L3 ->L2
+            T = T.partition[0]
+
+            # Now we do spatial and then temporal
+            TP = T.partition
+            L = len(TP)-1
+            for i in range(L):
+                ## for each temporal tile, we do tiling
+                Q = Tiling(TP[i])
+
+                #spatial split
+                def qr(A) : return self.Qr(A, cols)
+                Q.traversal(qr)
+
+                ## temporal row ?
+                Ts = fit(Q,
+                         L1,       ## L2 size (tile for L2)
+                         self.Qr_, ## split by row (parallel)
+                         1,        ## double buffering 
+                         rows      ## minimum granularity
+                         )
+
+                if not Ts is None: TP[i] = Q; continue
+                # temporal column ? 
+                Ts = fit(Q,
+                         L1,       ## L2 size (tile for L2)
+                         self.Qc_, ## split by row (parallel)
+                         1,        ## double buffering 
+                         2*V       ## minimum granularity
+                        )
+
+                if not Ts is None: TP[i] = Q;continue
+                ## temporal rw x col
+                Ts = fit(Q,
+                         L1,       ## L2 size (tile for L2)
+                         self.Qrc_, ## split by row (parallel)
+                         1,        ## double buffering 
+                         rows,
+                         2*V       ## minimum granularity
+                         )
+                if Ts is None:
+                    return None
+
+                pdb.set_trace()
+                TP[i] = Q
+                
+            
+        else:
+            
+            ## we need to change strategy and we have to read L3 twice
+            ## the order is important because 
+            #print("L3 repetition =2 ")
+            Repetition['L3'] =2
+
+            ## we read the whole matrix into columns 
+            Ts = fit(T, L2, self.Qc_,
+                     2, # double buffering 
+                     2  # 2 columns (32B read) 
+                     )
+
+            if Ts is None: return None
+
+            TP = T.partition
+            L = len(TP)-1
+            for i in range(L):
+                ## for each temporal tile, we do tiling
+                Q = Tiling(TP[i])
+                Ts = fit( Q, L1, self.Qc_, 1, 2)
+                if not Ts is None: continue
+                
+                Ts = fit_qrc( Q, L1, self.Qrc_, 1, rows,2)
+                if Ts is None: return None
+            
+        pdb.set_trace()
+        print(Repetition)
         return T
 
 
@@ -480,6 +593,9 @@ class LayerNorm(Norm):
         print("---------------------------------------\n With Colors")
         print(Pace)
         print(Wts)
+        pdb.set_trace()
+        print(Pace.full_traversal())
+        print(Wts.full_traversal())
 
         
     ###
@@ -563,7 +679,7 @@ if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (512*2,4096*8)
+    shape =  (512,2048)
     dt = numpy.float16
 
     if False:
@@ -627,3 +743,4 @@ if __name__ == "__main__":
         LN.comp_uni(BB, GGB)
         print("MAX ERROR LN ",numpy.max(numpy.fabs(R1-BB.value())))
         pdb.set_trace()
+        
