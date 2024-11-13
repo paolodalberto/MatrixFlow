@@ -237,7 +237,8 @@ class Norm :
 
         def qr(A) : return self.Qr(A, cols)
         T.traversal(qr)
-
+        T.properties['temporal'] = False
+        
         pdb.set_trace()
         ## we try to determine the largest tile in L2 for which we
         ## split by rows and we use ping pong 
@@ -247,8 +248,9 @@ class Norm :
                  2,   ## double buffering 
                  rows ## minimum granularity
                  )
-
+        
         if Ts:
+            
             ## we ca traverse by row
             Repetition['L3'] =1
             #print(T.visit())
@@ -257,10 +259,10 @@ class Norm :
             ## traversal has to be the same)
 
             DDRs = Ts.getlist()
+            
             ## L2 -> L1 if there is core splitting there will be
             ## spatial and then temporal,
             for s in range(len(DDRs)-1):
-                
                 ## parallel split // well broad cast ... 
                 Q = fit( DDRs[s],
                          L1,  ## L1 size 
@@ -384,6 +386,7 @@ class Norm :
                 #spatial split
                 def qr(A) : return self.Qr(A, cols)
                 Q.traversal(qr)
+                Q.properties['temporal'] = False
 
                 ## temporal row ?
                 Ts = fit(Q,
@@ -438,6 +441,13 @@ class Norm :
             for i in range(L):
                 ## for each temporal tile, we do tiling
                 Q = Tiling(TP[i])
+
+                #spatial split
+                def qr(A) : return self.Qr(A, cols)
+                Q.traversal(qr)
+                Q.properties['temporal'] = False
+
+                # time split 
                 Ts = fit( Q, L1, self.Qc_, 1, 2)
                 if not Ts is None: continue
                 
@@ -475,6 +485,9 @@ class LayerNorm(Norm):
         Norm.__init__(self,P,R,N,G)
         self.GB = None
 
+        self.comp_wts = self.comp_wts_unified
+
+        
     ## the partial results will need temporary tensors these are also
     ## the accumulators and we may use different precisions
     def t_dim(self, A : Matrix) : return (2,A.shape()[0])
@@ -485,7 +498,7 @@ class LayerNorm(Norm):
     )
 
     ## An exercise in building a tiling for norm: the weight tiling 
-    def comp_wts(self,
+    def comp_wts_(self,
                  A    :  Matrix, # original matrix
                  rows : int =4,   # cores per column
                  cols : int =4,   # cores per row
@@ -516,6 +529,41 @@ class LayerNorm(Norm):
              qc1 if A.shape()[1]>V[2] else qc1_]
         print(Q)
         T.rec_traversal(Q)
+       
+        return T
+
+    ## An exercise in building a tiling for norm: the weight tiling 
+    def comp_wts_unified(self,
+                 A    :  Matrix, # original matrix
+                 rows : int =4,   # cores per column
+                 cols : int =4,   # cores per row
+                 L2   : int = 128*1024, # size in elements L2 IFM
+                 L1   : int = 4*1024,   # size in elements Ping/Bank
+                 V    : list = [],
+                 ) -> list:
+
+        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+        T = Tiling(A)
+
+        ## Tiling by column if the tiling takes all the columns, thus
+        ## we want to highlight that the single block is by row, so we
+        ## have a marker that the comptution as an asymmetric feel and
+        ## the r -> c switch is caught during the comptuation.
+
+        
+        def qc3(A) : return Qc_(A,V[0])   #self.
+        def qc3_(A) : return Qr(A,1)   #self.
+        def qc2(A) : return Qc_(A,V[1]) #self.
+        def qc2_(A) : return Cr(A) #self.
+        def qc1(A) : return Qc_(A,V[2]) #self.
+        def qc1_(A) : return Qr(A,1) #self.
+        import pdb; pdb.set_trace()
+        print(V,A.shape())
+        Q = [qc3 if A.shape()[1]>V[0] else qc3_,
+             qc2 if A.shape()[1]>V[1] else qc2_,
+             qc1 if A.shape()[1]>V[2] else qc1_]
+        print(Q)
+        T.rec_traversal(Q,['t','s','t'])
        
         return T
 
@@ -594,8 +642,8 @@ class LayerNorm(Norm):
         print(Pace)
         print(Wts)
         pdb.set_trace()
-        print(Pace.full_traversal())
-        print(Wts.full_traversal())
+        print(Pace.full_traversal(parallel='r' if self.parallel('r') else 'c'))
+        print(Wts.full_traversal( parallel='r' if self.parallel('r') else 'c'))
 
         
     ###
@@ -679,8 +727,8 @@ if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (512,2048)
-    dt = numpy.float16
+    shape =  (512,3000)
+    dt = numpy.float32
 
     if False:
         ## Euclidean Norm !

@@ -115,6 +115,8 @@ class Matrix:
         return  self.matrix.shape, self.min, self.max
     def shape(self):
         return   [ self.max[i] -self.min[i] for i in range(2)]
+    def mladf_shape(self):
+        return   list(reversed(self.shape()))
     def value(self):
         return self.matrix[self.min[0]:self.max[0],self.min[1]:self.max[1]]
     def set_value(self, A):
@@ -178,7 +180,7 @@ class Tiling:
         self.tile_     = None
         if len(partition)!=0:   self.tile_ = self.partition[0]
         self.pred = pred
-        self.properties = {}
+        self.properties = {'temporal' : True }
         self.depth =  1
         
     def getlist(self): return self.partition
@@ -186,10 +188,11 @@ class Tiling:
     def leaf_count(self):
         L = len(self.partition)
         for j in range(L-1):
+            d = self.partition[j]
             if type(d) in  [Matrix,str] :
                 return d.color
             else:
-                return leaf_count(d)
+                return d.leaf_count()
         return 1
     
     ## Q is a splitting function: A -> list [ A0, A1 ... ]
@@ -200,11 +203,13 @@ class Tiling:
     ## Q is a list of splitting functions this is a little abstract
     ## but it is a useful routine when we know how the partition works
     ## at different level of the memory hierarchy. 
-    def rec_traversal(self, Q : list ) -> int :
+    def rec_traversal(self, Q : list ,S : list ) -> int :
 
         if len(Q)>0 :
+            
             self.partition = Q[0](self.buffer_)
             self.tile_ = self.partition[0]
+            self.properties['temporal'] =S[0]=='t'
             #print("T", Q[0],self.buffer_,self.partition)
         
             
@@ -213,7 +218,7 @@ class Tiling:
             L = len(self.partition)-1
             for i in range(L):
                 self.partition[i] = Tiling(self.partition[i])
-                self.partition[i].rec_traversal(Q[1:])
+                self.partition[i].rec_traversal(Q[1:],S[1:])
             #pdb.set_trace()
             #print("R",self)
         return 0
@@ -471,51 +476,61 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
 
     ## L3 -> L2  spatial + temporal 
     ## L2 -> L1  temporal (because of the broadcast) 
-    def traversal_mladf(self, level : int =0, at : int = 0):
+    def traversal_mladf(self, level : int =0, at : int = 0, parallel = 'r'):
              
         ## description of the head shape, type, level
         ident =  "\n"+"\t".join(["" for i in range(level+1) ])
         # the last element in the partition is a str describing
         # concisely how we split the matrix
-        L = len(self.partition)-1
 
+        Time = self.properties['temporal']
+        Spatial = not Time
+
+        typ = self.partition[-1]
+        L = len(self.partition)-1 if Spatial else 1
+        
         if level == at:
-            pdb.set_trace()
+            print(self.properties)
+            Count = self.leaf_count()
+            
             B = self.get_buffer()
 
             R = []
+            self.properties['temporal']
             for p in range(L):
-                
-                
-                if level ==0 :
+                if Spatial :
                     ## spatial tile + temporal tile
-                    P = self.partition[0].partition[0]
+                    #pdb.set_trace()
+                    P = self.partition[p].partition[0]
                 else:
                     ## temporal tile
-                    P = self.partition[0]
+                    
+                    P = self.partition[p]
+                Count = self.partition[p].leaf_count()
+                                
 
                 T = P.get_buffer() if not type(P) is Matrix else P 
                 tiling = {
-                    '.buffer_dimension' : B.shape(),
-                    '.tiling_dimension' : T.shape(),
-                    '.offset'           : [ T.min[i]-B.min[i] for i in (range(len(T.min)))],
+                    '.buffer_dimension' : B.mladf_shape(),
+                    '.tiling_dimension' : T.mladf_shape(),
+                    '.offset'           : list(reversed([ T.min[i]-B.min[i] for i in range(len(T.min))])),
                     '.tile_traversal'   : [
                         {
-                            '.dimension' : len(T.min) - i-1,
-                            '.stride' : T.shape()[i],
-                            '.wrap'   : B.shape()[i]/ T.shape()[i]
+                            '.dimension' : i,
+                            '.stride' : T.mladf_shape()[i],
+                            '.wrap'   : int(B.mladf_shape()[i]/ T.mladf_shape()[i])
                         }
                         for i in range(len(T.min))
                     ],
                     '.packet_port_id'   : -1,
-                    '.repetition'       : 1
+                    '.repetition'       : 1 if typ == parallel else Count
                 }
                 #print(tiling)
                 R.append(tiling)
                 if self.partition[L] == 'c':
                     ## this is only temporal 
                     return R
-            #print(R)
+            
             return R
                     
             
@@ -528,17 +543,53 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
         print(level, at)
         return None
 
-
-    def full_traversal(self) :
-        L3 = self.traversal_mladf(0,0)
-        print("L3 -> L2\n")
-        for l in L3:
-            print(l)
+    def str_traversal(self,R,name):
+        S = "std::vector<adf::access_pattern> %s = " % (name)
+        T = """
+        adf::tiling({.buffer_dimension = { %d, %d },
+            .tiling_dimension = {%d , %d },
+            .offset = {%d %d },
+            .tile_traversal = {
+                 {.dimension = %d, .stride = %d, .wrap = %d},
+                 {.dimension = %d, .stride = %d, .wrap = %d}
+             },
+            .packet_port_id = -1,
+            .repetition     = %d
+        })
+        """
         
-        L2 = self.traversal_mladf(0,2)
+        for l in R[:-1]:
+            trav =  l['.tile_traversal']
+            S += T %( l['.buffer_dimension'][0],  l['.buffer_dimension'][1],
+                      l['.tiling_dimension'][0],  l['.tiling_dimension'][1],
+                      l['.offset'][0],  l['.offset'][1],
+                      trav[0]['.dimension'],trav[0]['.stride'],trav[0]['.wrap'],
+                      trav[1]['.dimension'],trav[1]['.stride'],trav[1]['.wrap'],
+                      l['.repetition']) + ","
+            
+        l = R[-1]
+        trav =  l['.tile_traversal']
+        S += T %( l['.buffer_dimension'][0],  l['.buffer_dimension'][1],
+                  l['.tiling_dimension'][0],  l['.tiling_dimension'][1],
+                  l['.offset'][0],  l['.offset'][1],
+                  trav[0]['.dimension'],trav[0]['.stride'],trav[0]['.wrap'],
+                  trav[1]['.dimension'],trav[1]['.stride'],trav[1]['.wrap'],
+                  l['.repetition']) + "};"
+            
+        return S
+    
+    def full_traversal(self,parallel='r') :
+        L3 = self.traversal_mladf(0,0,parallel)
+        print("L3 -> L2\n")
+        print(self.str_traversal(L3,"X"))
+        
+        L2 = self.traversal_mladf(0,1,parallel)
         print("L2 -> L1\n")
-        for l in L2:
-            print(l)
+        print(self.str_traversal(L2,"XX"))
+
+        
+        print(self)
+        pdb.set_trace()
         #L1 = self.traversal_mladf(0,2)
         #print(L1)
         

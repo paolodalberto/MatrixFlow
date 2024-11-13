@@ -24,7 +24,7 @@ def Qr(A : Matrix,
     M = math.ceil(A.shape()[0]/r)
     
     for i in range(r):
-        v = [[i*M,(i+1)*M],  [0,A.shape()[1]]]
+        v = [[i*M,min((i+1)*M,A.shape()[0])],  [0,A.shape()[1]]]
         ret.append(A.part(v))
     ret.append("r")
     return ret
@@ -36,7 +36,7 @@ def Qr_(A : Matrix,
     ret = []
     r = math.ceil(A.shape()[0]/M)
     for i in range(r):
-        v = [[i*M,(i+1)*M],[0,A.shape()[1]]]
+        v = [[i*M,min((i+1)*M,A.shape()[0])],[0,A.shape()[1]]]
         ret.append(A.part(v))
     ret.append("r") 
     return ret
@@ -60,7 +60,7 @@ def Qc(A : Matrix,
     ret = []
     M = math.ceil(A.shape()[1]/r)
     for i in range(r):
-        v = [[0,A.shape()[0]],[i*M,(i+1)*M]]
+        v = [[0,A.shape()[0]],[i*M,min((i+1)*M,A.shape()[1])]]
         ret.append(A.part(v))
     ret.append("c")
     return ret
@@ -72,7 +72,7 @@ def Qc_(A : Matrix,
     ret = []
     r = math.ceil(A.shape()[1]/M)
     for i in range(r):
-        v = [[0,A.shape()[0]],[i*M,(i+1)*M]]
+        v = [[0,A.shape()[0]],[i*M,min((i+1)*M,A.shape()[1])]]
         ret.append(A.part(v))
 
     ret.append("c")
