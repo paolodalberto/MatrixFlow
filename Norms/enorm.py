@@ -68,10 +68,16 @@ class SoftMax(Norm):
         
         Norm.__init__(self,P,R,N,G)
         
-    def t_dim(self, A : Matrix): return (2, A.shape()[0])
-    def T_dim(self, A : Matrix): return Matrix(
-            numpy.finfo(A.matrix.dtype).min  *
-            numpy.ones((2,A.shape()[0]),dtype=A.matrix.dtype)
+
+    def T_dim(self, A : Matrix, prec=0):
+
+        Q = numpy.float32 if prec==0 else A.matrix.dtype
+        return Matrix(
+        
+            numpy.finfo(Q).min  *
+            numpy.ones((2,A.shape()[0]),
+                       Q
+                       )
     )
     def pass_two(self,
                  A      : Matrix,
@@ -114,10 +120,6 @@ class RMSNorm(LayerNorm):
         
         LayerNorm.__init__(self,P,R,N,G)
         
-    def t_dim(self, A : Matrix) : return A.shape()[0]
-    def T_dim(self, A : Matrix): return Vector(
-            numpy.zeros(A.shape()[0]).astype(A.matrix.dtype)
-    )
 
     ## base projection of a matrix (Kernel computation)
     def pass_one(self, A  : Matrix):
@@ -179,10 +181,6 @@ class InstanceNorm(LayerNorm):
         self.Qc_ = Qr_
         self.Qrc_ = Qcr_
 
-    def t_dim(self, A : Matrix) : return (2,A.shape()[1])
-    def T_dim(self, A : Matrix): return Vector(
-            numpy.zeros((2,A.shape()[1])).astype(A.matrix.dtype)
-    )
 
     def direction(self): return 1
         
@@ -246,7 +244,7 @@ if __name__ == "__main__":
     shape =  (512,4096)
     dt = numpy.float32
 
-    if True:
+    if False:
         A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0
         #pdb.set_trace()
@@ -255,12 +253,13 @@ if __name__ == "__main__":
         N.comp(Matrix(A))
         
         
-        R1 = scipy.special.softmax(A1,1)
+        R1 = scipy.special.softmax(A1.astype(numpy.float64),1)
 
         print("SM MAX ERROR A", numpy.max(numpy.fabs(R1-A)))
         #pdb.set_trace()
 
         A2 = A1 *1.0 + 0.0
+        A2 = A2.astype(dt)
         #pdb.set_trace()
         N.comp_uni(Matrix(A2))
     
@@ -300,7 +299,7 @@ if __name__ == "__main__":
     
         print("RMS MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
         pdb.set_trace()
-    if True:
+    if False:
         ## instance Norm
 
         shape =  (512,4096)
@@ -341,3 +340,21 @@ if __name__ == "__main__":
         N.comp_uni(BB,GGB)
         print("IN MAX ERROR B", numpy.max(numpy.fabs(R1-BB.value())))
         pdb.set_trace()
+
+
+    if True:
+
+        R = []
+        for i in range(100):
+            A = numpy.random.rand(*shape).astype(dt)
+            A1 = A*1.0
+            #pdb.set_trace()
+            
+            N = SoftMax()
+            N.comp(Matrix(A))
+            R1 = scipy.special.softmax(A1.astype(numpy.float64),1)
+            E = numpy.max(numpy.fabs(R1-A))
+            print("SM MAX ERROR A", E)
+            G = numpy.sum(A, axis=-1)
+            print(numpy.average(G), numpy.sqrt(numpy.var(G)))
+            R.append(E)
