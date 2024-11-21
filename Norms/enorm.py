@@ -34,10 +34,16 @@ def PRplusMax(A : Matrix, PQ : Matrix) -> Matrix:
     PP = PQ.value()[1,:]
     #print(M, PM)
     #pdb.set_trace()
-    M1 = numpy.maximum(M,PM)
-    
-    S = numpy.exp(M1-M)
-    PS = numpy.exp(M1-PM)
+    M1 = numpy.maximum(M,PM).astype(M.dtype)
+
+
+    print(M1.dtype,M.dtype)
+    try:
+        S = numpy.exp((M1-M).astype(M1.dtype))
+    except:
+        pdb.set_trace()
+        
+    PS = numpy.exp(M1-PM).astype(PM.dtype)
     
     P = P/S + PP/PS 
     A.value()[0,:] = M1
@@ -72,13 +78,11 @@ class SoftMax(Norm):
     def T_dim(self, A : Matrix, prec=0):
 
         Q = numpy.float32 if prec==0 else A.matrix.dtype
-        return Matrix(
-        
-            numpy.finfo(Q).min  *
-            numpy.ones((2,A.shape()[0]),
-                       Q
-                       )
-    )
+        print("Q type ", Q,numpy.finfo(Q).min)
+        temp = numpy.zeros((2,A.shape()[0]),Q)
+        temp[0,:] = numpy.finfo(Q).min
+        return Matrix(temp)
+
     def pass_two(self,
                  A      : Matrix,
                  T      : Matrix
@@ -244,7 +248,7 @@ if __name__ == "__main__":
     shape =  (512,4096)
     dt = numpy.float32
 
-    if False:
+    if True:
         A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0
         #pdb.set_trace()
@@ -260,7 +264,7 @@ if __name__ == "__main__":
 
         A2 = A1 *1.0 + 0.0
         A2 = A2.astype(dt)
-        #pdb.set_trace()
+        pdb.set_trace()
         N.comp_uni(Matrix(A2))
     
     
@@ -342,7 +346,7 @@ if __name__ == "__main__":
         pdb.set_trace()
 
 
-    if True:
+    if False:
 
         R = []
         for i in range(100):

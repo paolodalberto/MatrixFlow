@@ -200,6 +200,20 @@ class Tiling:
         self.partition = Q(self.buffer_)
         self.tile_ = self.partition[0]
 
+    def core_spatial(self, Q):
+        self.properties['ofm'] = 1
+        L = len(self.partition)-1
+        for i in range(L):
+            d = self.partition[i]
+            if type(d) is Matrix:
+                T = Tiling(self.partition[i])
+                T.traversal(Q)
+                T.properties['temporal'] = False
+                self.partition[i] = T
+            else:
+                d.core_spatial(Q)
+
+        
     ## Q is a list of splitting functions this is a little abstract
     ## but it is a useful routine when we know how the partition works
     ## at different level of the memory hierarchy. 
@@ -490,6 +504,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
         L = len(self.partition)-1 if Spatial else 1
         
         if level == at:
+            
             print(self.properties)
             Count = self.leaf_count()
             
@@ -498,7 +513,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
             R = []
             self.properties['temporal']
             for p in range(L):
-                if Spatial :
+                if Spatial and type(self.partition[p]) is Tiling:
                     ## spatial tile + temporal tile
                     #pdb.set_trace()
                     P = self.partition[p].partition[0]
@@ -506,7 +521,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
                     ## temporal tile
                     
                     P = self.partition[p]
-                Count = self.partition[p].leaf_count()
+                #Count = self.partition[p].leaf_count()
                                 
 
                 T = P.get_buffer() if not type(P) is Matrix else P 
@@ -523,7 +538,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
                         for i in range(len(T.min))
                     ],
                     '.packet_port_id'   : -1,
-                    '.repetition'       : 1 if typ == parallel else Count
+                    '.repetition'       : 1 if typ == parallel else max(Count,1)
                 }
                 #print(tiling)
                 R.append(tiling)
@@ -535,16 +550,24 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
                     
             
         else:
-            j =0
-            d = self.partition[j]
-            if not type(d) is Matrix:
-                return   d.traversal_mladf(level+1,at)
-
+            if Time:
+                j =0
+                d = self.partition[j]
+                if not type(d) is Matrix and level<at :
+                    return   d.traversal_mladf(level+1,at)
+            else:
+                R = []
+                for j in range(L):
+                    d = self.partition[j]
+                    if not type(d) is Matrix and level<at :
+                        R.append(d.traversal_mladf(level+1,at))
+                return R
+                
         print(level, at)
         return None
 
-    def str_traversal(self,R,name):
-        S = "std::vector<adf::access_pattern> %s = " % (name)
+    def str_traversal(self,R,name, pk = -1):
+        S = " { %s " % (name)
         T = """
         adf::tiling({.buffer_dimension = { %d, %d },
             .tiling_dimension = {%d , %d },
@@ -553,47 +576,67 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
                  {.dimension = %d, .stride = %d, .wrap = %d},
                  {.dimension = %d, .stride = %d, .wrap = %d}
              },
-            .packet_port_id = -1,
+            .packet_port_id = %d,
             .repetition     = %d
         })
         """
         
+        count = -1
         for l in R[:-1]:
+            count +=1
+            if type(l) is list:
+                S += self.str_traversal(l, "// COL %d \n" % count, pk)
+                continue
+
+            
             trav =  l['.tile_traversal']
             S += T %( l['.buffer_dimension'][0],  l['.buffer_dimension'][1],
                       l['.tiling_dimension'][0],  l['.tiling_dimension'][1],
                       l['.offset'][0],  l['.offset'][1],
                       trav[0]['.dimension'],trav[0]['.stride'],trav[0]['.wrap'],
                       trav[1]['.dimension'],trav[1]['.stride'],trav[1]['.wrap'],
-                      l['.repetition']) + ","
+                      (pk if pk<0 else count), l['.repetition']) + ","
             
+        count +=1
         l = R[-1]
-        trav =  l['.tile_traversal']
-        S += T %( l['.buffer_dimension'][0],  l['.buffer_dimension'][1],
-                  l['.tiling_dimension'][0],  l['.tiling_dimension'][1],
-                  l['.offset'][0],  l['.offset'][1],
-                  trav[0]['.dimension'],trav[0]['.stride'],trav[0]['.wrap'],
-                  trav[1]['.dimension'],trav[1]['.stride'],trav[1]['.wrap'],
-                  l['.repetition']) + "};"
+        if type(l) is list:
+            S += self.str_traversal(l, "// COL %d \n" % count,pk)
+        else:
+            trav =  l['.tile_traversal']
+            S += T %( l['.buffer_dimension'][0],  l['.buffer_dimension'][1],
+                      l['.tiling_dimension'][0],  l['.tiling_dimension'][1],
+                      l['.offset'][0],  l['.offset'][1],
+                      trav[0]['.dimension'],trav[0]['.stride'],trav[0]['.wrap'],
+                      trav[1]['.dimension'],trav[1]['.stride'],trav[1]['.wrap'],
+                      (pk if pk<0 else count), l['.repetition'])
+
+        S += "};"
             
         return S
     
     def full_traversal(self,parallel='r') :
         L3 = self.traversal_mladf(0,0,parallel)
         print("L3 -> L2\n")
-        print(self.str_traversal(L3,"X"))
+        print(self.str_traversal(L3,"// L3 ->L2\n"))
         
         L2 = self.traversal_mladf(0,1,parallel)
         print("L2 -> L1\n")
-        print(self.str_traversal(L2,"XX"))
+        print(self.str_traversal(L2,"L2 -> L1\n"))
 
+        if 'ofm' in self.properties and self.properties['ofm']== 1:
+            pdb.set_trace()
+            L1 = self.traversal_mladf(0,3,parallel)
+            print("L1 -> L1\n")
+            print(self.str_traversal(L1,"L1 -> L2\n",pk=1))
+
+            L2 += L1
         
         print(self)
         pdb.set_trace()
         #L1 = self.traversal_mladf(0,2)
         #print(L1)
         
-        return L3 + L2 
+        return L3 + L2  
         
     ## we like to visualize the Data Structure 
     def __str__(self):

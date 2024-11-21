@@ -139,6 +139,20 @@ class Norm :
         self.comp_visit(DDR)
         print("---------------------------------------\n With Colors")
         print(DDR)
+        print(
+            DDR.full_traversal(
+                parallel='r' if self.parallel('r') else 'c'
+            )
+        )
+        pdb.set_trace()
+        DDR.core_spatial(self.Qr)
+        print(DDR)
+        print(
+            DDR.full_traversal(
+                parallel='r' if self.parallel('r') else 'c'
+            )
+        )
+        
 
     def reduction(self,s :str):
         if self.Qr == Qr and s =="r": return False
@@ -362,7 +376,7 @@ class Norm :
 
         T.traversal(Identity)
 
-        pdb.set_trace()
+        #pdb.set_trace()
         ## we try to determine the largest tile in L2 for which we
         ## split by rows and we use ping pong 
         Ts = fit(T,
@@ -383,7 +397,7 @@ class Norm :
                 ## for each temporal tile, we do tiling
                 Q = Tiling(TP[i])
 
-                #spatial split
+                #spatial split into 4 column memtiles 
                 def qr(A) : return self.Qr(A, cols)
                 Q.traversal(qr)
                 Q.properties['temporal'] = False
@@ -450,11 +464,12 @@ class Norm :
                 # time split 
                 Ts = fit( Q, L1, self.Qc_, 1, 2)
                 if not Ts is None: continue
-                
+
+                ## this should not work at all 
                 Ts = fit_qrc( Q, L1, self.Qrc_, 1, rows,2)
                 if Ts is None: return None
             
-        pdb.set_trace()
+        #pdb.set_trace()
         print(Repetition)
         return T
 
@@ -531,6 +546,44 @@ class LayerNorm(Norm):
         T.rec_traversal(Q)
        
         return T
+
+
+    ## An exercise in building a tiling for norm: the weight tiling 
+    def comp_ofm_unified(
+            self,
+            T   :  Tiling, Matrix, # original matrix
+            rows : int =4,   # cores per column
+            cols : int =4,   # cores per row
+            L2   : int = 128*1024, # size in elements L2 IFM
+            L1   : int = 4*1024,   # size in elements Ping/Bank
+            V    : list = [],
+    ) -> list:
+
+        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+        T = Tiling(A)
+
+        ## Tiling by column if the tiling takes all the columns, thus
+        ## we want to highlight that the single block is by row, so we
+        ## have a marker that the comptution as an asymmetric feel and
+        ## the r -> c switch is caught during the comptuation.
+
+        
+        def qc3(A) : return Qc_(A,V[0])   #self.
+        def qc3_(A) : return Qr(A,1)   #self.
+        def qc2(A) : return Qc_(A,V[1]) #self.
+        def qc2_(A) : return Cr(A) #self.
+        def qc1(A) : return Qc_(A,V[2]) #self.
+        def qc1_(A) : return Qr(A,1) #self.
+        import pdb; pdb.set_trace()
+        print(V,A.shape())
+        Q = [qc3 if A.shape()[1]>V[0] else qc3_,
+             qc2 if A.shape()[1]>V[1] else qc2_,
+             qc1 if A.shape()[1]>V[2] else qc1_]
+        print(Q)
+        T.rec_traversal(Q,['t','s','t'])
+       
+        return T
+
 
     ## An exercise in building a tiling for norm: the weight tiling 
     def comp_wts_unified(self,
@@ -644,7 +697,11 @@ class LayerNorm(Norm):
         pdb.set_trace()
         print(Pace.full_traversal(parallel='r' if self.parallel('r') else 'c'))
         print(Wts.full_traversal( parallel='r' if self.parallel('r') else 'c'))
-
+        
+        print("---------------------------------------\n With Colors and Core")
+        Pace.core_spatial(self.Qr)
+        print(Pace)
+        print(Pace.full_traversal(parallel='r' if self.parallel('r') else 'c'))
         
     ###
     ##  You can see how the recursive computation follows the same
