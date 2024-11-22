@@ -137,6 +137,7 @@ class Norm :
         print(DDR)
         ## we compute using the tiling 
         self.comp_visit(DDR)
+        if True : return 0
         print("---------------------------------------\n With Colors")
         print(DDR)
         print(
@@ -144,14 +145,15 @@ class Norm :
                 parallel='r' if self.parallel('r') else 'c'
             )
         )
-        pdb.set_trace()
+        #pdb.set_trace()
 
         O = Matrix(A.value()*1.0)
         T = Tiling(O)
         T = copy_tiling(T, DDR)
-        pdb.set_trace()
+        #pdb.set_trace()
         T.core_spatial(self.Qr)
-        print(DDR)
+        print("---------------------------------------\n Output")
+        print(T)
         print(
             T.full_traversal(
                 parallel='r' if self.parallel('r') else 'c'
@@ -169,6 +171,7 @@ class Norm :
         if self.Qr == Qc and s =="c": return True
         return False
         
+
     ## Basically: row tiles 'r' are parallel computations and 
     ##
     ##            columns   'c' we compute the projection and then the normalization
@@ -176,63 +179,72 @@ class Norm :
     ##
     ## I love recursion. 
     ##
-    def comp_visit(self,
-                   Ti : Tiling,
-                   level : int = 0,
-                   T :Vector  = None) -> Vector  :
+    def comp_visit(self,Ti : Tiling,level : int = 0, T :Vector  = None) -> Vector  :
 
-        DDRs = Ti.get_partition()
+        DDRs = Ti.get_partition() 
         ty = DDRs[-1]
-        if self.parallel(ty[0]) :
-            
+        
+        if not self.parallel(ty[0]) and T is None : 
+            # PARTIAL RESULTS
+            T = self.T_dim(Ti.get_buffer())
+            # PASS ONE 
             for j in range(len(DDRs)-1):
-                d = DDRs[j]
-                if type(d) is Matrix: self.comp(d)
-                else:    self.comp_visit(d)
-        else: #elif ty == 'c' :
-            
-            if T is None and level ==0 :
-                ## first 'c'
-                ## this should fit the core space
-                
-                T = self.T_dim(Ti.get_buffer())
-                #T = Vector(numpy.zeros(Ti.get_buffer().shape()[0]))
-                
-                for j in range(len(DDRs)-1):
-                    d = DDRs[j]
-                    if type(d) is Matrix:    self.R(T,self.pass_one(d))
-                    else: self.R(T,self.comp_visit(d, level = level+1))
-                        
-                for j in range(len(DDRs)-1):
-                    d = DDRs[j]
-                    if type(d) is Matrix:  self.pass_two(d,T)
-                    else:            self.comp_visit(d,T = T)
+                di = DDRs[j];  
 
-            elif T is None and level>0 :
-                ## we are deep into the projections
+                ## The AIE will compute literally this in the core, so
+                ## the update does not requires a second operand to be
+                ## correct
+                if type(di) is Matrix:  self.R(T,self.pass_one(di))
+                else:                   self.R(T,self.comp_visit(di,level=1,T=T*0))
+
+            # PASS TWO
+            for j in range(len(DDRs)-1):
+                di = DDRs[j];  
                 
-                j = 0
-                #print(self.A.value())
-                d = DDRs[0]
-                T = self.T_dim(Ti.get_buffer())
+                if type(di) is Matrix: self.pass_two(di,T)
+                else:  self.comp_visit(di,level =2,T = T)
+
+            #delete T
+            del T
+
+        elif not self.parallel(ty[0]) and T :
+            # reduction but we have already temporary
+            ti = T
+            for j in range(len(DDRs)-1):
+                di = DDRs[j];  
+
+                ## in the else in the AIE we do not need a second operand
+                if type(di) is Matrix:
+                    if level ==1 : self.R(ti, self.pass_one(di))  ## we are still computing T
+                    if level ==2 : self.pass_two(di,ti)        ## we are distributing    T
+
+                else: self.R(T,self.comp_visit(di,level=level,T = T*0))
+
+            if level == 1:  return T  ## we must return the partial 
+            else:           return None
+
+        elif self.parallel(ty[0]) and T :
+            ## we split the T by 2xR by row R
+            Ts = self.Qc(T,len(DDRs)-1)
+            for j in range(len(DDRs)-1):
+                ti = Ts[j]; di = DDRs[j];
+
+                if type(di) is Matrix:
+                    if level ==1 : ti.set_value(self.pass_one(di)) ## we compute each part
+                    if level ==2 : self.pass_two(di,ti)         ## distribute each part
+                else: self.comp_visit(di,level=level,T = ti)    ## paralell do not reduce, they copy
+            return T 
+
+        elif self.parallel(ty[0]) and T is None:
+            ## parallel and no temporary business as usual
+            for j in range(len(DDRs)-1):
+                di = DDRs[j]; 
+
+                if type(di) is Matrix: self.comp(di)
+                else:                  self.comp_visit(di,level=level,T =None)
                 
-                #T = Vector(numpy.zeros(Ti.get_buffer().shape()[0]))
-                for j in range(len(DDRs)-1):
-                    d = DDRs[j]
-                    if type(d) is Matrix:    self.R(T,self.pass_one(d))
-                    else: self.R(T,self.comp_visit(d, level = level+1))
-                return T
-            else:
-                ## we are into the normalization
-                for j in range(len(DDRs)-1):
-                    d = DDRs[j]
-                    if type(d) is Matrix:  self.pass_two(d,T)
-                    else:              self.comp_visit(d,T=T)
-                        
-            #pdb.set_trace()
-        ##print(DDRs[0][0])
         return None
-      
+
     ## An exercise in building a tiling for norm
     ##
     ## A traversal is composed by a spatial division then by a
@@ -247,8 +259,6 @@ class Norm :
                 V    : int = 32
                 ) -> list:
 
-        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
-
         T = Tiling(A)
 
         ## we split A into 4 parts spatial
@@ -258,7 +268,6 @@ class Norm :
         T.traversal(qr)
         T.properties['temporal'] = False
         
-        pdb.set_trace()
         ## we try to determine the largest tile in L2 for which we
         ## split by rows and we use ping pong 
         Ts = fit(T,
@@ -269,74 +278,23 @@ class Norm :
                  )
         
         if Ts:
-            
-            ## we ca traverse by row
-            Repetition['L3'] =1
-            #print(T.visit())
-            ## L3 -> L2 temporal for every spatial (we literally build
-            ## each traversal but it is not really needed because the
-            ## traversal has to be the same)
-
             DDRs = Ts.getlist()
-            
-            ## L2 -> L1 if there is core splitting there will be
-            ## spatial and then temporal,
             for s in range(len(DDRs)-1):
-                ## parallel split // well broad cast ... 
-                Q = fit( DDRs[s],
-                         L1,  ## L1 size 
-                         self.Qr_, ## split by row 
-                         1,   ## ping pong
-                         rows ## to feed each core 
-                        )
-                #print(Q)
-                if Q is None:
 
-                    ## One row no fit in L1 but we do reduction in L1
-                    Q = fit( DDRs[s],
-                             L1,  ## L1 size 
-                             self.Qc_, ## split by column
-                             1,   ## this is ping 
-                             V*2   ## 32*2 
-                            )  
-                    if Q is None:
+                ## parallel split // well broad cast ... 
+                Q = fit( DDRs[s], L1,self.Qr_,1,rows)
+                if not Q is None: DDRs[s] = Q; continue
+
+                ## One row no fit in L1 but we do reduction in L1
+                Q = fit( DDRs[s],L1,self.Qc_,1,V*2)
+                if not Q is None:  DDRs[s] = Q; continue
                         
-                        ## we cannot have all rows at once
-                        Q = fit_qrc( DDRs[s],
-                                     L1,
-                                     self.Qrc_,
-                                     1, ## this is ping
-                                     rows,
-                                     V*2
-                                )
-                        if Q is None:
-                            ## ARGH, we cannot do the computation
-                            #print("No L computation")
-                            return None
-                        else:
-                            Repetition['L1'] =1
-                            Repetition['L2'] =2
-                            
-                    else:
-                        ## we split the computation by 64 columns
-                        ## we compute all rows, hurrah
-                        Repetition['L1'] =1
-                        Repetition['L2'] =2
-                        #print("L2 repetition =2 ")
-                else:
-                    ## One row will fit in L1, thus there is no
-                    ## repetition in L2 (only in L1)
-                    Repetition['L2'] =1
-                    Repetition['L1'] =2
+                ## we cannot have all rows at once
+                Q = fit_qrc( DDRs[s],L1,self.Qrc_,1,rows,V*2)
+                if Q is None: return None
 
                 DDRs[s] = Q
         else:
-            
-            ## we need to change strategy and we have to read L3 twice
-            ## the order is important because 
-            #print("L3 repetition =2 ")
-            Repetition['L3'] =2
-
             ## we read the whole matrix into columns 
             Ts = fit(T, L2, self.Qc_, 2,1)
             DDRs = Ts.getlist()
@@ -345,18 +303,15 @@ class Norm :
             for s in range(len(DDRs)-1):
                 
                 Q = fit( DDRs[s], L1, self.Qc_, 1, 2)
-                if Q is None:
-                    print(" We should not be here! ########")
-                    pdb.set_trace()
-                    Q = fit_qrc( DDRs[s], L1, self.Qrc_, 1, rows,2)
-                    if Q is None:
-                        
-                        return None
+                if not Q is None: DDRs[s] = Q; continue 
 
+                print(" We should not be here! ########")
+                pdb.set_trace()
+                Q = fit_qrc( DDRs[s], L1, self.Qrc_, 1, rows,2)
+                if Q is None:return None
+                    
                 DDRs[s] = Q
 
-
-        #print(Repetition)
         return T
     ## An exercise in building a tiling for norm
     ##
@@ -373,15 +328,11 @@ class Norm :
             V    : int = 32
     ) -> list:
 
-        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
-
         T = Tiling(A)
 
         ## there is no spatial split so we make a identity partition
-
         T.traversal(Identity)
 
-        #pdb.set_trace()
         ## we try to determine the largest tile in L2 for which we
         ## split by rows and we use ping pong 
         Ts = fit(T,
@@ -408,53 +359,34 @@ class Norm :
                 Q.properties['temporal'] = False
 
                 ## temporal row ?
-                Ts = fit(Q,
-                         L1,       ## L2 size (tile for L2)
-                         self.Qr_, ## split by row (parallel)
-                         1,        ## double buffering 
-                         rows      ## minimum granularity
-                         )
-
+                Ts = fit(Q, L1, self.Qr_, 1, rows)
                 if not Ts is None: TP[i] = Q; continue
-                # temporal column ? 
-                Ts = fit(Q,
-                         L1,       ## L2 size (tile for L2)
-                         self.Qc_, ## split by row (parallel)
-                         1,        ## double buffering 
-                         2*V       ## minimum granularity
-                        )
 
+                # temporal column ? 
+                Ts = fit(Q,L1,self.Qc_,1,2*V)
                 if not Ts is None: TP[i] = Q;continue
+
                 ## temporal rw x col
-                Ts = fit(Q,
-                         L1,       ## L2 size (tile for L2)
-                         self.Qrc_, ## split by row (parallel)
-                         1,        ## double buffering 
-                         rows,
-                         2*V       ## minimum granularity
-                         )
+                Ts = fit(Q,L1,self.Qrc_,1,rows, 2*V)
+
                 if Ts is None:
+                    ## we should not be here 
+                    pdb.set_trace()
                     return None
 
-                pdb.set_trace()
                 TP[i] = Q
                 
             
         else:
             
             ## we need to change strategy and we have to read L3 twice
-            ## the order is important because 
-            #print("L3 repetition =2 ")
-            Repetition['L3'] =2
-
+            ## the order is important because
+            
             ## we read the whole matrix into columns 
-            Ts = fit(T, L2, self.Qc_,
-                     2, # double buffering 
-                     2  # 2 columns (32B read) 
-                     )
+            Ts = fit(T, L2, self.Qc_,2,8)
 
             if Ts is None: return None
-
+            T = T.partition[0]
             TP = T.partition
             L = len(TP)-1
             for i in range(L):
@@ -467,15 +399,16 @@ class Norm :
                 Q.properties['temporal'] = False
 
                 # time split 
-                Ts = fit( Q, L1, self.Qc_, 1, 2)
-                if not Ts is None: continue
+                Ts = fit( Q, L1, self.Qc_, 1, 8)
+                if Ts is None: return None
 
                 ## this should not work at all 
-                Ts = fit_qrc( Q, L1, self.Qrc_, 1, rows,2)
-                if Ts is None: return None
-            
+                #  Ts = fit_qrc( Q, L1, self.Qrc_, 1, rows,2)
+                #  if Ts is None: return None
+                TP[i] = Q;
+
+        #print(T)
         #pdb.set_trace()
-        print(Repetition)
         return T
 
 
@@ -511,7 +444,7 @@ class LayerNorm(Norm):
     ## the partial results will need temporary tensors these are also
     ## the accumulators and we may use different precisions
     def t_dim(self, A : Matrix) : return (2,A.shape()[0])
-    def T_dim(self, A : Matrix, prec = 0): return Vector(
+    def T_dim(self, A : Matrix, prec = 0): return Matrix(
             numpy.zeros((2,A.shape()[0])).astype(
                 numpy.float32 if prec==0 else A.matrix.dtype
             )
@@ -527,7 +460,7 @@ class LayerNorm(Norm):
                  V    : list = [],
                  ) -> list:
 
-        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+        
         T = Tiling(A)
 
         ## Tiling by column if the tiling takes all the columns, thus
@@ -542,8 +475,8 @@ class LayerNorm(Norm):
         def qc2_(A) : return Qr(A,1) #self.
         def qc1(A) : return Qc_(A,V[2]) #self.
         def qc1_(A) : return Qr(A,1) #self.
-        import pdb; pdb.set_trace()
-        print(V,A.shape())
+        #import pdb; pdb.set_trace()
+        #print(V,A.shape())
         Q = [qc3 if A.shape()[1]>V[0] else qc3_,
              qc2 if A.shape()[1]>V[1] else qc2_,
              qc1 if A.shape()[1]>V[2] else qc1_]
@@ -564,7 +497,7 @@ class LayerNorm(Norm):
             V    : list = [],
     ) -> list:
 
-        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+        
         T = Tiling(A)
 
         ## Tiling by column if the tiling takes all the columns, thus
@@ -579,8 +512,8 @@ class LayerNorm(Norm):
         def qc2_(A) : return Cr(A) #self.
         def qc1(A) : return Qc_(A,V[2]) #self.
         def qc1_(A) : return Qr(A,1) #self.
-        import pdb; pdb.set_trace()
-        print(V,A.shape())
+        #import pdb; pdb.set_trace()
+        #print(V,A.shape())
         Q = [qc3 if A.shape()[1]>V[0] else qc3_,
              qc2 if A.shape()[1]>V[1] else qc2_,
              qc1 if A.shape()[1]>V[2] else qc1_]
@@ -600,7 +533,7 @@ class LayerNorm(Norm):
                  V    : list = [],
                  ) -> list:
 
-        Repetition = {'L3' : -1, 'L2' : -1, 'L1' : -1 }
+
         T = Tiling(A)
 
         ## Tiling by column if the tiling takes all the columns, thus
@@ -615,8 +548,8 @@ class LayerNorm(Norm):
         def qc2_(A) : return Cr(A) #self.
         def qc1(A) : return Qc_(A,V[2]) #self.
         def qc1_(A) : return Qr(A,1) #self.
-        import pdb; pdb.set_trace()
-        print(V,A.shape())
+        #import pdb; pdb.set_trace()
+        #print(V,A.shape())
         Q = [qc3 if A.shape()[1]>V[0] else qc3_,
              qc2 if A.shape()[1]>V[1] else qc2_,
              qc1 if A.shape()[1]>V[2] else qc1_]
@@ -695,11 +628,16 @@ class LayerNorm(Norm):
         print("---------------------------------------\nPartition weights")
         print(Wts)
 
+        pdb.set_trace()
         self.comp_visit(Pace,Wts)
+
+        if True: return 0
+
+        
         print("---------------------------------------\n With Colors")
         print(Pace)
         print(Wts)
-        pdb.set_trace()
+        #pdb.set_trace()
         print(Pace.full_traversal(parallel='r' if self.parallel('r') else 'c'))
         print(Wts.full_traversal( parallel='r' if self.parallel('r') else 'c'))
         
@@ -707,13 +645,15 @@ class LayerNorm(Norm):
         O = Matrix(A.value()*1.0)
         T = Tiling(O)
         T = copy_tiling(T,Pace)
-        pdb.set_trace()
+        #pdb.set_trace()
         T.core_spatial(self.Qr)
         print(
             T.full_traversal(
                 parallel='r' if self.parallel('r') else 'c'
             )
         )
+
+ 
 
     ###
     ##  You can see how the recursive computation follows the same
@@ -722,71 +662,72 @@ class LayerNorm(Norm):
     ##  the tiling is done so that is it consistent
     ##
     ###
-    def comp_visit(self,
-                   Ti : Tiling,
-                   Wt : Tiling,
-                   level : int = 0,
-                   T : Matrix = None)  :
-        DDRs = Ti.get_partition()
-        WDDR = Wt.get_partition()
+    def comp_visit(self,Ti : Tiling,Wt : Tiling, level : int = 0,T : Matrix = None) :  
+        DDRs = Ti.get_partition();  WDDR = Wt.get_partition()
 
+        # pdb.set_trace()
         ty = DDRs[-1]
-        if self.parallel(ty[0]) : # ty.find('r')==0  :
-            ## paralle computation 
+        
+        if not self.parallel(ty[0]) and T is None : 
+            # PARTIAL RESULTS
+            T = self.T_dim(Ti.get_buffer())
+            # PASS ONE 
             for j in range(len(DDRs)-1):
-                di = DDRs[j]
-                dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
-                if not type(di) is Matrix: self.comp_visit(di,dw,level=level,T = None)
-                else:                      self.comp(di,dw)
+                di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
 
-        else: #elif ty == 'c' :
-            ## boom recursive projections 
-            if T is None and level ==0 :
+                ## The AIE will compute literally this in the core, so
+                ## the update does not requires a second operand to be
+                ## correct
+                if type(di) is Matrix:  self.R(T,self.pass_one(di))
+                else:                   self.R(T,self.comp_visit(di,dw,level=1,T=T*0))
 
-                di = DDRs[0]
-                ## this si a core local space use for accumulation
-                #T = Vector(numpy.zeros((2,Ti.get_buffer().shape()[0])))
-                T = self.T_dim(Ti.get_buffer())
-                #T = Vector(numpy.zeros(self.t_dim(Ti.get_buffer())))
-                for j in range(len(DDRs)-1):
-                    di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
-                                     
-                    if type(di) is Matrix:              self.R(T,self.pass_one(di))
-                    else: self.R(T,self.comp_visit(di,dw,level = level+1,T = None))
+            # PASS TWO
+            for j in range(len(DDRs)-1):
+                di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
+                
+                if type(di) is Matrix: self.pass_two(di,dw,T)
+                else:  self.comp_visit(di,dw,level =2,T = T)
 
-                # T is computed
-                # Pass two
-                for j in range(len(DDRs)-1):
-                    di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
-                           
-                    if type(di) is Matrix: self.pass_two(di,dw,T)
-                    else:  self.comp_visit(di,dw,level =level+1,T = T)
+            #delete T
+            del T
 
-            elif T is None and level>0 :
+        elif not self.parallel(ty[0]) and T :
+            # reduction but we have already temporary
+            ti = T
+            for j in range(len(DDRs)-1):
+                di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
 
-                #print(self.A.value())
-                di = DDRs[0]
-                dw = WDDR[0]
-                #T = Vector(numpy.zeros((2,Ti.get_buffer().shape()[0])))
-                T = self.T_dim(Ti.get_buffer()) #T = Vector(numpy.zeros(self.t_dim(Ti.get_buffer())))
-                for j in range(len(DDRs)-1):
-                    di = DDRs[j];   dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
+                ## in the else in the AIE we do not need a second operand
+                if type(di) is Matrix:
+                    if level ==1 : self.R(ti, self.pass_one(di))  ## we are still computing T
+                    if level ==2 : self.pass_two(di,dw,ti)        ## we are distributing    T
 
-                    if type(di) is Matrix:  self.R(T,self.pass_one(di))
-                    else: self.R(T,self.comp_visit(di,dw,level = level+1,T = None ))
-                    
-                        
-                return T
-            else:
-                for j in range(len(DDRs)-1):
-                    di = DDRs[j]
-                    dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
-                    if type(di) is Matrix: self.pass_two(di,dw,T)
-                    else:  self.comp_visit(di,dw,level=level,T=T)
-                    
-                        
-            #pdb.set_trace()
-        ##print(DDRs[0][0])
+                else: self.R(T,self.comp_visit(di,dw,level=level,T = T*0))
+
+            if level == 1:  return T  ## we must return the partial 
+            else:           return None
+
+        elif self.parallel(ty[0]) and T :
+            ## we split the T by 2xR by row R
+            Ts = self.Qc(T,len(DDRs)-1)
+            for j in range(len(DDRs)-1):
+                ti = Ts[j]; di = DDRs[j]; dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
+
+                if type(di) is Matrix:
+                    if level ==1 : ti.set_value(self.pass_one(di)) ## we compute each part
+                    if level ==2 : self.pass_two(di,dw,ti)         ## distribute each part
+                else: self.comp_visit(di,dw,level=level,T = ti)    ## paralell do not reduce, they copy
+            return T 
+
+        elif self.parallel(ty[0]) and T is None:
+            ## parallel and no temporary business as usual
+            for j in range(len(DDRs)-1):
+                di = DDRs[j]; dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
+
+                if type(di) is Matrix: self.comp(di,dw)
+                else:                  self.comp_visit(di,dw,level=level,T =None)
+                
+        # pdb.set_trace()
         return None
 
 
@@ -796,8 +737,9 @@ if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (512,3000)
-    dt = numpy.float32
+    
+    shape =  (1024,512)
+    dt = numpy.float16
 
     if False:
         ## Euclidean Norm !
@@ -827,6 +769,7 @@ if __name__ == "__main__":
         
         A = numpy.random.rand(*shape).astype(dt)
         A1 = A*1.0 + 0.0
+        A1 = A1.astype(numpy.float32)
         if True:
             Gamma = numpy.random.rand(shape[1]).astype(dt)
             Beta  = numpy.random.rand(shape[1]).astype(dt)
@@ -854,7 +797,8 @@ if __name__ == "__main__":
         ## computation as matrix
         R = LN.comp(AA,GGB)
         print("MAX ERROR LN", numpy.max(numpy.fabs(R1-R.value())))
-
+        pdb.set_trace()
+        
         ## computation using tiling
         BB = Matrix(copy.deepcopy(A))
         LN.comp_uni(BB, GGB)

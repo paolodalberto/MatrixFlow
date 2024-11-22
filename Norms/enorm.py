@@ -37,7 +37,7 @@ def PRplusMax(A : Matrix, PQ : Matrix) -> Matrix:
     M1 = numpy.maximum(M,PM).astype(M.dtype)
 
 
-    print(M1.dtype,M.dtype)
+    #print(M1.dtype,M.dtype)
     try:
         S = numpy.exp((M1-M).astype(M1.dtype))
     except:
@@ -78,7 +78,7 @@ class SoftMax(Norm):
     def T_dim(self, A : Matrix, prec=0):
 
         Q = numpy.float32 if prec==0 else A.matrix.dtype
-        print("Q type ", Q,numpy.finfo(Q).min)
+        #print("Q type ", Q,numpy.finfo(Q).min)
         temp = numpy.zeros((2,A.shape()[0]),Q)
         temp[0,:] = numpy.finfo(Q).min
         return Matrix(temp)
@@ -246,7 +246,7 @@ if __name__ == "__main__":
 
     #import pdb
     shape =  (512,4096)
-    dt = numpy.float32
+    dt = numpy.float16
 
     if True:
         A = numpy.random.rand(*shape).astype(dt)
@@ -260,11 +260,10 @@ if __name__ == "__main__":
         R1 = scipy.special.softmax(A1.astype(numpy.float64),1)
 
         print("SM MAX ERROR A", numpy.max(numpy.fabs(R1-A)))
-        #pdb.set_trace()
+        pdb.set_trace()
 
         A2 = A1 *1.0 + 0.0
         A2 = A2.astype(dt)
-        pdb.set_trace()
         N.comp_uni(Matrix(A2))
     
     
@@ -294,7 +293,7 @@ if __name__ == "__main__":
         R1 = A*s[:,None]*Gamma + Beta
 
         print("RMS MAX ERROR A", numpy.max(numpy.fabs(R1-A1)))
-        #pdb.set_trace()
+        pdb.set_trace()
 
         A2 = A *1.0 + 0.0
         #pdb.set_trace()
@@ -337,7 +336,7 @@ if __name__ == "__main__":
         ## computation as matrix
         N.comp(AA,GGB)
         print("IN MAX ERROR A", numpy.max(numpy.fabs(R1-AA.value())))
-        #pdb.set_trace()
+        pdb.set_trace()
 
         BB = Matrix(copy.deepcopy(A))
         #pdb.set_trace()

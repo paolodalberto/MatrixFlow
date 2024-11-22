@@ -50,10 +50,7 @@ class Vector:
 
     # v = v*A multiplication 
     def __mul__( self, A ):
-        if type(A) is Scalar:
-            ## B = alpha A
-            return Vector(self.value()*A.value())
-        elif type(A) in [int,float]:
+        if type(A) in [int,float]:
             ## B = alpha A
             return Vector(A*self.value())
         elif type(A) is Matrix :
@@ -70,10 +67,7 @@ class Vector:
 
     # v = v*A multiplication 
     def __imul__( self, A ):
-        if type(A) is Scalar:
-            ## B = alpha A
-            return self.set_value(self.value()*A.value())
-        elif type(A) in [int,float]:
+        if type(A) in [int,float]:
             ## B = alpha A
             return self.set_value(A*self.value())
         elif type(A) is Matrix :
@@ -126,8 +120,7 @@ class Matrix:
     # A = B*C Matrix multiplication 
     def __mul__( self, A ):
         ## B = alpha A
-        if type(A) is Scalar:         return Matrix(self.value()*A.value())
-        elif type(A) in [int,float]:  return Matrix(A*self.value())
+        if type(A) in [int,float]:  return Matrix(A*self.value())
         
         elif type(A) is Matrix :
             ## SELF  * A (multiplication)
@@ -143,7 +136,6 @@ class Matrix:
     def __imul__( self, A ):
         ## B = alpha A
         if type(A) in [int,float]: return self.set_value(A*self.value())
-        elif type(A) is Scalar:    return self.set_value(A.value()*self.value())
         elif type(A) is Matrix :
             ## SELF  * A (multiplication)
             L = self.value()
@@ -173,6 +165,7 @@ class Matrix:
         ## this is a logical sub partition ...
         if v[0][1]>shape[0] or v[1][1] > shape[1]  or  \
            v[0][1]<v[0][0] or v[1][1] < v[1][0] :
+            ## we should not be here
             print(v)
             print(shape)
             print(self.matrix.shape)
@@ -545,7 +538,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
         L = len(self.partition)-1 if Spatial else 1
         if level == at:
             
-            print(self.properties)
+            #print(self.properties)
             Count = self.leaf_count()
             B = self.get_buffer()
             R = []
@@ -599,7 +592,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
                         R.append(d.traversal_mladf(level+1,at))
                 return R
                 
-        print(level, at)
+        #print(level, at)
         return None
 
     def str_traversal(self,R,name, pk = -1):
@@ -654,8 +647,6 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
         L3 = self.traversal_mladf(0,0,parallel)
         print("L3 -> L2\n")
         print(self.str_traversal(L3,"// L3 ->L2\n"))
-        if 'ofm' in self.properties and self.properties['ofm']== 1:
-            pdb.set_trace()
         L2 = self.traversal_mladf(0,1,parallel)
         print("L2 -> L1\n")
         print(self.str_traversal(L2,"//L2 -> L1\n"))
@@ -669,7 +660,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
             L2 += L1
         
         print(self)
-        pdb.set_trace()
+        #pdb.set_trace()
         #L1 = self.traversal_mladf(0,2)
         #print(L1)
         
