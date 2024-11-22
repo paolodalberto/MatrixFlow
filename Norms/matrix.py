@@ -22,7 +22,8 @@ class Vector:
                  A : numpy.array ## we must have data to partition
     ) :
         
-        self.vector = A
+        self.vector = A ## reference shared by each vector and
+                        ## partition of a vector
         self.min = 0  
         self.max = A.shape[0]
 
@@ -33,15 +34,58 @@ class Vector:
         return self
 
     def shape(self) :
-        return  [self.max -self.min] 
+        return  [self.max -self.min]  ## max not included
     def __str__(self) :
         return str(self.value().shape)
+
+    ## This is to have A = B+C, A+=C, A=B*C, A*=B and other
+    ## for aesthetic purposes 
+
     # A = B + C
     def __add__(self, A ) :
         return Vector(self.value() + A.value())
     # A += B
     def __iadd__(self, A ) :
         return self.set_value(self.value() + A.value())
+
+    # v = v*A multiplication 
+    def __mul__( self, A ):
+        if type(A) is Scalar:
+            ## B = alpha A
+            return Vector(self.value()*A.value())
+        elif type(A) in [int,float]:
+            ## B = alpha A
+            return Vector(A*self.value())
+        elif type(A) is Matrix :
+            
+            ## SELF  * A (multiplication)
+            L = self.value()
+            R = A.value()
+            B= numpy.matmul(L,R)
+            C = Vector(B)
+            return C
+        elif type(A) is Vector:
+            ## v*v = w
+            return Vector(numpy.dot(self.value(), A.value()))
+
+    # v = v*A multiplication 
+    def __imul__( self, A ):
+        if type(A) is Scalar:
+            ## B = alpha A
+            return self.set_value(self.value()*A.value())
+        elif type(A) in [int,float]:
+            ## B = alpha A
+            return self.set_value(A*self.value())
+        elif type(A) is Matrix :
+            
+            ## SELF  * A (multiplication)
+            L = self.value()
+            R = A.value()
+            return self.set_value(numpy.matmul(L,R))
+        elif type(A) is Vector:
+            ## v*v = w
+            return self.set_value(numpy.dot(self.value(), A.value()))
+
     # Space in number of elements
     def space(self):
         return self.value().size#*self.vector.dtype.itemsize
@@ -55,16 +99,21 @@ class Matrix:
     def __init__(self,
                  A : numpy.ndarray
     ) :
-        self.matrix = A ## every body will have a copy 
+        self.matrix = A ## every body will have a reference 
         self.min = (0,0)
         if A is None :   self.max = (0,0)
         else:            self.max = A.shape
 
         self.color   = 0
         self.sub = None
-
+        
     def space(self):
         return self.value().size#*self.matrix.dtype.itemsize//8
+
+
+    ## This is to have A = B+C, A+=C, A=B*C, A*=B and other  
+    ## for aesthetic purposes 
+
     # A = B+C
     def __add__( self, A ):
         L = self.value()
@@ -76,12 +125,10 @@ class Matrix:
 
     # A = B*C Matrix multiplication 
     def __mul__( self, A ):
-        if type(A) is Scalar:
-            ## B = alpha A
-            return Matrix(self.value()*A.value())
-        elif type(A) in [int,float]:
-            ## B = alpha A
-            return Matrix(A*self.value())
+        ## B = alpha A
+        if type(A) is Scalar:         return Matrix(self.value()*A.value())
+        elif type(A) in [int,float]:  return Matrix(A*self.value())
+        
         elif type(A) is Matrix :
             ## SELF  * A (multiplication)
             L = self.value()
@@ -90,26 +137,19 @@ class Matrix:
             C = Matrix(B)
             C.gpu = True
             return C
-        elif type(A) is Vector:
-            ## A*v = w
-            return Vector(numpy.matmul(self.value(), A.value()))
+        
+        elif type(A) is Vector:  return Vector(numpy.matmul(self.value(), A.value()))
     # A *= B 
     def __imul__( self, A ):
-
-        if type(A) in [int,float]:
-            ## B = alpha A
-            return self.set_value(A*self.value())
+        ## B = alpha A
+        if type(A) in [int,float]: return self.set_value(A*self.value())
+        elif type(A) is Scalar:    return self.set_value(A.value()*self.value())
         elif type(A) is Matrix :
             ## SELF  * A (multiplication)
-            
             L = self.value()
             R = A.value()
             return  self.set_value(numpy.matmul(L,R))
-        elif type(A) is Vector:
-            ## A*v = w
-            return Vector(numpy.matmul(self.value(), A.value()))
-
-    
+        elif type(A) is Vector:   return Vector(numpy.matmul(self.value(), A.value()))
     
     def shapes(self):
         return  self.matrix.shape, self.min, self.max
@@ -168,8 +208,6 @@ class Matrix:
 ## Tiling -: [
 ##              T0, T1, T2
 ##           ] 
-## 
-##
 ##     
 class Tiling:
 
@@ -200,6 +238,9 @@ class Tiling:
         self.partition = Q(self.buffer_)
         self.tile_ = self.partition[0]
 
+    ## You want to find every leaf and split them further by core this
+    ## is often the case for broad cast input and unicast output, each
+    ## core will produce a single part ... 
     def core_spatial(self, Q):
         self.properties['ofm'] = 1
         L = len(self.partition)-1
@@ -216,19 +257,20 @@ class Tiling:
         
     ## Q is a list of splitting functions this is a little abstract
     ## but it is a useful routine when we know how the partition works
-    ## at different level of the memory hierarchy. 
+    ## at different level of the memory hierarchy.  this is used for
+    ## weights, because IFM/Input drives the computation and the
+    ## tiling and thus we need just to mimick the splitting
     def rec_traversal(self, Q : list ,S : list ) -> int :
 
         if len(Q)>0 :
-            
             self.partition = Q[0](self.buffer_)
             self.tile_ = self.partition[0]
-            self.properties['temporal'] =S[0]=='t'
-            #print("T", Q[0],self.buffer_,self.partition)
-        
-            
+            self.properties['temporal']  =  (S[0]=='t')
+
+            ## there is no further partition
             if len(Q)==1 : return 0
-            
+
+            ## recursive partition
             L = len(self.partition)-1
             for i in range(L):
                 self.partition[i] = Tiling(self.partition[i])
@@ -252,6 +294,7 @@ class Tiling:
     ## L2 -> L1 : spatial L2 to 4 buffers in L1 core
     ##            Take a tile and traverse in time the spatial buffer
     def spatial_temporal(self, Q_s, Q_t):
+
         self.partition = Q_s(self.buffer_)
         L = len(self.partition)-1
         for i in  range(L):
@@ -294,6 +337,7 @@ class Tiling:
             res+= ident+"b "+b
             
         return res
+
     ## We are interested in norms and the computation is asymmetric
     ## the columns have a particular flavor to it
     def max_col(self) :
@@ -343,10 +387,7 @@ class Tiling:
                 
         return res
 
-    ## this is a template how to visit the Tiling data structure and
-    ## will be used for the norm computation. Here is used mostly to
-    ## represent as string the data structure.
-
+    ## Example of mladf tiling and traversal
 
     """
     from GELU
@@ -491,38 +532,32 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
     ## L3 -> L2  spatial + temporal 
     ## L2 -> L1  temporal (because of the broadcast) 
     def traversal_mladf(self, level : int =0, at : int = 0, parallel = 'r'):
-             
-        ## description of the head shape, type, level
-        ident =  "\n"+"\t".join(["" for i in range(level+1) ])
-        # the last element in the partition is a str describing
-        # concisely how we split the matrix
 
         Time = self.properties['temporal']
         Spatial = not Time
-
-        typ = self.partition[-1]
-        L = len(self.partition)-1 if Spatial else 1
         
+        typ = self.partition[-1] # r,c,r+, rc
+
+        # if temporal, each tile will be the same or it should be the
+        # same in MLADF, so we need to consider only one. If the
+        # partition is spatial we need to specify each 
+
+        L = len(self.partition)-1 if Spatial else 1
         if level == at:
             
             print(self.properties)
             Count = self.leaf_count()
-            
             B = self.get_buffer()
-
             R = []
-            self.properties['temporal']
+
             for p in range(L):
                 if Spatial and type(self.partition[p]) is Tiling:
-                    ## spatial tile + temporal tile
-                    #pdb.set_trace()
+                    # for each spatial partition we will specify the
+                    # temporal traversal Spatial-Temporal
                     P = self.partition[p].partition[0]
                 else:
                     ## temporal tile
-                    
                     P = self.partition[p]
-                #Count = self.partition[p].leaf_count()
-                                
 
                 T = P.get_buffer() if not type(P) is Matrix else P 
                 tiling = {
@@ -540,11 +575,12 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
                     '.packet_port_id'   : -1,
                     '.repetition'       : 1 if typ == parallel else max(Count,1)
                 }
-                #print(tiling)
                 R.append(tiling)
-                if self.partition[L] == 'c':
-                    ## this is only temporal 
-                    return R
+
+                ## I do nor remember what this is for this is only
+                ## temporal
+                ##
+                ## if self.partition[L] == 'c': return R
             
             return R
                     
@@ -585,7 +621,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
         for l in R[:-1]:
             count +=1
             if type(l) is list:
-                S += self.str_traversal(l, "// COL %d \n" % count, pk)
+                S += self.str_traversal(l, "// COL %d %d \n" % (count, pk))
                 continue
 
             
@@ -600,7 +636,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
         count +=1
         l = R[-1]
         if type(l) is list:
-            S += self.str_traversal(l, "// COL %d \n" % count,pk)
+            S += self.str_traversal(l, "// COL %d %d \n" % (count,pk))
         else:
             trav =  l['.tile_traversal']
             S += T %( l['.buffer_dimension'][0],  l['.buffer_dimension'][1],
@@ -618,16 +654,17 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
         L3 = self.traversal_mladf(0,0,parallel)
         print("L3 -> L2\n")
         print(self.str_traversal(L3,"// L3 ->L2\n"))
-        
-        L2 = self.traversal_mladf(0,1,parallel)
-        print("L2 -> L1\n")
-        print(self.str_traversal(L2,"L2 -> L1\n"))
-
         if 'ofm' in self.properties and self.properties['ofm']== 1:
             pdb.set_trace()
+        L2 = self.traversal_mladf(0,1,parallel)
+        print("L2 -> L1\n")
+        print(self.str_traversal(L2,"//L2 -> L1\n"))
+
+        if 'ofm' in self.properties and self.properties['ofm']== 1:
+            
             L1 = self.traversal_mladf(0,3,parallel)
             print("L1 -> L1\n")
-            print(self.str_traversal(L1,"L1 -> L2\n",pk=1))
+            print(self.str_traversal(L1,"//L1 -> L2\n",pk=1))
 
             L2 += L1
         

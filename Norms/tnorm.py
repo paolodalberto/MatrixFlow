@@ -5,7 +5,7 @@ import pdb
 import copy
 
 from matrix import Vector, Matrix, Tiling
-from splitting import Qr, Qr_, Qc, Qc_, Qrc_,Cr, fit, fit_qrc, Identity
+from splitting import Qr, Qr_, Qc, Qc_, Qrc_,Cr, fit, fit_qrc, Identity, copy_tiling
 
 
 def square(x) : return x*x
@@ -145,10 +145,15 @@ class Norm :
             )
         )
         pdb.set_trace()
-        DDR.core_spatial(self.Qr)
+
+        O = Matrix(A.value()*1.0)
+        T = Tiling(O)
+        T = copy_tiling(T, DDR)
+        pdb.set_trace()
+        T.core_spatial(self.Qr)
         print(DDR)
         print(
-            DDR.full_traversal(
+            T.full_traversal(
                 parallel='r' if self.parallel('r') else 'c'
             )
         )
@@ -699,10 +704,17 @@ class LayerNorm(Norm):
         print(Wts.full_traversal( parallel='r' if self.parallel('r') else 'c'))
         
         print("---------------------------------------\n With Colors and Core")
-        Pace.core_spatial(self.Qr)
-        print(Pace)
-        print(Pace.full_traversal(parallel='r' if self.parallel('r') else 'c'))
-        
+        O = Matrix(A.value()*1.0)
+        T = Tiling(O)
+        T = copy_tiling(T,Pace)
+        pdb.set_trace()
+        T.core_spatial(self.Qr)
+        print(
+            T.full_traversal(
+                parallel='r' if self.parallel('r') else 'c'
+            )
+        )
+
     ###
     ##  You can see how the recursive computation follows the same
     ##  comptutation of the Norm but now there is a "wts".  The tiling

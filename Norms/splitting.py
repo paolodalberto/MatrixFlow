@@ -207,3 +207,32 @@ def fit_qrc(spatial : Tiling, L, Q, mult, gran_1,gran_2) -> Tiling:
 
     return spatial
 
+# When we have another matrix but the same tiling, what you are
+# going to call
+def copy_tiling(T : Tiling ,S : Tiling):
+    
+    L = len(S.partition)-1
+    t = S.partition[-1]
+    #pdb.set_trace()
+    
+    
+    def qc(A,p=L): return Qc(A,p)
+    def qr(A,p=L): return Qr(A,p)
+    def qd(A,p=L) : return Cr(A,p)
+    def qrc(A,p=L): return Qrc(A,p),
+    swiss = { 'c' : qc,
+              'r' : qr,
+              'r+' : qd, 
+              'rc' : qrc
+             }
+    T.traversal(swiss[t])                
+    for j in range(L):
+        d = S.partition[j]
+        t = T.partition[j]
+        if type(d) is Matrix:
+            continue
+        else:
+            t = Tiling(t)
+            t.properties.update(d.properties)
+            T.partition[j]  = copy_tiling(t,d)
+    return T
