@@ -195,7 +195,7 @@ class Norm :
                 ## the update does not requires a second operand to be
                 ## correct
                 if type(di) is Matrix:  self.R(T,self.pass_one(di))
-                else:                   self.R(T,self.comp_visit(di,level=1,T=T*0))
+                else:                   self.comp_visit(di,level=1,T=T)
 
             # PASS TWO
             for j in range(len(DDRs)-1):
@@ -218,7 +218,7 @@ class Norm :
                     if level ==1 : self.R(ti, self.pass_one(di))  ## we are still computing T
                     if level ==2 : self.pass_two(di,ti)        ## we are distributing    T
 
-                else: self.R(T,self.comp_visit(di,level=level,T = T*0))
+                else: self.comp_visit(di,level=level,T = T)
 
             if level == 1:  return T  ## we must return the partial 
             else:           return None
@@ -679,7 +679,7 @@ class LayerNorm(Norm):
                 ## the update does not requires a second operand to be
                 ## correct
                 if type(di) is Matrix:  self.R(T,self.pass_one(di))
-                else:                   self.R(T,self.comp_visit(di,dw,level=1,T=T*0))
+                else:                   self.comp_visit(di,dw,level=1,T=T)
 
             # PASS TWO
             for j in range(len(DDRs)-1):
@@ -702,7 +702,7 @@ class LayerNorm(Norm):
                     if level ==1 : self.R(ti, self.pass_one(di))  ## we are still computing T
                     if level ==2 : self.pass_two(di,dw,ti)        ## we are distributing    T
 
-                else: self.R(T,self.comp_visit(di,dw,level=level,T = T*0))
+                else: T,self.comp_visit(di,dw,level=level,T = T)
 
             if level == 1:  return T  ## we must return the partial 
             else:           return None
@@ -738,7 +738,7 @@ if __name__ == "__main__":
 
     #import pdb
     
-    shape =  (1024,512)
+    shape =  (1024,4096*4)
     dt = numpy.float16
 
     if False:
