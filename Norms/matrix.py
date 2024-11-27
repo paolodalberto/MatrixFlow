@@ -305,9 +305,11 @@ class Tiling:
              
         ## description of the head shape, type, level
         ident =  "\n"+"\t".join(["" for i in range(level+1) ])
-        res = ident+"Level %s %s %d " % (
+        res = ident+"Level %s I:%d %s %d " % (
             str(self.buffer_.shape() if type(self.buffer_) is Matrix else self.buffer_.shape),
-            self.partition[-1],level
+            self.buffer_.color,
+            self.partition[-1],
+            level
         )
         # the last element in the partition is a str describing
         # concisely how we split the matrix
@@ -347,7 +349,7 @@ class Tiling:
         res = []
         L = len(self.partition)
         if L<=1 : return []
-        res.append([self.partition[L-1],L-1])
+        #res.append([self.partition[L-1],L-1])
         for j in range(L-1):
             d = self.partition[j]
             if type(d) in  [Matrix,str] :
@@ -356,29 +358,31 @@ class Tiling:
                 res += d.flat()
         return res
 
-    ## Collecting all the leaves of the partition
-    def stream(self):
+    ## Collecting all the leaves of the partition with the repetition
+    ## they deserve so that we mimic the streaming of the tiling
+    def stream(self, parallel : str = 'r') -> list:
         res = []
+        A = self.get_buffer().shape()
+        
+        boundaries = [ A[1] if parallel == 'r' else A[0] ] 
         L = len(self.partition)
         if L<=1 : return []
-        res.append([self.partition[L-1],L-1])
+        #res.append([self.partition[L-1],L-1])
         ty = self.partition[L-1]
         for j in range(L-1):
             d = self.partition[j]
             if type(d) in  [Matrix,str] :
                 res.append(d)
             else:
-                C = d.flat()
-                F = d.leaf_count()
-                if ty[0] in ["r"] and d.partition[-1] in ['c']:
-                    for i in range(F):
-                        T +=  C
-                else:
-                    T = C
+                T,I  = d.stream(parallel)
+                boundaries += I
 
                 res += T
-                
-        return res
+        X = [ r for r in res]
+        boundaries [0] = len(X) if self.get_buffer().color>1 else 0
+        for i in range(self.get_buffer().color-1):
+            res += X
+        return res, boundaries
 
     ## Example of mladf tiling and traversal
 
@@ -566,7 +570,7 @@ std::vector<adf::access_pattern> ifm_L2_pattern_in = {
                         for i in range(len(T.min))
                     ],
                     '.packet_port_id'   : -1,
-                    '.repetition'       : 1 if typ == parallel else max(Count,1)
+                    '.repetition'       : P.get_buffer().color
                 }
                 R.append(tiling)
 

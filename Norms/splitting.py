@@ -225,14 +225,20 @@ def copy_tiling(T : Tiling ,S : Tiling):
               'r+' : qd, 
               'rc' : qrc
              }
+
+    T.get_buffer().color = S.get_buffer().color
     T.traversal(swiss[t])                
     for j in range(L):
         d = S.partition[j]
         t = T.partition[j]
+        
         if type(d) is Matrix:
+            t.color = d.color
             continue
         else:
+            t.color = d.get_buffer().color
             t = Tiling(t)
             t.properties.update(d.properties)
+            
             T.partition[j]  = copy_tiling(t,d)
     return T
