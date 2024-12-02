@@ -602,36 +602,37 @@ layout.
   \begin{equation}
     \Vc{X}  = \
     \begin{pmatrix}
-      \Vc{X}_1  \\
-      \Vc{X}_2  \\
-      \Vc{X}_3  \\
-      \Vc{X}_4  \\
+      \Vc{X}^1  \\
+      \Vc{X}^2  \\
+      \Vc{X}^3  \\
+      \Vc{X}^4  \\
     \end{pmatrix} = \dot\sum_i^r \Vc{X}^i
   \end{equation}
   a row partition is easily specified by an offset address
   Address($\Vc{X}_i$) = $(i-1)\frac{M}{4}N$ and the tiles are in
-  contiguous memory addresses.
+  contiguous memory addresses. In similar fashion, in a column
+  partition
   \begin{equation}
     \Vc{X}  = \
     \begin{pmatrix}
-      \Vc{X}_1  & \Vc{X}_2  &  \Vc{X}_3  &   \Vc{X}_4  \\
+      \Vc{X}^1  & \Vc{X}^2  &  \Vc{X}^3  &   \Vc{X}^4  \\
     \end{pmatrix} = \dot\sum_i^c \Vc{X}^i
   \end{equation}
-  then Address($\Vc{X}_i$) = $(i-1)\frac{N}{4}$ and the tiles are
-  stored in a strided space.  These represent {\bf spatial
-    partitions}, each partition has a buffer $\Vc{X}^i$ and each is
-  independent.
+  the offset addresses are Address($\Vc{X}_i$) = $(i-1)\frac{N}{4}$
+  and the tiles are stored in a strided spaces.  These represent {\bf
+    spatial partitions}, each partition has a buffer $\Vc{X}^i$ and
+  each is independent.
 \end{definition}
 
 
 \begin{definition}
   Consider a buffer $\Vc{X}^k$ and partition it into tiles
-  $\Vc{X}_{i,j}$ and the temporal partition $\Vc{X}^k =
+  $\Vc{X}_{i,j}$ and the {\bf temporal partition} $\Vc{X}^k =
   \sum_{i,j}^{rc}\Vc{X}^k_{i,j}$ (by row and then columns). Think of a
   stream where $\Vc{X}^k_{i,j}$ is streamed in order so that the whole
   buffer eventually has been touched/transfer. There is
-  $\sum_{i}^c\Vc{X}^k_{i}$ by column and $\sum_{i}^r\Vc{X}^k_{i}$ by
-  row temporal partition.
+  $\sum_{i}^r\Vc{X}^k_{i}$ by row and $\sum_{i}^c\Vc{X}^k_{i}$ by
+  column as a temporal partition.
 \end{definition}
 
 
@@ -641,16 +642,18 @@ layout.
   \dot\sum_k^r \Vc{X}^k = \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i}$.
   $\Vc{X}$ is the original buffer, there are four spatial tiles
   $\Vc{X}^k$, each is the buffer that will be streamed by temporal
-  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ (by row, by column,  and both)
+  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ (by row,
+  by column, and both)
 \end{definition}
 
-
+\subsubsection{Tiling LLM}
 A L3 to L2 traversal is valid if the tile size fits L2 (without
 context and without double buffering). More constraints are introduced
 when more information are available. For Norms we need double
 buffering and we stream at very least $\Vc{X}$ and the output of the
-Norm $\Vc{Y}$ In general a complete tiling/traversal for L3, L2, and
-L1 could be summarized by loops by
+Norm $\Vc{Y}$. In general, a complete tiling/traversal for L3, L2, and
+L1 could be summarized using our notation by loops: spatial by row, temporal by row,
+spatialby row, temporal by row (all independent computations).
 \begin{equation}
 T(\Vc{X}) = \dot\sum_k^r \Vc{X}^k =
 \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i} =
@@ -667,20 +670,14 @@ share the same data:
 \end{equation}
 
 \begin{itemize}
-\item Because of the nature of the computation and its associativity
-  of the projection, when any spatial or temporal partition is by
-  column, then all the following are by column. Intuitively, when we
-  start the associative computation of the projection and the partial
-  projection is in a set of registers, we would like to finish the
-  computation reusing the registers completely. Otherwise we need more
-  temporary space, we need to distinguish what part we did not reach
-  completion, and temporal locality is harder to track.
 \item If we observe just the tiling and the first partition using
   split by column, this split marks the beginning of temporal reuse,
   the computation will come back for the normalization and this split
-  will be {\em repeated} twice.
+  will be {\em repeated} twice. This computation will require blocked
+  reduction.
 
-\item this implies reuse in L1 
+\item Using our notation, the following tiling formulations imply
+  formal reuse in L1 (we read L1 twice)
   \begin{equation}
     \begin{matrix}
     \dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}, & 
@@ -689,7 +686,7 @@ share the same data:
     \end{matrix}
   \end{equation}
   
-\item   this implies reuse in L2
+\item These imply reuse in L2
   \begin{equation}
     \begin{matrix}
     \dot\sum_k^r\sum_{i}^{C}\sum_{m}^c\Vc{X}^{k}_{i,m}, & 
@@ -697,13 +694,15 @@ share the same data:
     \end{matrix}
   \end{equation}
 
-\item   this implies reuse in L3 
+\item This implies reuse in L3
   \begin{equation}
     \dot\sum_k^{C}\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}.
   \end{equation}
 
-\item this implies Two separate passes and spill to L2/L3 of
-  $P_+(\Vc{X})$ for which 
+\item This implies two separate passes and spill to L2/L3 of
+  $P_+(\Vc{X})$ for which. The first split is a temporal split
+  repeating the overall process twice (this is not possible in MLADF
+  but we can split the main computation into smaller ones).
   \begin{equation}
     \sum_\ell^{r}\dot\sum_k^{C}\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{\ell,i,m}.
   \end{equation}
@@ -725,6 +724,30 @@ structure is like a tree once built and unfolded.
   T[L3\rightarrow L2](X) = \dot\sum_k^r\sum_{i}^rT[L2\rightarrow L1](\Vc{X}^{k}_{i}).
 \end{equation}
 
+\subsubsection{Tiling Unified}
+The unified overlay use the connection between DDR and L2 memtiles in
+a different pattern.
+
+We still consider DDR infinite. From the DDR, First, the inputs and
+the outputs will be able to access a logical L2 memory (IOL2) composed
+of up to 3 memtiles, thus 512*3*KB and memtile M1, M2, and M3. Second
+the weights will access a separate and single memtile M4 (WL2).  The
+logical IOL2 has 4 vertical connections one for each column to each
+core. Each column communication is a broadcast. The WL2 has 4 row
+connection, and each row connection is a broadcast. Each core in each
+column produces a separate output and it has is custom channel back to
+IOL2.
+
+The tiling in this architecture follows this rule: temporal, spatial,
+temporal.
+
+\begin{equation}
+T(\Vc{X}) = \sum_k^r \Vc{X}_k =
+\sum_k^r\dot\sum_{i}^{r}\Vc{X}^i_{k} =
+\sum_k^r\dot\sum_{i}^{r}\sum_l^r\Vc{X}_{k,l}^{i} =
+\end{equation}
+
+
 
 \subsection{Tiling generation}
 \label{sec:tiling-generation}
@@ -733,7 +756,9 @@ granularity in the shape and size of the tiles. At this time we do not
 aim to an optimal tiling but we explore and present constraints-based
 heuristics. Two main ideas are applied: a top down partition and
 double buffering is preferred. We have a fit function, see Algorithm
-\ref{algo:fit}.  {\small
+\ref{alg:fit}.
+
+{\small
   \begin{algorithm}
     \caption{Fit : Tiling, L, SplitFunction, multiplicity, granularity }
     \label{alg:fit}
@@ -808,6 +833,9 @@ then the column partition will be the same
 \begin{equation}
   \dot\sum_k^x\sum_{i}^y\sum_{m}^z\Vc{{\gamma|\beta}}^{k}_{i,m}.
 \end{equation}
+
+
+
 
 \subsection{Tiling: Computation Validation}
 For simplicity, assume we have a Tiling and remember that the

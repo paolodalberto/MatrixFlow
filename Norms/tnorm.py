@@ -105,14 +105,16 @@ class Norm :
         self.Qrc_ = Qrc_
 
     def t_dim(self, A : Matrix) : return A.shape()[0]
-    def T_dim(self, A : Matrix): return Vector(
-            numpy.zeros(A.shape()[0]).astype(A.matrix.dtype)
+    def t_type(self,A : Matrix, prec : int = 0) : return numpy.float32 if prec==0 else A.matrix.dtype
+    def T_dim(self, A : Matrix, prec : int = 0): return Vector(
+            numpy.zeros(A.shape()[0]).astype( numpy.float32 if prec==0 else A.matrix.dtype)
     )
 
     def direction(self): return 0
     
     ## base projection of a matrix (Kernel computation)
     def pass_one(self, A  : Matrix):
+        A.color +=1
         return self.P(A)
 
     ## base normalization of a matrix + factor T  (Kernel computation)
@@ -120,6 +122,7 @@ class Norm :
         L = self.A.shape()[1] if self.A else A.shape()[1]
         TT = Vector(1/numpy.sqrt(
             numpy.finfo(A.matrix.dtype).resolution + T.vector/L)) # average and sqrt
+        A.color +=1
         self.N(A, TT)
         return A
 
@@ -128,16 +131,33 @@ class Norm :
         T = self.pass_one(A) 
         return self.pass_two(A,T)
 
+    ## based computation on matrix 
+    def comp_streaming(self, T : Tiling):
+        Ms,I = T.stream()
+        I = numpy.max(I)
+        N = len(Ms)
+        
+        trans = 0
+        ti = self.T_dim(Ms[0])
+        for i in range(N):
+            di = Ms[i]
+            if i % I==0:  trans+=1
+            if i% I ==0 and  trans%2 ==1:  ti = self.T_dim(Ms[i])
+
+            if trans%2 ==1: self.R(ti, self.pass_one(di))
+            else:           self.pass_two(Ms[i],ti)
+                
+        
     ## Tiling and computation AIE emulation, in place
     def comp_uni(self,A:Matrix):
         self.A = A
-
+        
         ## we create the tiling 
         DDR = self.comp_IFM(self.A)
         print(DDR)
         ## we compute using the tiling 
         self.comp_visit(DDR)
-        if True : return 0
+        if True : return DDR
         print("---------------------------------------\n With Colors")
         print(DDR)
         print(
@@ -159,7 +179,7 @@ class Norm :
                 parallel='r' if self.parallel('r') else 'c'
             )
         )
-        
+        return DDR
 
     def reduction(self,s :str):
         if self.Qr == Qr and s =="r": return False
@@ -183,6 +203,7 @@ class Norm :
 
         DDRs = Ti.get_partition() 
         ty = DDRs[-1]
+        Ti.get_buffer().color+=1
         
         if not self.parallel(ty[0]) and T is None : 
             # PARTIAL RESULTS
@@ -197,6 +218,7 @@ class Norm :
                 if type(di) is Matrix:  self.R(T,self.pass_one(di))
                 else:                   self.comp_visit(di,level=1,T=T)
 
+            Ti.get_buffer().color+=1
             # PASS TWO
             for j in range(len(DDRs)-1):
                 di = DDRs[j];  
@@ -608,6 +630,7 @@ class LayerNorm(Norm):
         T = self.pass_one(A)
         return self.pass_two(A,GB,T)
 
+
     ## tiling computation of the layer norm
     def comp_uni(self,
                A  : Matrix, # matrix MxN
@@ -631,7 +654,7 @@ class LayerNorm(Norm):
         pdb.set_trace()
         self.comp_visit(Pace,Wts)
 
-        if True: return 0
+        if True: return (Pace,Wts)
 
         
         print("---------------------------------------\n With Colors")
@@ -652,8 +675,44 @@ class LayerNorm(Norm):
                 parallel='r' if self.parallel('r') else 'c'
             )
         )
-
+        return (Pace,Wts)
  
+
+    ## based computation on matrix 
+    def comp_streaming(self, T : Tiling, WTS : Tiling):
+
+        print(T)
+        print(WTS)
+        #pdb.set_trace()
+        Ms,I = T.stream()
+        I = numpy.max(I)
+        N = len(Ms)
+        WMs,WI = WTS.stream()
+        WI = numpy.max(WI)
+
+        #A = T.get_buffer().value()*1.0
+        #import scipy
+        #R1 = scipy.special.softmax(A.astype(numpy.float64),1)
+        
+        trans = 0
+        ti = self.T_dim(Ms[0])
+        k = 0
+        for i in range(N):
+#            print(i)
+            di = Ms[i]
+
+            if i % I==0:  trans+=1
+            if i% I ==0 and  trans%2 ==1:  ti = self.T_dim(di)
+                
+            if trans%2 ==1: self.R(ti, self.pass_one(di))
+            else:
+                ## different number of iterations ...
+                wi = WMs[k]
+                self.pass_two(di,wi,ti)
+                k+=1
+        
+        #print(numpy.max(numpy.fabs(R1 - T.get_buffer().value())))
+        #pdb.set_trace()
 
     ###
     ##  You can see how the recursive computation follows the same
@@ -664,7 +723,8 @@ class LayerNorm(Norm):
     ###
     def comp_visit(self,Ti : Tiling,Wt : Tiling, level : int = 0,T : Matrix = None) :  
         DDRs = Ti.get_partition();  WDDR = Wt.get_partition()
-
+        Ti.get_buffer().color+=1
+        
         # pdb.set_trace()
         ty = DDRs[-1]
         
@@ -681,6 +741,8 @@ class LayerNorm(Norm):
                 if type(di) is Matrix:  self.R(T,self.pass_one(di))
                 else:                   self.comp_visit(di,dw,level=1,T=T)
 
+            Wt.get_buffer().color+=1
+            Ti.get_buffer().color+=1
             # PASS TWO
             for j in range(len(DDRs)-1):
                 di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
@@ -696,12 +758,12 @@ class LayerNorm(Norm):
             ti = T
             for j in range(len(DDRs)-1):
                 di = DDRs[j];  dw = WDDR[j] if len(WDDR) == len(DDRs) else WDDR[0]
-
+                
                 ## in the else in the AIE we do not need a second operand
                 if type(di) is Matrix:
                     if level ==1 : self.R(ti, self.pass_one(di))  ## we are still computing T
                     if level ==2 : self.pass_two(di,dw,ti)        ## we are distributing    T
-
+                    
                 else: T,self.comp_visit(di,dw,level=level,T = T)
 
             if level == 1:  return T  ## we must return the partial 
@@ -738,7 +800,7 @@ if __name__ == "__main__":
 
     #import pdb
     
-    shape =  (1024,4096*4)
+    shape =  (128,2048)
     dt = numpy.float16
 
     if False:
@@ -801,7 +863,19 @@ if __name__ == "__main__":
         
         ## computation using tiling
         BB = Matrix(copy.deepcopy(A))
-        LN.comp_uni(BB, GGB)
+        T,W  = LN.comp_uni(BB, GGB)
         print("MAX ERROR LN ",numpy.max(numpy.fabs(R1-BB.value())))
         pdb.set_trace()
+
+
+        BB = Matrix(copy.deepcopy(A))
+        Q = Tiling(BB)
+        WQ = Tiling(GGB)
         
+        Q = copy_tiling(Q,T)
+        WQ = copy_tiling(WQ,W)
+        LN.comp_streaming(Q,WQ)
+    
+
+        print("MAX ERROR LN ",numpy.max(numpy.fabs(R1-BB.value())))
+        pdb.set_trace()

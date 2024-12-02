@@ -12,18 +12,18 @@ def PplusMax(A : Matrix, axis = -1) -> Matrix:
     T = A.value()
     M = numpy.max(T, axis=-1)
     X = T - M[:,None]
-    E = numpy.exp(X)
+    E = numpy.exp(X).astype(numpy.float32)
     P = numpy.sum(E,axis=-1)
     
     A.set_value(numpy.exp(T))
-    GB = numpy.zeros((2,A.shape()[0]))
+    GB = numpy.zeros((2,A.shape()[0]), dtype=P.dtype)
     GB[0,:] = M
     GB[1,:] = P
     #pdb.set_trace()
     return Matrix(GB)
 
 ## softmax partial projection 
-def PRplusMax(A : Matrix, PQ : Matrix) -> Matrix:
+def PRplusMax(A : Matrix, PQ : Matrix, p = None) -> Matrix:
     #print(A)
     #print(PQ)
     M = A.value()[0,:]
@@ -39,7 +39,7 @@ def PRplusMax(A : Matrix, PQ : Matrix) -> Matrix:
 
     #print(M1.dtype,M.dtype)
     try:
-        S = numpy.exp((M1-M).astype(M1.dtype))
+        S = numpy.exp(M1-M).astype(M1.dtype)
     except:
         pdb.set_trace()
         
@@ -127,6 +127,7 @@ class RMSNorm(LayerNorm):
 
     ## base projection of a matrix (Kernel computation)
     def pass_one(self, A  : Matrix):
+        A.color +=1
         return self.P(A)
 
     ## (Kernel computation)
@@ -245,7 +246,7 @@ if __name__ == "__main__":
 
 
     #import pdb
-    shape =  (512,4096)
+    shape =  (16,4096)
     dt = numpy.float16
 
     if True:
@@ -264,11 +265,23 @@ if __name__ == "__main__":
 
         A2 = A1 *1.0 + 0.0
         A2 = A2.astype(dt)
-        N.comp_uni(Matrix(A2))
+        T = N.comp_uni(Matrix(A2))
     
     
         print("SM MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
         pdb.set_trace()
+
+
+        A2 = A1 *1.0 + 0.0
+        A2 = A2.astype(dt)
+        Q = Tiling(Matrix(A2))
+        Q = copy_tiling(Q,T)
+        N.comp_streaming(Q)
+    
+        print("SM MAX ERROR B", numpy.max(numpy.fabs(R1-A2)))
+        pdb.set_trace()
+
+        
 
     if False:
         A = numpy.random.rand(*shape).astype(dt)
