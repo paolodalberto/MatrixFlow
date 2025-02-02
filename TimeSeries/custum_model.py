@@ -220,10 +220,25 @@ if __name__ == '__main__':
     Z +=  Z*r/100 
     print("Z", Z)
 
+    
 
     ## this is the p we estimate from the data 
-    R = case_or_use(Z, p,targ, f_model,cost_function)
+    R = case_or_use(Z[:-1], p,targ, f_model,cost_function)
 
+    
+    ## Example of using the tuned model  
+
+    
     T1 = f_model(p=R,x=targ)
-    print(T1)
-    print(T)
+    print(T1)  # fitted
+    print(T)   # golden 
+
+    mu = numpy.mean(Z[:-1])
+    s  = math.sqrt(numpy.var(Z[:-1]))
+
+    print(Z[-1], T1)
+    if numpy.abs(T1-Z[-1])>3*s:
+        
+        print("Warning > 3sigma")
+    else:
+        print("All is well")

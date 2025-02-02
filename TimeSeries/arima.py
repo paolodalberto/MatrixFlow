@@ -23,7 +23,6 @@
 ###
 
 
-import pdb
 
 import numpy
 import math
@@ -75,11 +74,11 @@ def arima_use(
     ym2 = y[:-1] + f
 
     print(f, y[-1])
-    if numpy.abs(f[0]-y[-1])>2*std:
+    if numpy.abs(f[0]-y[-1])>3*std:
         
-        print("Warning > 2sigma")
+        print("Warning > 3sigma")
     else:
-        print("Warning < 2sigma")
+        print("All is well")
 
 
 def arima_use_2(
@@ -91,23 +90,23 @@ def arima_use_2(
     model_fit = model.fit()
     
     ## we forecast the last 1 step the last element
-    pdb.set_trace()
+    
     forecast = model_fit.get_forecast(1)
     yhat = forecast.predicted_mean
     yhat_conf_int = forecast.conf_int(alpha=0.05)[0]
     
     print(yhat_conf_int)
     if (yhat_conf_int[0]>y[-1] or yhat_conf_int[1]<y[-1] ):
-        
-        print("This is out and is below the 0.05 confidence", y[-1]) else:
-    print("All is well")
+        print("This is out and is below the 0.05 confidence", y[-1])
+    else:
+        print("All is well")
 
 
 
 
 if __name__ == '__main__':
 
-    pdb.set_trace()
+    
     R  = numpy.random.rand(10)
     N  = numpy.array([i for i in range(10)])
     
