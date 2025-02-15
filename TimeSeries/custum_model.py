@@ -166,7 +166,8 @@ def case_or_use(Z, p,targ, f_model, cost_function):
     print("Cost function to minimize ",
         cost_function(
             p,
-            Z,targ
+            Z,
+            targ
         )
     )
 
