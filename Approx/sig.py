@@ -20,17 +20,19 @@ def Taylor_3(x) :
     return (1/2) + (1/4)*x - (1/48)*x**3 
 
 def faie(x,p):
-    tmpx = numpy.minimum(4,x)
-    tmpx = numpy.maximum(-4,tmpx)
+    #tmpx = x
+    tmpx = numpy.minimum(4.1, x)
+    tmpx = numpy.maximum(-4.1,tmpx)
     tmpx_abs = numpy.absolute(tmpx)
 
     return p[0] + p[1]*tmpx - p[2]*tmpx_abs*tmpx
 
 def F(x,p):
     
-    r = x*0 + p[0]
+    xx = x.astype(numpy.float64)
+    r = xx*0.0 + p[0]
     for i in range(1,p.size):
-        r += p[i]*x**i
+        r += p[i]*xx**i
     return r
 
 def cost(p, x, y ):
@@ -39,9 +41,10 @@ def cost(p, x, y ):
     #return numpy.mean(((y-faie(x,p).astype(numpy.float16))/y)**2)
 
 def cost_2(p, x, y ):
-    y[y==0] = 1
-    return numpy.sum((((y-F(x,p).astype(numpy.float16)))/y)**2)
-    #return numpy.mean(((y-faie(x,p).astype(numpy.float16))/y)**2)
+    #y[y==0] = 1
+    #return numpy.sum((((y-F(x,p).astype(numpy.float16)))/y)**2)
+    #return numpy.mean(((y-F(x,p).astype(numpy.float16)))**2)
+    return numpy.mean((y-F(x,p))**2)
     
 def C(p,x,y,cost_function = cost, method='powell'):
     
@@ -55,23 +58,34 @@ def C(p,x,y,cost_function = cost, method='powell'):
     return res
 
 
+
+def s(x):
+    return (-.67436811832e-5+(.2468149110712040+(.583691066395175e-1+.3357335044280075e-1*x)*x)*x)/(.2464845986383725+(.609347197060491e-1+(.1086202599228572+.2874707922475963e-1*x)*x)*x)
+
+def  fast_tanh(x):
+  x2 = x * x;
+  a = x * (135135.0 + x2 * (17325.0 + x2 * (378.0 + x2)));
+  b = 135135.0 + x2 * (62370.0 + x2 * (3150.0 + x2 * 28.0));
+  return a / b;
+
+
 def me(ref,y):
     return numpy.fabs(ref - y)
 def mer(ref,y):
     y[ref==0] = 1
     ref[ref==0] = 1 
-    return numpy.fabs((ref - y)/ref)
+    return (ref - y)/ref
 
 
 if __name__ == '__main__':
 
 
-    #import pdb;pdb.set_trace()
+    import pdb;
 
 
 
     import matplotlib.pyplot as plt
-    x = numpy.linspace(-6, 6, 121*1000).astype(numpy.float16)
+    x = numpy.linspace(-6, 6, 121*500).astype(numpy.float16)
     y = scipy.special.expit(x).astype(numpy.float16)
 
     p = numpy.array([ (1/2), (1/4), (1/32)] )#, (1/480)])
@@ -91,10 +105,25 @@ if __name__ == '__main__':
     y_powell = faie(x,res.x.astype(numpy.float16)).astype(numpy.float16)
 
 
+    pdb.set_trace()
+    ## looking for different coefficients 
     
+    #y2_powell = fast_tanh(x[x>0]/2)
+    #plt.plot(x[x>0],  y2_powell, label='P3'+'Nelder-Mead')
+    #plt.plot(x[x>0],  scipy.special.expit(x[x>0]).astype(numpy.float16), label='R')
+    
+    plt.plot(x,  me(y,y_aie), label='aie')
     plt.plot(x,  me(y,y_nm), label='P3'+'Nelder-Mead')
     plt.plot(x,  me(y,y_powell), label='P3'+'powell')
-    plt.plot(x,  me(y,y_aie), label='aie')
+
+    #plt.plot(x,  y_nm, label='P3'+'Nelder-Mead')
+    #plt.plot(x,  y_powell, label='P3'+'powell')
+    #plt.plot(x,  y, label='Ref')
+
+    print(numpy.max(me(y,y_powell)))
+    print(numpy.max(me(y,y_nm)))
+    #
+    #plt.plot(x,  me(y,y2_powell), label='5')
 
     
 
