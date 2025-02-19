@@ -1,0 +1,946 @@
+%% This is file `sample-manuscript.tex', generated with the docstrip
+%% utility.  The original source files were: samples.dtx (with
+%% options: `manuscript') IMPORTANT NOTICE: For the copyright see the
+%% source file.  Any modified versions of this file must be renamed
+%% with new filenames distinct from sample-manuscript.tex.  For
+%% distribution of the original source see the terms for copying and
+%% modification in the file samples.dtx.  This generated file may be
+%% distributed as long as the original source files, as listed above,
+%% are part of the same distribution. (The sources need not
+%% necessarily be in the same archive or directory.)  The first
+%% command in your LaTeX source must be the \documentclass command.
+\documentclass[acmsmall]{acmart}
+%\usepackage{bm}
+
+%% as manuscript for review this will create line number 
+\usepackage{lineno}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+%\linenumbers
+
+%%  Always include hyperref last
+%% \usepackage[bookmarks=true,breaklinks=true,letterpaper=true,colorlinks,linkcolor=black,citecolor=blue,urlcolor=black]{hyperref}
+
+% Paolo's definition. Yes, I have my way to define stuff. Please take
+% a look
+\input{mydef}
+
+%%
+%% \BibTeX command to typeset BibTeX logo in the docs
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    \normalfont B\kern-0.5em{\scshape i\kern-0.25em b}\kern-0.8em\TeX}}}
+
+%% Rights management information.  This information is sent to you
+%% when you complete the rights form.  These commands have SAMPLE
+%% values in them; it is your responsibility as an author to replace
+%% the commands and values with those provided to you when you
+%% complete the rights form.
+\setcopyright{acmcopyright}
+\copyrightyear{2025}
+\acmYear{2025}
+\acmDOI{}
+
+%% These commands are for a JOURNAL article.
+%\acmJournal{PACM}
+%\acmVolume{--}
+%\acmNumber{--}
+%\acmArticle{---}
+%\acmMonth{3}
+
+
+%% These commands are for a PROCEEDINGS abstract or paper.
+%\acmConference[Woodstock '18]{Woodstock '18: ACM Symposium on Neural
+%  Gaze Detection}{June 03--05, 2018}{Woodstock, NY}
+%\acmBooktitle{Woodstock '18: ACM Symposium on Neural Gaze Detection,
+%  June 03--05, 2018, Woodstock, NY}
+%\acmPrice{15.00}
+%\acmISBN{978-1-4503-XXXX-X/18/06}
+
+
+%%
+%% Submission ID.
+%% Use this when submitting an article to a sponsored event. You'll
+%% receive a unique submission ID from the organizers
+%% of the event, and this ID should be used as the parameter to this command.
+%%\acmSubmissionID{123-A56-BU3}
+
+%%
+%% The majority of ACM publications use numbered citations and
+%% references.  The command \citestyle{authoryear} switches to the
+%% "author year" style.
+%%
+%% If you are preparing content for an event
+%% sponsored by ACM SIGGRAPH, you must use the "author year" style of
+%% citations and references.
+%% Uncommenting
+%% the next command will enable that style.
+%%\citestyle{acmauthoryear}
+
+%%
+%% end of the preamble, start of the body of the document source.
+\begin{document}
+
+%%%%%%%%%%%---SETME-----%%%%%%%%%%%%%
+\title{Norms: A Unified Approach}
+
+\author{Paolo D'Alberto}
+\email{}
+\affiliation{%
+  \institution{AMD}
+  \streetaddress{2100 Logic Dr}
+  \city{San Jose}
+  \state{California}
+  \postcode{95124}
+}
+
+\renewcommand{\shortauthors}{D'Alberto et al.}
+
+\begin{abstract}
+
+  Layer Norms are important tools in today's AI systems.  Also, they
+  are the little pesky layers that inference-engine tools have often
+  problems in either fusing them with other layers for speed-up or
+  because they introduce numerical unwanted oddities at low precision.
+  Norms have linear complexity. That is, they are communication bound,
+  they require to read the input at least twice, and there is a
+  satisfying and contrasting asymmetry of the computation (i.e., row
+  Gaussian normalization and column scaling).
+  
+  Here, we unify the norm formalism. We want to clarify the general
+  computation, the opportunities for fusion, and numerical
+  properties. So we can generate consistent and correct code for our
+  AIE AMD computes.
+  
+\end{abstract}
+
+\maketitle
+
+\section{Definitions and computations } 
+\label{sec:introduction}
+
+A matrix is $\Vc{X} \in \R^{M \times N}$ with $M$ rows and $N$ columns
+and we represent a single scalar element as $x_{i,j}$ with obvious
+bounds. A vectors is $\Vc{V} \in \R^{M}$ with scalar element $v_i$.
+Last, a scalar is $\alpha \in \R$.
+
+
+A matrix norm is a two-part computation. We have a {\em projection}
+where we compute a factor, a vector, and then a {\em normalization}
+where we take the projected factor and distribute it back to the
+elements of the matrix. In the literature and implementations, these
+computations have also other names: Projection is a reduction because
+it is frequently associated with sums, dot products. Normalization is
+a broadcast. Now that we have a names, let us define them formally and
+constructively.
+
+Let us start with scalar operations on Matrix/Vectors:
+\begin{definition}
+  A scalar operation on a matrix $\Vc{X}$
+  \begin{equation}
+    G_f: \Vc{X} \rightarrow \Vc{Y} \text{ and }  y_{i,j} = f(x_{i,j})
+  \end{equation}
+\end{definition}
+
+For example, we will use $G_{x*x}(\Vc{X}) = x_{i,j}^2$ and
+$G_{\exp}(\Vc{X}) = \exp(x_{i,j})$. 
+
+
+\begin{definition}
+An associative Projection $P_+: \Vc{X}\in\R^{M\times N} \rightarrow
+\Vc{F} \in \R^{M}$, is a function where the element
+\[ f_i = \sum_{j=1}^N x_{i,j}. \]
+The $+/\sum$ sign is not in general a summation, We choose it because
+this is a natural symbol for the associative property:
+\[
+f_i = (x_{i,1}) + (\sum_{j=2}^N x_{i,j}) = (\sum_{j=1}^{N-1} x_{i,j}) + (x_{i,N}).
+\]
+
+\end{definition}
+The definition is a row projection.  There are norms where the
+projection is by column. The formalism can easily take care of that by
+specifying a direction (i.e., in the code we introduce it).  Let us
+digest our formalism a little.  As we will read our matrix, we are
+going to maintain the order and projecting of matrix $\Vc{X}$ (row
+elements $x_{i,*}$). We do not need the projection to be commutative
+in general but all the projections of interests are. Also, we require
+the computation of multiple projections for the computation of the
+normalization factor.
+
+We abuse the notation of the symbol $+$ in the associative expression
+$f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j}))$, in the sense that the
+combination of the temporary sub-projection may require some extra
+work during the computation or at the end when we have a complete
+projection into a proper normalization factor. However, such
+simplification does not detract any information and the implementation
+can address it.
+
+What could $P_+(G_f(X))$ be? That is, we apply scalar operations and
+then projection. The associativity should be a property of the
+projection and not of the value of the matrix. SoftMax Norm in finite
+precision is an example where we have {\em to work} to enforce the
+associativity (e.g., $\exp(x)$ can be large and in finite precision
+overflow easily especially their sum).
+
+\begin{definition}
+  An optional summary function $S_+: \{\Vc{F}\}_i\in\R^{ M}
+  \rightarrow \Vc{E} \in \R^{M}$ and  $\Vc{F}_i = P_i(G_{f_i}(\Vc{X}))$
+\end{definition}
+So we can summarize the first part of the computation by an
+associative projection or a set of projections and an optional summary
+function for the final composition of the normalization factors.
+
+Now let start formulating the normalization computation.
+
+\begin{definition}
+  We have two normalization functions by row 
+  \begin{equation}
+    N_*: \Vc{X}\in\R^{M\times N} \times \Vc{T}\in \R^M \rightarrow \Vc{Y}
+    \in \R^{M\times N}, \text{ where } y_{i,j} = x_{i,j}*t_i
+  \end{equation}
+  and by column
+  \begin{equation}
+    N_*: \Vc{X}\in\R^{M\times N} \times  \Vc{S}\in \R^N \rightarrow \Vc{Y}
+    \in \R^{M\times N}, \text{ where } y_{i,j} = x_{i,j}*s_j
+  \end{equation}
+  Again the $*$ is not necessarily a multiplication and the
+  normalization can be by row or by column. For presentation purpose
+  we will use a single symbol (unless confusing).
+\end{definition}
+
+If we extend the normalizing factor $\Vc{F}$ into a diagonal matrix in
+$\Vc{D}_F \in \R^{M\times M}$ so that $[\Vc{D}_F]_{i,i} = f_i$ and
+zero everywhere else (same idea for $\R^{N\times N}$), and the
+normalization is a based on a scalar product, then we reduce the
+computation to matrix-matrix multiplication products. 
+\begin{equation}
+  \Vc{D}_F * \Vc{X} \text{ and } \Vc{X} * \Vc{D}_F
+\end{equation}
+
+Notice that using matrix multiplication we can see that a row
+normalization is associative $(\Vc{D}_f * \Vc{X}) * \Vc{Y} = \Vc{D}_f
+* (\Vc{X} * \Vc{Y})$ then giving an hint how the normalization could
+be postponed if neceesary.  Also a column mormalization in combination
+with a matrix multiplication $(\Vc{X}* \Vc{D}_f) * \Vc{Y} = \Vc{X}*
+(\Vc{D}_f * \Vc{Y})$ is actually a row normalization of the following
+operand.
+
+We introduce the last definiition, a matrix partition.
+\begin{definition}
+  A row partition of a matrix is simply defined as
+  \begin{equation}
+    [\Vc{X} ]_{r=2} = \
+    \begin{pmatrix}
+      \Vc{X}_1  \\
+      \Vc{X}_2  \\
+    \end{pmatrix}\\
+  \end{equation}
+  and a column partition
+  \begin{equation}
+    [\Vc{X} ]_{c=2} = \
+    \begin{pmatrix}
+      \Vc{X}_1  & \Vc{X}_2  \\
+    \end{pmatrix}\\
+  \end{equation}
+\end{definition}
+If we want to take a matrix $\Vc{X} \in \R^{M\times N}$ and normalize
+its rows by a square norm $||x||_2$, see Algorithm \ref{alg:l2}. As we
+define $P_+(\Vc{X})_i$ as the summation $\sum_j x_{i,j}$ and
+$N_*(\Vc{X}, \Vc{T})_{i,j} = x_{i,j}*t_i$, we have the complete
+computation of the norm : $f_i = \sqrt{\frac{1}{N}\sum_{j=1}^N
+  x_{i,j}^2}$ and $x_{i,j} = \frac{x_{i,j}}{f_i}$.
+
+\begin{algorithm}
+    \caption{$\Vc{X}/||\Vc{X}||_2$ algorithm}
+    \label{alg:l2}
+    \begin{algorithmic}
+      \STATE $\Vc{T} = P_+(G_{x*x}(\Vc{X}))$
+      \STATE --------------------------------
+      \STATE $\Vc{T} = \sqrt{\Vc{T}/N}$    \COMMENT{ \# Summary} 
+      \STATE --------------------------------
+      \STATE $\Vc{X} = N_*(\Vc{X},\Vc{T})$  
+    \end{algorithmic}
+\end{algorithm}
+
+When we introduce a new projections $P_{max}(\Vc{X})_i =
+\max{x_{i,*}}$, which is associative, and we normalize the additive
+projection with the result of the new projection, we can see that the
+Softmax computation has the same properties and composition (Algorithm \ref{alg:l2_2}).
+
+\begin{algorithm}
+    \caption{$SoftMax(\Vc{X})$ algorithm}
+    \label{alg:l2_2}
+    \begin{algorithmic}
+      \STATE $\Vc{M} = P_{max}(\Vc{X})$
+      \STATE $\Vc{T} = P_+(G_{exp}(\Vc{X})*G_{exp}(-\Vc{M}))$
+      \STATE --------------------------------
+      \STATE $\Vc{T} = \Vc{T}*\exp{\Vc{M}}$    \COMMENT{ \# Summary}
+      \STATE --------------------------------
+      \STATE $\Vc{X} = N_*(G_{exp}(\Vc{X}),\Vc{T})$ 
+    \end{algorithmic}
+\end{algorithm}
+
+
+Let us go back using the original notations and block the input matrix
+so that to exploit its natural composition, independent computations
+by row and we exploit the associativity of the projection in Algorithm \ref{alg:l2_3}
+
+\begin{algorithm}
+    \caption{Blocked $3\times 3$}
+    \label{alg:l2_3}
+    \begin{algorithmic}
+      \STATE \[
+        \Vc{X}  =   \begin{pmatrix}
+          \Vc{X}_{1,1} &    \Vc{X}_{1,2}&    \Vc{X}_{1,3}  \\
+          \Vc{X}_{2,1} &    \Vc{X}_{2,2}&    \Vc{X}_{2,3}  \\
+          \Vc{X}_{3,1} &    \Vc{X}_{3,2}&    \Vc{X}_{3,3}  \\
+        \end{pmatrix}
+      \] \\
+      \WHILE{$i$ in [1,2,3] \# Independent } 
+          \STATE $\Vc{T} = \Vc{0} $  \COMMENT{ \# Zero element for $P_+$}
+          \WHILE {$j$ in [1, 2,3] \# Projection }
+              \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$ \COMMENT{   \# Reduction}  
+          \ENDWHILE
+          \STATE --------------------------------     
+          \STATE $\Vc{T}  =   S_+(\Vc{T})$       \COMMENT{ \# Summary}
+          \STATE --------------------------------     
+          \WHILE {$j$ in [1,2,3] \# Normalization }
+             \STATE $ \Vc{X}_{i,j} = N_*(\Vc{X}_{i,j},\Vc{T})$  
+          \ENDWHILE
+      \ENDWHILE
+    \end{algorithmic}
+\end{algorithm}
+
+The application of the blocked algorithm for the Euclidean Norm and
+for Softmax requires very little re-work, just remember that softmax
+will require two projections:
+
+\begin{center}
+  \begin{tabular}{l}
+    \hline
+    SoftMax associative projections \\
+    \hline 
+    $\Vc{M}_0 = -\infty; \Vc{T}_0 = 0$ \\ 
+    $\Vc{M}_{j+1} = max(M_j, P_{max}(\Vc{X}_{i,j})$ \\
+    $\Vc{T}_{j+1} = \Vc{T}_j*(exp(-(\Vc{M}_{j+1}-\Vc{M}_j))) + P_+(G_{\exp}(\Vc{X}_{i,j}-\Vc{M}_{j+1}))$ \\
+  \end{tabular}
+\end{center}
+
+Once we recognizing the particular projection, the matching of the
+proper computation should be natural. Also, the layer norm $(x_{i,j} -
+\mu_i)/\sqrt{\sigma^2_i}$ will require the computation of two
+projections so that average ($\mu$) and variance ($\sigma^2$) can be
+computed in a single pass but with two projections (Algorithm
+\ref{alg:l2_4}).
+
+\begin{algorithm}
+    \caption{Layer Norm $3\times 3$ with $\gamma, \beta$}
+    \label{alg:l2_4}
+    \begin{algorithmic}
+      \STATE \[
+        \Vc{X}  =   \begin{pmatrix}
+          \Vc{X}_{1,1} &    \Vc{X}_{1,2}&    \Vc{X}_{1,3}  \\
+          \Vc{X}_{2,1} &    \Vc{X}_{2,2}&    \Vc{X}_{2,3}  \\
+          \Vc{X}_{3,1} &    \Vc{X}_{3,2}&    \Vc{X}_{3,3}  \\
+        \end{pmatrix}
+      \] 
+      \STATE \[
+        \Vc{\gamma}  =   \begin{pmatrix}
+          \Vc{\gamma}_{1} &    \Vc{\gamma}_{2}&    \Vc{\gamma}_{3}  \\
+        \end{pmatrix}
+      \] 
+      \STATE \[
+        \Vc{\beta}  =   \begin{pmatrix}
+          \Vc{\beta}_{1} &    \Vc{\beta}_{2}&    \Vc{\beta}_{3}  \\
+        \end{pmatrix}
+      \] 
+      \WHILE{$i$ in [1,2,3] }
+          \STATE $\Vc{T} = \Vc{0} $  
+          \STATE $\Vc{S} = \Vc{0} $ 
+          \WHILE {$j$ in [1, 2,3] }
+              \STATE $\Vc{T} = \Vc{T} +P_+(\Vc{X}_{i,j})$             \COMMENT{Projection + sum}  
+              \STATE $\Vc{S} = \Vc{T} +P_+(G_{x*x}(\Vc{X}_{i,j}))$ \COMMENT{Projection + sum squares}  
+          \ENDWHILE
+          \STATE --------------------------------     
+          \STATE $\Vc{T}  =   \Vc{T}/N$       \COMMENT{Summary, scalar}
+          \STATE $\Vc{S}  =   (\Vc{S} - (\frac{\Vc{T}}{\sqrt{N}})^2)/N$       \COMMENT{Summary, scalar}
+          \STATE --------------------------------     
+          \WHILE {$j$ in [1,2,3] }
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}-\Vc{T}$  \COMMENT{Normalization Row}
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}/\Vc{S}$   
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j}*\gamma_j$   \COMMENT{Normalization Column}
+             \STATE $ \Vc{X}_{i,j} = \Vc{X}_{i,j} + \beta_j$   
+          \ENDWHILE
+      \ENDWHILE
+    \end{algorithmic}
+\end{algorithm}
+
+
+\section{Computation Modes} 
+The mathematical notation provides a clear description of the
+computation, clearly pedantic but constructive in nature. Also, the
+normalization factor and its computation can be used when we would
+like to fuse the norm operation with the following (or the previous)
+computation.
+
+Here, we are more interested in describing how we would implement the
+norm computation using different engine: GPU, GPU, and AIE FGPA
+engines. We show direct implementations for CPU and AIE and we present
+a short discussion about the GPUs. This is always related to AMD chips
+and codes.
+
+The main difference is about the computation of the Projection and how
+the hardware implicitly helps the computation. Let's start with the
+GPU that uses heavily the associativity for parallelization of the
+computation.
+
+\subsection{GPU conversation}
+The projection is associative and we can exploit the parallelism by
+blocking the computation in warps, compute independent and separated
+$\Vc{T}_i = P_+(\Vc{X}_{i,j})$, then reduce the computation in cores
+by using a tree like computation and built in HW utilities (register
+computations). 
+
+\begin{equation}
+  \begin{matrix}
+    \Vc{T}_1 = P_+(\Vc{X}_{i,1}), & ... &  \Vc{T}_n = P_+(\Vc{X}_{i,n}) \\ 
+    \Vc{T}_1 = \Vc{T}_1+\Vc{T}_2, & ... &  \Vc{T}_{\frac{n}{2}} = \Vc{T}_{\frac{n}{2}} + \Vc{T}_{\frac{n}{2}+1} \\
+    \Vc{T}_1 = \Vc{T}_1 + \Vc{T}_2, & ... &  \Vc{T}_{\frac{n}{4}} = \Vc{T}_{\frac{n}{4}} + \Vc{T}_{\frac{n}{4}+1} \\
+    \dots  & ... & ... \\ 
+    \Vc{T}_1 = \Vc{T}_1 + \Vc{T}_2 & & \\
+  \end{matrix}
+\end{equation}
+
+The small size of the computation that can be done as unit and the HW
+support for the reduction makes this computation
+appealing. Numerically, the binary three computation makes the
+computation balanced and well partitioned. If there is no use of high
+precision accumulators this will have numerical advantages. That is, a
+balanced binary tree with $N$ elements has the longest addition path
+length of only $K = \log_2(N)$ and the fish spine tree has $K = N-1$
+and for additions we accumulate an error of $O(K)$.
+
+For a Layer Norm of size $512 \times 768$ on a MI100 with 1.2 TB/s
+HBM2 we can achieve 9 us (microseconds) latency (bandwidth utilization
+800GBs) for layer norm in fp16 and fp32 precision. This is the fastest
+performance across the AMD products at our disposal.
+
+\subsection{CPU conversation}
+CPUs have deep memory hierachies to exploit temporal locality. If we
+observe the norm computations there is little temporal locality. Each
+row is read twice, but there will be $N$ accesses in between. As soon
+as we realize that $\Vc{T} += P_+(\Vc{X}_{i,j})$ has consecutive
+accecesses to fast L1 caches we can exploit the AVX instruction set to
+transform scalar operations into parallel vector operations.
+
+The partition on $\Vc{X}$ will associate a set of row to a
+thread/core. We stream the input rows and we store in the core the
+temporary $T$ (registers), we compute the factor(s), then we stream
+the rows again for the propagation of the normalization factor(s). We
+exploit temporal locality because the smallest and fastest cache in
+the memory hierarchy containing the rows will be read twice naturally
+without any further assistance. When the computation moves to the next
+rows, we clear the memory hierarchy safely. C threads can deploy this
+strategy naturally and without the need to much careful
+blocking. However, threading is heavy and they are really applicable
+only for very large matrices.
+
+{\tiny  \begin{verbatim}
+Vendor ID:               AuthenticAMD
+  Model name:            AMD EPYC 7F52 16-Core Processor
+Caches (sum of all):     
+  L1d:                   1 MiB (32 instances)
+  L1i:                   1 MiB (32 instances)
+  L2:                    16 MiB (32 instances)
+  L3:                    512 MiB (32 instances)
+\end{verbatim} }
+
+By writing naive code for x86 ISA and using as reference the $512
+\times 768$, the base code reference is about 600 us. By exploiting a
+different style in exploiting parallel row computations and using the
+AVX instructions (using {\em --fast-math}), then we can achieve 121 us
+using a single core and float point 32bits.
+
+For comparison to an older threadripper with share L3 cache 
+{\tiny  \begin{verbatim}
+Vendor ID:                AuthenticAMD
+  Model name:             AMD Ryzen Threadripper 1950X 16-Core Processor
+Caches (sum of all):      
+  L1d:                    512 KiB (16 instances)
+  L1i:                    1 MiB (16 instances)
+  L2:                     8 MiB (16 instances)
+  L3:                     32 MiB (4 instances)
+\end{verbatim} }
+we can achieve 269 us.
+
+\section{AIE Core computation, Tiling generation, and validation}
+As matter of fact, we use float 64bit precision in the code generation
+presented in this repository. However, the AIE instruction set has
+vector operations per core (like GPU), for int8, int16, bfloat16 and
+float32. The AIE system has a three level memory hierarchy: L3
+connected to four L2 (memtile one for each column) and each L2 is
+connected with one column of four cores L1 and one specific row with
+four core L1.
+
+The reduction using GPU style codes is possible and encouraged for
+each core internally but there is no simple equivalent for extra-core
+reduction. We suggest a Norm computation on AIE similar to the CPU in
+the sense that we use the memory hierarchy to stream row partitions
+and accumulate in core the projections. Then, we do another pass. The
+main difference that the data movement has to be orchestrated
+explicitly because there is not hardware assisted data replacement
+policy.
+
+Let us rewrite the blocked algorithm here once again to show the
+logical division of the computation but we want to draw attention to
+the same inner loop reading the input. A reminder the temporary
+projections, summary, and normalizing factors will be store in core
+(L1). We will have a section related to the case when and where we
+must spill (to L2).
+
+{\small \begin{algorithm}
+    \caption{Blocked $3\times 3$ (Projection in L1)}
+    \label{alg:l2_5}
+    \begin{algorithmic}
+      \STATE \[
+        \Vc{X}  =   \begin{pmatrix}
+          \Vc{X}_{1,1} &    \Vc{X}_{1,2}&    \Vc{X}_{1,3}  \\
+          \Vc{X}_{2,1} &    \Vc{X}_{2,2}&    \Vc{X}_{2,3}  \\
+          \Vc{X}_{3,1} &    \Vc{X}_{3,2}&    \Vc{X}_{3,3}  \\
+        \end{pmatrix}
+      \] \\
+      \WHILE{$i$ in [1,2,3] \# Independent } 
+          \STATE $\Vc{T} = \Vc{0} $  \COMMENT{ \# Zero element for $P_+$}
+          \WHILE {$j$ in [1,2,3] \# Projection }
+              \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$ \COMMENT{   \# Reduction}  
+          \ENDWHILE
+          \STATE --------------------------------     
+          \STATE $\Vc{T}  =   S_+(\Vc{T})$       \COMMENT{ \# Summary}
+          \STATE --------------------------------     
+          \WHILE {$j$ in [1,2,3] \# Normalization }
+             \STATE $ \Vc{X}_{i,j} = N_*(\Vc{X}_{i,j},\Vc{T})$  
+          \ENDWHILE
+      \ENDWHILE
+    \end{algorithmic}
+\end{algorithm} }
+
+
+\subsection{Core computation}
+Take the prospective of a core $C_i$ that, somehow, can access from a
+stream of data a block $\Vc{X_{i,k}}$. In a CPU implementation, the
+core starts the reading of the block by a load and the HW may go as
+far the OS page to procure the data (page, DRAM Row, L3, L2, L1d). By
+the AIE programming model, imagine we create a stream where
+$\Vc{X_{i,1}}$ ... $\Vc{X_{i,N}}$ is send through and it is repeated
+twice, we call the location where data arrives $L_1$.  The core just
+need to wait for the block, release the block when done, and wait for
+the next. Now by literally counting to $N$, the core knows when to do
+the projection, the summary, and the normalization. The Algorithm
+\ref{alg:l2_6} provides a clear boundary of the core computation as a
+kernel and how the functionality is based on counting the number of
+partitions read and when to write.
+
+
+{\small \begin{algorithm}
+    \caption{Blocked $3\times 3$}
+    \label{alg:l2_6}
+    \begin{algorithmic}
+      \WHILE{$i$ in [1,2,3] \# Independent } 
+          
+          \WHILE {$r$ in [1,2] followed $j$ in [1, 2, 3] }
+             \STATE \COMMENT{ \# Core Computation} 
+             \IF{$r*j==1$ }
+             \STATE $\Vc{T} = \Vc{0} $  \COMMENT{ \# Zero element for $P_+$}
+             \ELSIF{$r ==1$ }
+             \STATE $\Vc{T} = \Vc{T} +P_+(G_{f}(\Vc{X}_{i,j}))$  
+             \ELSIF {$r==2$  and $j==1$}
+             \STATE $\Vc{T}  =   S_+(\Vc{T})$      
+             \ELSE
+             \STATE $ \Vc{X}_{i,j} = N_*(\Vc{X}_{i,j},\Vc{T})$
+             \ENDIF
+         \ENDWHILE
+      \ENDWHILE
+    \end{algorithmic}
+\end{algorithm} }
+
+Using a common terminology for the AIE programming: $r$ is the
+repetition, $\Vc{X}$ is the buffer, $\Vc{X}_{i,k}$ is the tile, and
+$\Vc{X_{i,1}}$ ... $\Vc{X_{i,N}}$ is the (time) traversal of the
+buffer by tiles with the specified repetition. In this particular
+norm, Projection and Reduction require the same memory foot print
+because they both read $\Vc{X_{i,N}}$ and only one write
+$\Vc{X_{i,N}}$. If we introduce column normalization such as in
+Algorithm \ref{alg:l2_4}, the normalization pass will require to read
+$\Vc{X_{i,k}}$, $\gamma_k$, and $\beta_k$. We will address space
+constraints and tiling in the next section.
+
+\subsection{Tiling}
+\label{sec:tiling}
+\singlefigure{0.50}{AIE.png}{4x4 AIE representation}{fig:aie}
+
+Let us start with our interpretation of tiling by using an abstract
+representation of the memory hierarchy and connections as in Figure
+\ref{fig:aie}: L3 = DDR = infinity, L2 is composed of four mem-tiles
+of 512KB, and each mem-tile has a connection to one column of cores
+and one different connection to a row. Here, we assume that the
+connections are broadcasts: the same data is broadcast to all cores
+and the core will select a subpart (if it likes). Each core has eight
+banks of 8KB each composing the lowest level L1, we give two banks for
+inputs for ping pong, two for weights, two for outputs, and two banks
+for Temporary Space. We use this information in the following Tiling
+generation section \ref{} 
+
+Intuitively, Tiling is a {\em spatial} and a {\em temporal}
+partition. Where, a partition describes a way to take a matrix and
+split into (non-overlapping) parts in order to cover the whole
+original matrix and in principle move it. We assume a row-major
+layout.
+
+\begin{definition}
+   Consider a matrix $\Vc{X} \in
+  \R^{M\times N}$, 
+  \begin{equation}
+    \Vc{X}  = \
+    \begin{pmatrix}
+      \Vc{X}^1  \\
+      \Vc{X}^2  \\
+      \Vc{X}^3  \\
+      \Vc{X}^4  \\
+    \end{pmatrix} = \dot\sum_i^r \Vc{X}^i
+  \end{equation}
+  a row partition is easily specified by an offset address
+  Address($\Vc{X}_i$) = $(i-1)\frac{M}{4}N$ and the tiles are in
+  contiguous memory addresses. In similar fashion, in a column
+  partition
+  \begin{equation}
+    \Vc{X}  = \
+    \begin{pmatrix}
+      \Vc{X}^1  & \Vc{X}^2  &  \Vc{X}^3  &   \Vc{X}^4  \\
+    \end{pmatrix} = \dot\sum_i^c \Vc{X}^i
+  \end{equation}
+  the offset addresses are Address($\Vc{X}_i$) = $(i-1)\frac{N}{4}$
+  and the tiles are stored in a strided spaces.  These represent {\bf
+    spatial partitions}, each partition has a buffer $\Vc{X}^i$ and
+  each is independent.
+\end{definition}
+
+
+\begin{definition}
+  Consider a buffer $\Vc{X}^k$ and partition it into tiles
+  $\Vc{X}_{i,j}$ and the {\bf temporal partition} $\Vc{X}^k =
+  \sum_{i,j}^{rc}\Vc{X}^k_{i,j}$ (by row and then columns). Think of a
+  stream where $\Vc{X}^k_{i,j}$ is streamed in order so that the whole
+  buffer eventually has been touched/transfer. There is
+  $\sum_{i}^r\Vc{X}^k_{i}$ by row and $\sum_{i}^c\Vc{X}^k_{i}$ by
+  column as a temporal partition.
+\end{definition}
+
+
+\begin{definition}
+  The L3 to L2 traversal of a matrix $\Vc{X}$ is the composition of a
+  spatial and temporal partition: For example, $T(\Vc{X}) =
+  \dot\sum_k^r \Vc{X}^k = \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i}$.
+  $\Vc{X}$ is the original buffer, there are four spatial tiles
+  $\Vc{X}^k$, each is the buffer that will be streamed by temporal
+  partition $\sum_{i}^r\Vc{X}^k_{i}$ with tile $\Vc{X}^k_{i}$ (by row,
+  by column, and both)
+\end{definition}
+
+\subsubsection{Tiling LLM}
+A L3 to L2 traversal is valid if the tile size fits L2 (without
+context and without double buffering). More constraints are introduced
+when more information are available. For Norms we need double
+buffering and we stream at very least $\Vc{X}$ and the output of the
+Norm $\Vc{Y}$. In general, a complete tiling/traversal for L3, L2, and
+L1 could be summarized using our notation by loops: spatial by row, temporal by row,
+spatialby row, temporal by row (all independent computations).
+\begin{equation}
+T(\Vc{X}) = \dot\sum_k^r \Vc{X}^k =
+\dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i} =
+\dot\sum_k^r\sum_{i}^{r}\dot\sum_l^r\Vc{X}^{k,l}_{i} =
+\dot\sum_k^r\sum_{i}^r\dot\sum_l^r\sum_{m}^r\Vc{X}^{k,l}_{i,m}.
+\end{equation}
+
+Note, the second spatial partition is a way to take the matrix in L2,
+split it so that it will feed each core L1 separately, but because we
+use broadcast, there is not second spatial partition and all core
+share the same data:
+\begin{equation}
+\dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}.
+\end{equation}
+
+\begin{itemize}
+\item If we observe just the tiling and the first partition using
+  split by column, this split marks the beginning of temporal reuse,
+  the computation will come back for the normalization and this split
+  will be {\em repeated} twice. This computation will require blocked
+  reduction.
+
+\item Using our notation, the following tiling formulations imply
+  formal reuse in L1 (we read L1 twice)
+  \begin{equation}
+    \begin{matrix}
+    \dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}, & 
+    \dot\sum_k^r\sum_{i}^r\sum_{m}^C\Vc{X}^{k}_{i,m}, & 
+    \dot\sum_k^r\sum_{i}^r\sum_{m}^{RC}\Vc{X}^{k}_{i,m}. \\
+    \end{matrix}
+  \end{equation}
+  
+\item These imply reuse in L2
+  \begin{equation}
+    \begin{matrix}
+    \dot\sum_k^r\sum_{i}^{C}\sum_{m}^c\Vc{X}^{k}_{i,m}, & 
+    \dot\sum_k^r\sum_{i}^{RC}\sum_{m}^c\Vc{X}^{k}_{i,m}. \\
+    \end{matrix}
+  \end{equation}
+
+\item This implies reuse in L3
+  \begin{equation}
+    \dot\sum_k^{C}\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}.
+  \end{equation}
+
+\item This implies two separate passes and spill to L2/L3 of
+  $P_+(\Vc{X})$ for which. The first split is a temporal split
+  repeating the overall process twice (this is not possible in MLADF
+  but we can split the main computation into smaller ones).
+  \begin{equation}
+    \sum_\ell^{r}\dot\sum_k^{C}\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{\ell,i,m}.
+  \end{equation}
+\end{itemize}
+
+The AIE traversal implementation is more like the notation above. That
+is, the inner loops describe only one sub partition simplifying the
+implementation and enforcing a partition that has same shapes. Also
+some repetition are not possible 
+
+However, the logical partitioning of any matrix is a tool completely
+general and with some experience, is applicable for different levels
+and connections. We use it for the representation of bilinear matrix
+multiplication algorithms in the past.
+
+In practice, we implement Tiling as recursive function, and the data
+structure is like a tree once built and unfolded.
+\begin{equation}
+  T[L3\rightarrow L2](X) = \dot\sum_k^r\sum_{i}^rT[L2\rightarrow L1](\Vc{X}^{k}_{i}).
+\end{equation}
+
+\subsubsection{Tiling Unified}
+The unified overlay use the connection between DDR and L2 memtiles in
+a different pattern.
+
+We still consider DDR infinite. From the DDR, First, the inputs and
+the outputs will be able to access a logical L2 memory (IOL2) composed
+of up to 3 memtiles, thus 512*3*KB and memtile M1, M2, and M3. Second
+the weights will access a separate and single memtile M4 (WL2).  The
+logical IOL2 has 4 vertical connections one for each column to each
+core. Each column communication is a broadcast. The WL2 has 4 row
+connection, and each row connection is a broadcast. Each core in each
+column produces a separate output and it has is custom channel back to
+IOL2.
+
+The tiling in this architecture follows this rule: temporal, spatial,
+temporal.
+
+\begin{equation}
+T(\Vc{X}) = \sum_k^r \Vc{X}_k =
+\sum_k^r\dot\sum_{i}^{r}\Vc{X}^i_{k} =
+\sum_k^r\dot\sum_{i}^{r}\sum_l^r\Vc{X}_{k,l}^{i} =
+\end{equation}
+
+
+
+\subsection{Tiling generation}
+\label{sec:tiling-generation}
+There are always computation and hardware constraints that enforce
+granularity in the shape and size of the tiles. At this time we do not
+aim to an optimal tiling but we explore and present constraints-based
+heuristics. Two main ideas are applied: a top down partition and
+double buffering is preferred. We have a fit function, see Algorithm
+\ref{alg:fit}.
+
+{\small
+  \begin{algorithm}
+    \caption{Fit : Tiling, L, SplitFunction, multiplicity, granularity }
+    \label{alg:fit}
+    \begin{algorithmic}
+      \STATE Components = Tiling.spatial-parts    \# list of matrices 
+      \WHILE{ c in Components}
+        \STATE T  = None;  t = 1;         q = True
+        \WHILE{ q is True}
+        \IF {t*gran is too large}   
+            \STATE q = False; continue
+        \ELSIF {t*gran has reminder }  
+            \STATE continue
+        \ENDIF
+        \STATE t = SplitFunction(c,t*gran) 
+        \STATE A = t[0]   \COMMENT{ \# Assume the first partition is the largest}
+        \IF{multiplicity*A.space()>L}
+           \STATE q = False
+        \ELSE 
+           \STATE T = A
+        \ENDIF
+        \STATE t+=1
+        \ENDWHILE
+      \STATE c = Tiling(c, T) 
+      \ENDWHILE
+    \end{algorithmic}
+  \end{algorithm}
+}
+
+We choose the largest partition for which the tiles size fit the level
+capacity L with or without double buffering (multiplicity=1 or
+2). Making sure that the size of the tile has a proper granularity is
+to make sure that the following tiles may have the same granularity
+satisfied without awkward reminder making the index computation and
+problem size not properly balanced.
+
+In general, we start by trying splitting the computation by row
+$\dot\sum_k^r\sum_{i}^r T(\Vc{X}^{k}_{i})$. We fit recursively the
+Tiling. If it does not fit, then we try by column
+$\dot\sum_k^c\sum_{i}^c T(\Vc{X}^{k}_{i})$ and we know that the rest
+will be by column.
+
+
+What is the implication of the latter case, when we start splitting
+temporally by columns? We split the matrix in space by row in L3 into
+4 parts. Each spatial partition will transfer at least a complete
+column, this will be transfer to L2 as it is, and to L1 (broad cast).
+L1 is 8 KB of data, if we assume that each element is two Bytes, L1
+and double buffering can hold 4*K elements, if we have a single
+projection, we are good to go and we can handle a $M=16K$ elements.
+For layer norm, we need to keep two projections and thus the maximum
+size is 2*K read elements and thus ($M = 8K$). For even larger, we
+need to split the computation into several Layer Norms.  Other oddity
+to consider for the space constraints is the addressable space, often
+we need to read at least 4 Bytes (if not 32B) so in L1 we need to read
+at least two columns (reducing $M$).
+
+
+
+\subsection{Tiling: $gamma$ and $beta$ }
+Notice in Algorithm \ref{alg:l2_4} and \ref{alg:l2_6}, the input is
+$\Vc{X}_{i,j}$, it is read twice, it is written once and normalized
+$\Vc{X}_{i,j}*\gamma_j + \beta_j$. For a broad cast communication
+$\Vc{X}_{i,j}$ takes at least space $4\times k$, we need $2\times k$
+for the parameters $\gamma$ and $\beta$, and the partial results for
+the reduction (for these norms) is about $2$. We can see that the
+tiling of the $\Vc{X}$ really drives the tiling of the the weights. In
+fact, consider
+\begin{equation}
+\dot\sum_k^x\sum_{i}^y\sum_{m}^z\Vc{X}^{k}_{i,m}.
+\end{equation}
+then the column partition will be the same
+\begin{equation}
+  \dot\sum_k^x\sum_{i}^y\sum_{m}^z\Vc{{\gamma|\beta}}^{k}_{i,m}.
+\end{equation}
+
+
+
+
+\subsection{Tiling: Computation Validation}
+For simplicity, assume we have a Tiling and remember that the
+temporary space for the partial projection computation will be
+actually done in core without spills.
+\begin{itemize}
+\item $\dot\sum_k^r\sum_{i}^r\sum_{m}^r\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+for k in K: 
+    for i in I do: 
+        for m in J: 
+            T= Projection(X[k,i,m]) 
+            T = S(T)
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim} 
+\item $\dot\sum_k^r\sum_{i}^r\sum_{m}^c\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+for k in K: 
+    for i in I do: 
+        T = 0 # the first time we start the projection      
+        for m in J: 
+            T+= Projection(X[k,i,m]) 
+        T = S(T) # the first time we start the normalization
+        for m in J: 
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim} 
+\item $\dot\sum_k^r\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+for k in K: 
+    T = 0# the first time we start the projection 
+    for i in I do: 
+        for m in J: 
+            T+= Projection(X[k,i,m]) 
+    T = S(T)  # the first time we start the normalization
+    for i in I do: 
+        for m in J: 
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim} 
+\item $\dot\sum_k^c\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}$. 
+\begin{verbatim}
+# ----
+T=0 # the first time we start the projection
+for k in K: 
+    for i in I do: 
+        for m in J: 
+            T+= Projection(X[k,i,m]) 
+T = S(T) # the first time we start the normalization
+for k in K: 
+    for i in I do: 
+        for m in J: 
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim}
+\end{itemize}
+
+In practice, we formulate the computation as a recursive descent visit
+into the tiling data structure. Instance Norm has parallel computation
+by columns and other Norms  are by row. 
+
+
+
+
+\section{Conclusion}
+In this work, we show that Norms can be abstracted in such a way that
+mathematical and computation properties can be easily represented.
+
+\begin{enumerate}
+  \item We show that Tiling (for AIE) of every Norm can be generated
+    by a single heuristics.
+  \item The tiling is correct,
+  \item We can perform actual computations to validate in practice the
+    solution
+  \item the code for this project shows that the analysis help in the
+    writing of concise codes.
+\end{enumerate}
+
+  
+
+%\input{conclusion.tex}
+
+%%%%%%%%% -- BIB STYLE AND FILE -- %%%%%%%%
+\bibliographystyle{IEEETran} \bibliography{ref}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%\appendix{Review and Response}
+%\input{review.tex}
+\end{document}
+
+
+
+
+  
+
+
+  
+
+
+
+
+  
+
+

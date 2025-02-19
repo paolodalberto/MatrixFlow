@@ -1,0 +1,549 @@
+
+//#define GRAPH_PATH 1
+
+
+#include <pthread.h>
+#define _GNU_SOURCE
+#include <sched.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <assert.h>
+#include <time.h>
+
+#define LAYERNORM 1
+#include"block.h"
+
+static int DEBUG=0;
+static int DEBUG2 = 0;
+
+
+
+
+#define CPU_SETSIZE __CPU_SETSIZE
+# define CPU_ZERO(cpusetp) __CPU_ZERO_S (sizeof (cpu_set_t), cpusetp)
+# define CPU_SET(cpu, cpusetp) __CPU_SET_S (cpu, sizeof (cpu_set_t), cpusetp)
+# define CPU_ISSET(cpu, cpusetp) __CPU_ISSET_S (cpu, sizeof (cpu_set_t), cpusetp)
+# define CPU_COUNT(cpusetp)      __CPU_COUNT_S (sizeof (cpu_set_t), cpusetp)
+
+
+void CREATE_V (SUBVECTOR *A, int M) {
+  A->m = M ;
+  A->M = M;
+  A->val = (Mat*)calloc((M), sizeof(Mat));
+}
+
+void DESTROY_V(SUBVECTOR *A)        {
+  free(A->val);
+  A->val = 0;
+}
+
+void CREATE_S (SUBMATRIX *A,int M,int N) {
+  A->m =M;
+  A->M = M;
+  A->n = N;
+  A->N = N;
+  A->val = (Mat*) calloc((M)*(N), sizeof(Mat));
+}  
+void DESTROY_S(SUBMATRIX *A)             {
+  free(A->val);
+  A->val = 0;
+}
+  
+
+
+//** Core Computation is a LRN of a subset of rows 
+
+static void *coreComputation( void *s) {
+  TOperands mc = *(TOperands *)s;
+  int p1;
+  cpu_set_t mask;
+  if (mc.pi >= 0)  {
+
+    CPU_ZERO(&mask);
+    CPU_SET(mc.pi, &mask);
+
+    //p1 = sched_setaffinity(0,sizeof(mc.pi),&(mc.pi));
+    p1 = sched_setaffinity(0,sizeof(mask),&(mask));
+    if (p1<0) { 
+      printf(" Fail processor setting pt %d \n",mc.pi);
+    }
+  }
+  
+  mc.c = mc.m(mc.c,mc.g, mc.b);
+    
+  return 0;
+}
+//** we create a list of thread for each core computation
+
+static void MatrixComputationsB(TOperands *args, int len)  {
+  
+  pthread_t*  p_thread; /* thread's structure */
+  pthread_attr_t attr;
+  int* thr_id;
+  int i;
+  int k=len;
+  
+  thr_id = malloc(k * sizeof(int) );
+  p_thread = malloc(k * sizeof(pthread_t) );
+  pthread_attr_init(&attr);
+
+
+  pthread_attr_setscope(&attr, PTHREAD_SCOPE_SYSTEM);
+  
+  for (i = 0; i<k-1; i++){
+    //printf("k %d \n",k);
+    thr_id[i] = pthread_create(&p_thread[i], 
+			       &attr, 
+			       coreComputation, 
+			       (void *)(args+i));
+  }
+
+  coreComputation((void *)(args+i));
+  
+ //START_CLOCK;
+ /* wait for the threads to complete */
+ for (i = 0; i<k-1; i++){
+   pthread_join(p_thread[i], NULL);
+ }
+ if (DEBUG2) printf(" Done pthreading \n");
+
+ free(thr_id);
+ free(p_thread);
+
+
+}
+
+
+
+// Variable number of single-precision accumulators.
+#define NACC 4
+void fast(const Mat* values, size_t len, Mat *res) {
+  Mat sums[NACC] = {};
+  Mat sumss[NACC] = {};
+  
+  const Mat* const end = values + len;
+
+  while (values < end - NACC) {
+    for (size_t i = 0; i < NACC; i++) {
+      Mat x = *values++;
+      sums[i] += x;
+      sumss[i] += x*x;
+    }
+  }
+
+  Mat sum = 0.f;
+  Mat sumq = 0.f;
+
+  while (values < end) { 
+    Mat x =*values++ ;
+    sum += x;
+    sumq += x*x;
+  }
+  for (size_t i = 0; i < NACC; i++) {
+    sum += sums[i];
+    sumq  += sumss[i];
+  }
+  res[0] = sum;
+  res[1] = sumq;
+}
+
+
+
+
+
+inline void psum(SUBMATRIX A, int i,
+		 SUBVECTOR ps ,
+		 SUBVECTOR ps_square) {
+  int N = A.N;
+  Mat psum=0.0, psum_square = 0.0;
+  
+  for (int j=0; j<N; j++)  {
+    Mat x = EM(A,i,j);
+    psum +=  x;
+    psum_square +=  x*x;
+  }
+  EV(ps,i)      += psum;
+  EV(ps_square,i) += psum_square;
+}
+
+inline void psum_(SUBMATRIX A, int i,
+		  SUBVECTOR ps ,
+		  SUBVECTOR ps_square) {
+  int N = A.N;
+  Mat res[2];
+  fast( &EM(A,i,0),N,res);
+  EV(ps,i)      += res[0];
+  EV(ps_square,i) += res[1];
+}
+
+inline void psum_4(SUBMATRIX A, int i,
+		 SUBVECTOR ps ,
+		 SUBVECTOR ps_square) {
+  int j,N = A.N;
+  Mat psum=0.0,psum1=0.0,psum2=0.0,psum3=0.0,
+      psum_square = 0.0,psum_square1 = 0.0,psum_square2 = 0.0,psum_square3 = 0.0;
+  
+  for (j=0; j<(N/4)*4; j+=4)  {
+    Mat x = EM(A,i,j),x1 = EM(A,i,j+1),x2 = EM(A,i,j+2),x3 = EM(A,i,j+3);
+    psum +=  x;psum1 +=  x1;psum2 +=  x2;psum3 +=  x3;
+    psum_square +=  x*x;psum_square1 +=  x1*x1;psum_square2 +=  x2*x2;psum_square3 +=  x3*x3;
+  }
+  for (j=0; j<N; j++)  {
+    Mat x = EM(A,i,j);
+    psum +=  x;
+    psum_square +=  x*x;
+  }
+      
+  EV(ps,i)      += psum+psum1+psum2+psum3;
+  EV(ps_square,i) += psum_square+psum_square1+psum_square2+psum_square3;
+}
+
+
+
+inline void psum_2(SUBMATRIX A, int i,
+		 SUBVECTOR ps ,
+		 SUBVECTOR ps_square) {
+  int j,N = A.N;
+  Mat psum=0.0,psum1=0.0,psum2=0.0,psum3=0.0,
+      psum_square = 0.0,psum_square1 = 0.0,psum_square2 = 0.0,psum_square3 = 0.0;
+  
+  for (j=0; j<(N/2)*2; j+=2)  {
+    Mat x = EM(A,i,j),x1 = EM(A,i,j+1);
+    psum +=  x;psum1 +=  x1;
+    psum_square +=  x*x;psum_square1 +=  x1*x1;
+  }
+  for (j=0; j<N; j++)  {
+    Mat x = EM(A,i,j);
+    psum +=  x;
+    psum_square +=  x*x;
+  }
+      
+  EV(ps,i)      += psum+psum1+psum2+psum3;
+  EV(ps_square,i) += psum_square+psum_square1+psum_square2+psum_square3;
+}
+
+
+/** scalar definition of the Layer Norm computation */
+static void LN_1(SUBMATRIX A,
+		 SUBVECTOR ps ,
+		 SUBVECTOR ps_square) {
+
+  int M  = min(A.m,ps.m);
+  int i=0;
+  // for each row 
+  for (i=0; i<(M/4)*4; i+=4)  {
+    psum_(A,i+0,ps,ps_square);
+    psum_(A,i+1,ps,ps_square);
+    psum_(A,i+2,ps,ps_square);
+    psum_(A,i+3,ps,ps_square);
+  }
+  for (; i<M; i++)   psum_(A,i,ps,ps_square);
+
+}
+
+void psum2(SUBMATRIX A, int i,
+		  SUBVECTOR ps ,
+		  SUBVECTOR ps_square,
+		  SUBVECTOR gamma, SUBVECTOR  beta) {
+
+  int N  = min(A.N,min(gamma.m,beta.m));
+  Mat mu, mus, invsigma,psum,psum_square;
+
+  Mat *x = &EM(A,i,0);
+  Mat *g = gamma.val;
+  Mat *b = beta.val;
+  psum=EV(ps,i); psum_square = EV(ps_square,i);
+  mu = psum/N;
+  mus = N*mu*mu;
+  invsigma = 1/sqrt((double)(psum_square - mus)/N);
+  mu = mu*invsigma;
+  for (int j=0; j<N; j++)  {
+    *x = (*x*invsigma -mu)*(*g++)+*b++;
+    x++;
+  }
+ 
+}
+
+/** scalar definition of the Layer Norm computation */
+static SUBMATRIX LN_2(
+       SUBMATRIX A,
+       SUBVECTOR ps ,SUBVECTOR ps_square,
+       SUBVECTOR gamma, SUBVECTOR  beta) {
+
+  int M  = min(A.m,ps.m);
+  int i;
+  // for each row 
+  for (i=0; i<(M/4)*4; i+=4)  {
+    psum2(A,i+0,ps,ps_square,gamma,beta);
+    psum2(A,i+1,ps,ps_square,gamma,beta);
+    psum2(A,i+2,ps,ps_square,gamma,beta);
+    psum2(A,i+3,ps,ps_square,gamma,beta);
+  }
+  for (; i<M; i++)  psum2(A,i,ps,ps_square,gamma,beta);
+  return A;
+}
+
+/** matrix ? definition of the Layer Norm computation */
+SUBMATRIX LN12(SUBMATRIX A,  SUBVECTOR gamma, SUBVECTOR  beta) {
+
+  SUBVECTOR ps, ps_square;
+  CREATE_V(&ps, A.M);
+  CREATE_V(&ps_square, A.M);
+
+  LN_1(A,ps ,ps_square);
+  LN_2(A,ps ,ps_square, gamma,  beta);
+
+  DESTROY_V(&ps);
+  DESTROY_V(&ps_square);
+  return A;
+}
+
+
+/** scalar definition of the Layer Norm computation */
+SUBMATRIX LNS(SUBMATRIX A,  SUBVECTOR gamma, SUBVECTOR  beta) {
+
+  int M  = A.m;
+  int N  = min(A.N,min(gamma.m,beta.m));
+  
+
+  // for each row 
+  for (int i=0; i<M; i++)  {
+    Mat mus = 0.0, mu=0.0,invsigma = 0.0; 
+    Mat psum=0.0, psum_square = 0.0;
+    
+    for (int j=0; j<N; j++)  {
+      Mat x = EM(A,i,j);
+      psum +=  x;
+      psum_square +=  x*x;
+    }
+    mu = psum/N;
+    mus = N*mu*mu;
+    invsigma = 1/sqrt((psum_square - mus)/N);
+    
+    for (int j=0; j<N; j++)  {
+      EM(A,i,j) = (EM(A,i,j) -mu)*invsigma*EV(gamma,j)+EV(beta,j);
+    }
+
+
+  }
+    
+  return A;
+}
+
+inline void row(SUBMATRIX A, int i,
+		SUBVECTOR gamma,SUBVECTOR beta) {
+   Mat mus = 0.0, mu=0.0, invsigma = 0.0; 
+   Mat psum=0.0,  psum_square = 0.0;
+   int N = A.N;
+   
+   for (int j=0; j<N; j++)  {
+     Mat x = EM(A,i,j);
+     psum +=  x;
+     psum_square +=  x*x;
+   }
+   mu = psum/N;
+   mus = N*mu*mu;
+   invsigma = 1/sqrt((psum_square - mus)/N);
+   
+   for (int j=0; j<N; j++)  {
+     EM(A,i,j) = (EM(A,i,j) -mu)*invsigma*EV(gamma,j)+EV(beta,j);
+   }
+   
+}
+
+/** scalar definition of the Layer Norm computation */
+SUBMATRIX LNS4(SUBMATRIX A,  SUBVECTOR gamma, SUBVECTOR  beta) {
+
+  int M  = A.m;
+  int N  = min(A.N,min(gamma.m,beta.m));
+  int i =0;
+  
+  
+  // for each row 
+  for (i=0; i<(M/4)*4; i+=4)  {
+    row(A, i+0,gamma,beta);
+    row(A, i+1,gamma,beta);
+    row(A, i+2,gamma,beta);
+    row(A, i+3,gamma,beta);
+    /*
+      row(A, i+4,gamma,beta);
+      row(A, i+5,gamma,beta);
+      row(A, i+6,gamma,beta);
+      row(A, i+7,gamma,beta);
+    */
+  }
+  for (; i<M; i++)  {
+     row(A, i+0,gamma,beta);
+  }
+    
+  return A;
+}
+
+
+
+/** scalar definition of the Layer Norm computation */
+SUBMATRIX LN(SUBMATRIX A,  SUBVECTOR gamma, SUBVECTOR  beta) {
+
+  int M  = A.m;
+  int N  = min(A.N,min(gamma.m,beta.m));
+  
+
+  // for each row 
+  for (int i=0; i<M; i++)  {
+    Mat  mu=0.0, sigma=0.0, invsigma = 0.0; 
+
+    
+    for (int j=0; j<N; j++)  {
+      Mat x = EM(A,i,j);
+      mu +=  x;
+    }
+    mu = mu/N;
+    for (int j=0; j<N; j++)  {
+      Mat x = mu - EM(A,i,j);
+      sigma +=  x*x;
+    }
+    sigma = sigma/N;
+    
+    invsigma = 1/sqrt(sigma);
+    
+    for (int j=0; j<N; j++)  {
+      EM(A,i,j) = (EM(A,i,j) -mu)*invsigma*EV(gamma,j)+EV(beta,j);
+    }
+
+
+  }
+    
+  return A;
+}
+
+
+
+static SUBMATRIX *split_rows(SUBMATRIX A, int Ps) {
+
+  SUBMATRIX *Rows;
+  int L = A.M;
+  int r = A.M;
+  int K, RK;
+  int k=0;
+  int i;
+
+
+  Rows = (SUBMATRIX*) malloc(Ps*sizeof(SUBMATRIX));
+  
+  if (DEBUG) printf("L = %d-%dx%d r =%d \n",L,A.M,A.N,r); 
+  RK = r%Ps;
+  
+  K = ceil_div(r, Ps);
+
+  if (DEBUG) printf("Rows = %d K =%d RK =%d Ps=%d \n",r,K, RK,Ps);     
+  for (i=0; k<Ps-1;i+=K,k++) {
+    if (DEBUG) printf("k < %d i =%d  \n",k,i);     
+    Rows[k].val = &EM(A,i,0);
+    Rows[k].M = A.M;
+    Rows[k].N = A.N;
+    Rows[k].m = K;
+    Rows[k].n = A.N;
+    
+  }
+  if (1) {
+    if (DEBUG) printf("k = %d i =%d \n",k,i);     
+    Rows[k].val = &EM(A,i,0);
+    Rows[k].M = A.M;
+    Rows[k].N = A.N;
+    Rows[k].m = A.M - i ;
+    Rows[k].n = A.N;
+    
+  }  
+  if (DEBUG) printf("#Rows => %d \n",k);
+
+
+  
+  return Rows;
+}
+
+
+SUBMATRIX  LN_P(SUBMATRIX A, SUBVECTOR gamma , SUBVECTOR beta,
+		       int Ps /* number of threads */
+	       ) {
+  SUBMATRIX *Rows = split_rows(A,Ps);
+  TOperands *args = (TOperands*) malloc(Ps*sizeof(TOperands));
+
+  for (int i=0;i<Ps;i++) {
+    args[i].pi = i;
+    args[i].m = LN12;
+    args[i].c = Rows[i];
+    args[i].g = gamma;
+    args[i].b = beta;
+  }
+
+  MatrixComputationsB(args,Ps);
+  free(args);
+  free(Rows);
+  return A;
+}
+
+
+void  print_m(SUBMATRIX A) {
+  if (A.m < 10 &&  A.n< 10) {
+    printf("%d %d \n", A.m, A.n);
+    for (int i=0; i<A.M;i++) {
+      printf("["); 
+      for (int j=0; j<A.N-1;j++) 
+	printf("%f,", EM(A,i,j));
+      printf("%f]", EM(A,i,A.N-1));
+      printf("\n");
+    }
+  }
+}
+void  print_v(SUBVECTOR A) {
+  if (A.m < 10 ) {
+    printf("%d  \n", A.m);
+    for (int i=0; i<A.M;i++)  
+      printf("%f ", EV(A,i));
+    printf("\n");
+  }
+}
+
+
+
+void  init_s(SUBMATRIX A) {
+  float a = 0.5;
+  for (int i=0; i<A.M;i++) { 
+    for (int j=0; j<A.N;j++) { 
+#ifdef BALANCE
+      EM(A,i,j) = (((Mat)rand()-RAND_MAX/2)/(Mat)(RAND_MAX/a));
+#else
+      EM(A,i,j) = (((Mat)rand())/(Mat)(RAND_MAX/a));
+#endif
+    }
+  }
+}
+void  copy_s(SUBMATRIX A, SUBMATRIX B) {
+  for (int i=0; i<A.M;i++) { 
+    for (int j=0; j<A.N;j++)
+      EM(A,i,j) = EM(B,i,j);
+  }
+}
+
+void  compare_s(SUBMATRIX A, SUBMATRIX B) {
+
+  double error, Max=0; 
+  for (int i=0; i<A.M;i++) 
+    for (int j=0; j<A.N;j++)  {
+      error = fabs(EM(A,i,j) - EM(B,i,j));
+      Max = max(Max,error);
+    }
+  printf("max %e \n", Max);
+}
+void  init_v(SUBVECTOR A) {
+  float a = 0.5;
+  for (int i=0; i<A.M;i++)  
+    EV(A,i) = 1.0; //(Mat)rand()/(Mat)(RAND_MAX/a);
+}
+
+
+  
+  
+
+
