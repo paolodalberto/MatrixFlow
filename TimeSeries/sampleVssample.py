@@ -78,7 +78,7 @@ def dominates(x : Node, y : Node)  -> bool:
     return numpy.greater_equal(x.value,y.value).all()
 
 def dominated(x : Node, y : Node)  -> bool:
-    return dominated(y,x)
+    return dominates(y,x)
 
 def distance(x : Node, y : Node):
     
