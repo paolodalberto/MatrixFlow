@@ -2,7 +2,11 @@
 
 
 import numpy
+import scipy
+
 M_PI=3.141592653589793238462643383280
+M_SQRT2 = numpy.sqrt(2)
+
 ERFINV_SQRT2= [ 
   1.1631* M_SQRT2,    
   1.2379* M_SQRT2,    
@@ -29,40 +33,42 @@ def squaredNormAminusB(a : numpy.array, b : numpy.array, ip = ip):
 
 def rbfKernel(a : numpy.array, 
 	      b : numpy.array , 
-	      sigmasquare : double , 
+	      sigmasquare : float , 
 	      ip = ip
 	      ):
     t = a-b;
     v = ip(t,t)
-    return exp(-v/(2*sigmasquare))
+    return numpy.exp(-v/(2*sigmasquare))
 
 
 def pow(x,y): return x**y
 
 def gaussianKernel(a : numpy.array, 
 	           b : numpy.array , 
-	           sigmasquare : double , 
+	           sigmasquare : float , 
 	           ip = ip 
 	           ):
     
-
-  return rbfKernel(a,b,sigmasquare,lp,ip)/(2*pow(M_PI,min(a.size,b.size)/2)*numpy.sqrt(sigmasquare));
+    n = rbfKernel(a,b,sigmasquare,ip)
+    d = (2*pow(M_PI,min(a.size,b.size)/2)*numpy.sqrt(sigmasquare)); 
+    
+    return n/d
   
-}
+
 
 
 def linearKernel(a : numpy.array, 
 	         b : numpy.array , 
-	         sigmasquare : double =None , 
+	         sigmasquare : float =None , 
 	         ip = ip
 	         ):
   
   return ip(a,b);
   
-}
+
 def polyKernel(a : numpy.array, 
 	       b : numpy.array , 
-	       d : double =None , 
+	       d : float =None , 
 	       ip = ip
 	       ):
     
@@ -73,7 +79,7 @@ def polyKernel(a : numpy.array,
 
 
 class Hdata:
-    def __init__(self, x_i, y_i, x_j, y_j,  ph, K, ip):
+    def __init__(self, x_i, y_i, x_j, y_j,  ph, K, ip,s=1.0):
         # A  
         self.x_i = x_i
         self.y_i = y_i
@@ -93,22 +99,20 @@ class Hdata:
 def hsimplified_gaussian(hdata : Hdata):
     ## correlation  
     result   = gaussianKernel(hdata.xi,hdata.yi,hdata.sigmasquare,hdata.ip)
-    result  += gaussianKernel(hdata.xj,hdata.yj,hdata.sigmasquare,hdata->ip)
+    result  += gaussianKernel(hdata.xj,hdata.yj,hdata.sigmasquare,hdata.ip)
     ## cross correlation
-    result  -= 2*gaussianKernel(hdata.xi,hdata.yj,hdata.sigmasquare,hdata->ip)
+    result  -= 2*gaussianKernel(hdata.xi,hdata.yj,hdata.sigmasquare,hdata.ip)
   
     return result;
-}
 
 def hsimplified_general(hdata : Hdata):
     ## correlation  
-    result   = hdata.K(hdata.xi,hdata.yi,hdata.sigmasquare,hdata.ip)
-    result  += hdata.K(hdata.xj,hdata.yj,hdata.sigmasquare,hdata->ip)
+    result   = hdata.k(hdata.xi,hdata.yi,hdata.sigmasquare,hdata.ip)
+    result  += hdata.k(hdata.xj,hdata.yj,hdata.sigmasquare,hdata.ip)
     ## cross correlation
-    result  -= 2*hdata.K(hdata.xi,hdata.yj,hdata.sigmasquare,hdata->ip)
+    result  -= 2*hdata.k(hdata.xi,hdata.yj,hdata.sigmasquare,hdata.ip)
   
     return result;
-}
 
 def h_general(hdata: Hdata):
     
@@ -123,10 +127,12 @@ def h_general(hdata: Hdata):
     res = hdata.ip(l,r)
     return result
 
-def MMD_u_g( r : list, w : list,
-             h , k , sp ) -> list :
+def MMD_u_g(
+        r : list, w : list,
+        h , k , sp
+) -> list :
 
-    hd = Hdata(0,0,0,0,None,K,sp)
+    hd = Hdata(0,0,0,0,None,k,sp)
     
     N    = (len(r))*(len(w)-1);
     M    = (len(r))*(len(w));
@@ -136,68 +142,59 @@ def MMD_u_g( r : list, w : list,
     kyy = numpy.zeros(M)
     kxy = numpy.zeros(M)
     kyx = numpy.zeros(M)
-    md2 = 0
-    
+    mmd2 = 0
+    sigma =0
     if (k == rbfKernel): # no parameters I will estimate sigma
-        counter =0
+        counter =-1
         SIZE = len(w)
         for i in range(len(r)):
             for j in range(len(w)):
-	        if (i!=j):
+                if (i!=j):
                     # remeber each point is a vector !
-	            kxx[i*SIZE +j] = squaredNormAminusB(r[i],r[j],sp);
-	            kyy[i*SIZE +j] = squaredNormAminusB(w[i],w[j],sp);
-	            kxy[i*SIZE +j] = squaredNormAminusB(r[i],w[j],sp);
-	            kyx[i*SIZE +j] = squaredNormAminusB(w[i],r[j],sp);
-	            if (kxx[i*SIZE +j]): counter +=1; hi[counter]   =  kxx[i*SIZE +j];
-	            if (kyy[i*SIZE +j]): counter +=1; hi[counter]   =  kyy[i*SIZE +j];
-	            if (kxy[i*SIZE +j]): counter +=1; hi[counter]   =  kxy[i*SIZE +j];
-	            if (kyx[i*SIZE +j]): counter +=1; hi[counter]   =  kyx[i*SIZE +j];
-
+                    kxx[i*SIZE +j] = squaredNormAminusB(r[i],r[j],sp);
+                    kyy[i*SIZE +j] = squaredNormAminusB(w[i],w[j],sp);
+                    kxy[i*SIZE +j] = squaredNormAminusB(r[i],w[j],sp);
+                    kyx[i*SIZE +j] = squaredNormAminusB(w[i],r[j],sp);
+                    if (kxx[i*SIZE +j]):
+                        counter +=1; hi[counter]   =  kxx[i*SIZE +j];
+                    if (kyy[i*SIZE +j]):
+                        counter +=1; hi[counter]   =  kyy[i*SIZE +j];
+                    if (kxy[i*SIZE +j]):
+                        counter +=1; hi[counter]   =  kxy[i*SIZE +j];
+                    if (kyx[i*SIZE +j]):
+                        counter +=1; hi[counter]   =  kyx[i*SIZE +j];
         W = sorted(hi[:counter])
-        sigma =  W[counter/2] if W[counter/2]>0 else 1
+        sigma1 =  W[counter//2] if W[counter//2]>0 else 1
         for i in range(len(r)):
             result = 0;
             for j in range(len(w)):
-                    
-	        if (i!=j):
-	            result += \
-                        exp(-kxx[i*SIZE +j]/sigma1) \
-                        +exp(-kyy[i*SIZE+j]/sigma1) \
-                        -exp(-kxy[i*SIZE+j]/sigma1) \
-                        -exp(-kyx[i*SIZE+j]/sigma1)
-	            
-	            
+                if i==j: continue
+                result += numpy.exp(-kxx[i*SIZE +j]/sigma1) +numpy.exp(-kyy[i*SIZE+j]/sigma1)  -numpy.exp(-kxy[i*SIZE+j]/sigma1)  -numpy.exp(-kyx[i*SIZE+j]/sigma1)
             mmd2 += result/N;
             sigma += result*result;
     else:
         for i in range(len(r)):
             result = 0;
             for j in range(len(w)):
-	        if ( i!=j):
+                if i==j: continue
 	            
-	            hd.xi = r[i];      hd.xj = r[j];
-	            hd.yi = w[i];      hd.yj = w[j];
-	                
-	            result += h(hd);
-	            
-	
-                    
+                hd.xi = r[i];      hd.xj = r[j];
+                hd.yi = w[i];      hd.yj = w[j];
+                result += h(hd);
             mmd2 += result/N;
             sigma += result*result;
-
   
     sigma = numpy.sqrt(
         numpy.fabs(
-            (4*sigma/N)/N - 4*mmd2*mmd2/r->length
+            (4*sigma/N)/N - 4*mmd2*mmd2/len(r)
         )
     )
 
     
     val = mmd2
-    mmd2 = fabs(mmd2)
+    mmd2 = numpy.fabs(mmd2)
     pval = 1
-
+    #import pdb; pdb.set_trace()
     if (mmd2 < sigma*ERFINV_SQRT2[0] or mmd2==0 or sigma==0):
         pval = 0
         return val, pval
@@ -212,10 +209,11 @@ def MMD_u_g( r : list, w : list,
     
   
   
-def MMD_l_g(r : list , w : w, 
+def MMD_l_g(r : list , w : list, 
 	    h,  k,  sp) -> list  :
-    
-    m2  = min(len(r),len(w))/2
+
+
+    m2  = min(len(r),len(w))//2
     res = [1, 1 ];
     hi  = numpy.zeros(4*m2)
     kxx = numpy.zeros(m2)
@@ -224,10 +222,10 @@ def MMD_l_g(r : list , w : w,
     kyx = numpy.zeros(m2)
     
     sum = 0
-    sigma = 1
+    siglin = 0
 
     if k == rbfKernel:
-        counter=0
+        counter=-1
         for i in range(m2):
             kxx[i] = squaredNormAminusB(r[ 2*i],r[ +2*i+1],sp)
             kyy[i] = squaredNormAminusB(w[ 2*i],w[ +2*i+1],sp)
@@ -244,16 +242,16 @@ def MMD_l_g(r : list , w : w,
                 counter +=1; hi[counter]   =  kyx[i]
     
         W = sorted(hi[:counter])
-        sigma =  W[counter/2] if W[counter/2]>0 else 1
+        sigma =  W[counter//2] if W[counter//2]>0 else 1
         sum = 0
         
         for i in range(m2):
-          hi[i]= exp(-kxx[i]/sigma)+ exp(-kyy[i]/sigma)-  exp(-kxy[i]/sigma)-  exp(-kyx[i]/sigma);
+          hi[i]= numpy.exp(-kxx[i]/sigma)+ numpy.exp(-kyy[i]/sigma)-  numpy.exp(-kxy[i]/sigma)-  numpy.exp(-kyx[i]/sigma);
           sum += hi[i]
     
           
     else:
-        hd = Hdata(0,0,0,0,None,K,sp)
+        hd = Hdata(0,0,0,0,None,k,sp)
         
         
         for i in range(m2):
@@ -269,8 +267,9 @@ def MMD_l_g(r : list , w : w,
     
     val = mmdlin;
     siglin = numpy.sqrt(siglin/(m2*(m2-1)));
-
-    if (mmdlin < sigma*ERFINV_SQRT2[0] or mmdlin==0 or siglin==0):
+    pval = 1
+    #import pdb; pdb.set_trace()
+    if (mmdlin < siglin*ERFINV_SQRT2[0] or mmdlin==0 or siglin==0):
         pval = 0
         return val, pval
     
@@ -280,3 +279,49 @@ def MMD_l_g(r : list , w : w,
             pval = PVAL[i];
       
     return val, pval
+
+
+
+def Kernel(R : list, W : list,
+           k, h=hsimplified_general,
+           ip = ip,
+           method= MMD_l_g):
+
+
+    
+    result = method(R,W,h,k,ip)
+    return result
+
+
+
+if __name__ == '__main__':
+
+
+
+    import matplotlib.pyplot as plt
+
+
+    if True:
+        QQ = 500
+        M = 3
+        X = []
+        Y = []
+        for i in range(QQ):
+            X.append(scipy.stats.norm().rvs(M))
+            Y.append(scipy.stats.norm().rvs(M))
+            #Y.append(numpy.random.rand(M)-0/2)
+
+
+        for k in [ rbfKernel, gaussianKernel,linearKernel,polyKernel] :
+            print(k)
+            result = Kernel(X,Y, k=k,
+                            h=hsimplified_general,
+                            ip = ip,
+                            method = MMD_l_g)
+            print(result)
+            
+            result = Kernel(X,Y, k=k,
+                            h=hsimplified_general,
+                            ip = ip,
+                            method = MMD_u_g)
+            print(result)
