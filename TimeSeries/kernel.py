@@ -19,30 +19,59 @@ ERFINV_SQRT2= [
 PVAL = [ 0.95, 0.96, 0.97, 0.98, 0.99, 0.999, 0.9999 ]
 
 
-## Inner product 
+###
+## Inner Product: this is an abstraction of the inner product and
+## <x,y> but we call it ip(x,y) and and it is related to the norm
+## ||x||^2 = <x,x> 
+### 
+
 def ip( a : numpy.array, b : numpy.array):
     return numpy.dot(a,b)
 
+###
+## ||X||^2
+### 
 def squareNorm(a : numpy.array, b : numpy.array, ip = ip):
     return ip(a,b)
 
-
+###
+## <a-b, a-b> = <a,a> + <b,b> - <a,b> - <b,a>
+## for us is actually  <a,a> + <b,b> - 2<a,b>
+##
 def squaredNormAminusB(a : numpy.array, b : numpy.array, ip = ip):
     return ip(a,a)+ip(b,b) -2*ip(a,b)
 
+
+###
+## exp(-||a-b||^2/2s^2) 
+##
+## the sigma is a scaling/normalizing factor and usually is an experimental
+## measure, a and b are vector but <a-b,a-b> is a scalar
+##
+##  K(a,b) = K(b,a)
 
 def rbfKernel(a : numpy.array, 
 	      b : numpy.array , 
 	      sigmasquare : float , 
 	      ip = ip
 	      ):
+
     t = a-b;
     v = ip(t,t)
     return numpy.exp(-v/(2*sigmasquare))
 
 
+###
+## this makes sense only for scalars
+###
 def pow(x,y): return x**y
 
+
+###
+##       exp(-||a-b||^2/2s^2)/ 2*pi^(N/2)*s
+##
+##  As above but it is scaled to the number of elemenets of the <x,y>
+##
 def gaussianKernel(a : numpy.array, 
 	           b : numpy.array , 
 	           sigmasquare : float , 
@@ -54,8 +83,7 @@ def gaussianKernel(a : numpy.array,
     
     return n/d
   
-
-
+## Linear and Polynomial K(a,b)
 
 def linearKernel(a : numpy.array, 
 	         b : numpy.array , 
@@ -65,7 +93,6 @@ def linearKernel(a : numpy.array,
   
   return ip(a,b);
   
-
 def polyKernel(a : numpy.array, 
 	       b : numpy.array , 
 	       d : float =None , 
@@ -76,28 +103,31 @@ def polyKernel(a : numpy.array,
     return pow(ip(a,b)+1,d)    
 
 
-
+##
+## ph used to be a feature extraction
+##
+##
 
 class Hdata:
     def __init__(self, x_i, y_i, x_j, y_j,  ph, K, ip,s=1.0):
-        # A  
+        # Sample from A 
         self.x_i = x_i
         self.y_i = y_i
         
-        # B 
+        # Sample from B 
         self.x_j = x_j
         self.y_i = y_j
         
-        self.ph = ph
-        self.k  = K   # kernel K(a,b)
-        self.ip = ip # inner product ip(a,b)
+        self.ph = ph  
+        self.k  = K   # kernel K(a,b) based on ip
+        self.ip = ip  # inner product <a,b> = ip(a,b)
         
-        self.sigmasquare=s
+        self.sigmasquare=s  ## external 
         
 
 
 def hsimplified_gaussian(hdata : Hdata):
-    ## correlation  
+    ## self correlation  
     result   = gaussianKernel(hdata.xi,hdata.yi,hdata.sigmasquare,hdata.ip)
     result  += gaussianKernel(hdata.xj,hdata.yj,hdata.sigmasquare,hdata.ip)
     ## cross correlation
@@ -106,11 +136,13 @@ def hsimplified_gaussian(hdata : Hdata):
     return result;
 
 def hsimplified_general(hdata : Hdata):
-    ## correlation  
+    ## self correlation K(xi, xj) + K(yi,yj)   
     result   = hdata.k(hdata.xi,hdata.yi,hdata.sigmasquare,hdata.ip)
     result  += hdata.k(hdata.xj,hdata.yj,hdata.sigmasquare,hdata.ip)
-    ## cross correlation
-    result  -= 2*hdata.k(hdata.xi,hdata.yj,hdata.sigmasquare,hdata.ip)
+    ## cross correlation 2*
+    result  -= hdata.k(hdata.xi,hdata.yj,hdata.sigmasquare,hdata.ip) 
+    result  -= hdata.k(hdata.xj,hdata.yi,hdata.sigmasquare,hdata.ip) 
+      
   
     return result;
 
@@ -129,7 +161,9 @@ def h_general(hdata: Hdata):
 
 def MMD_u_g(
         r : list, w : list,
-        h , k , sp
+        h , # h above 
+        k , # kernel 
+        sp  # <x,y>
 ) -> list :
 
     hd = Hdata(0,0,0,0,None,k,sp)
@@ -169,10 +203,11 @@ def MMD_u_g(
             result = 0;
             for j in range(len(w)):
                 if i==j: continue
-                result += numpy.exp(-kxx[i*SIZE +j]/sigma1) +numpy.exp(-kyy[i*SIZE+j]/sigma1)  -numpy.exp(-kxy[i*SIZE+j]/sigma1)  -numpy.exp(-kyx[i*SIZE+j]/sigma1)
+                result += numpy.exp(-kxx[i*SIZE +j]/sigma1) +numpy.exp(-kyy[i*SIZE+j]/sigma1)\
+                    -numpy.exp(-kxy[i*SIZE+j]/sigma1)  -numpy.exp(-kyx[i*SIZE+j]/sigma1)
             mmd2 += result/N;
             sigma += result*result;
-    else:
+    else: 
         for i in range(len(r)):
             result = 0;
             for j in range(len(w)):
@@ -252,8 +287,6 @@ def MMD_l_g(r : list , w : list,
           
     else:
         hd = Hdata(0,0,0,0,None,k,sp)
-        
-        
         for i in range(m2):
             hd.xi = r[2*i];      hd.xj = r[2*i+1];
             hd.yi = w[2*i];      hd.yj = w[2*i+1];
@@ -302,14 +335,41 @@ if __name__ == '__main__':
 
 
     if True:
+        print("Testing equality")
         QQ = 500
-        M = 3
+        M = 10
         X = []
         Y = []
         for i in range(QQ):
             X.append(scipy.stats.norm().rvs(M))
             Y.append(scipy.stats.norm().rvs(M))
             #Y.append(numpy.random.rand(M)-0/2)
+
+
+        for k in [ rbfKernel, gaussianKernel,linearKernel,polyKernel] :
+            print(k)
+            result = Kernel(X,Y, k=k,
+                            h=hsimplified_general,
+                            ip = ip,
+                            method = MMD_l_g)
+            print(result)
+            
+            result = Kernel(X,Y, k=k,
+                            h=hsimplified_general,
+                            ip = ip,
+                            method = MMD_u_g)
+            print(result)
+
+    if True:
+        print("Testing inequality")
+        QQ = 500
+        M = 10
+        X = []
+        Y = []
+        for i in range(QQ):
+            X.append(scipy.stats.norm().rvs(M))
+            #Y.append(scipy.stats.norm().rvs(M))
+            Y.append(numpy.random.rand(M)-0/2)
 
 
         for k in [ rbfKernel, gaussianKernel,linearKernel,polyKernel] :
