@@ -48,7 +48,7 @@ def build_h0(A : numpy.ndarray) -> numpy.ndarray :
     for i in range(2, A.shape[0]-2,2):
         res[i//2] = compression_measure(A[0:i,:], A[i:,:])
 
-    return numpy.sort(res)
+    return numpy.sort(res[res>0])
 
 ###
 ## The idea is to have a distribution of the measure when the
@@ -63,7 +63,7 @@ def build_h1(A : numpy.ndarray, B: numpy.ndarray) -> numpy.ndarray :
     for i in range(1, min(100,A.shape[0])):
         res[i] = compression_measure(A[0:i,:], B[:j,:])
 
-    return numpy.sort(res)
+    return numpy.sort(res[res>0])
 
 
 ###
@@ -76,12 +76,12 @@ def pval(d : float, dis = numpy.ndarray):
     return sum(d>dis)/dis.shape[0]
 ###
 ## The simple assumption is that a small measure out in the
-## distribution, is associate with a possible difference , this ratio
-## provide the probability of error considering H0 true with this
-## measure
+## distribution, is associate with a possible equivalance, this ratio
+## provide the probability of error considering H1 true (different)
+## with this measure
 def pval_h1(d : float, dis = numpy.ndarray):
-        
-    return sum(d>dis)/dis.shape[0]
+    pdb.set_trace()    
+    return sum(d<dis)/dis.shape[0]
 
         
         
@@ -107,11 +107,15 @@ if __name__ == '__main__':
             X[i,:] = scipy.stats.norm().rvs(M)
             Y[i,:] = scipy.stats.norm().rvs(M)
             #Y.append(numpy.random.rand(M)-0/2)
-        pdb.set_trace()
+        #pdb.set_trace()
+
+        ## distribution foe equality (?)
         boot = build_h0(numpy.concatenate((X,X)))
         dis  = compression_measure(X,Y)
         print(dis, pval(dis,boot))
-        pdb.set_trace()
+        plt.hist(boot)
+        plt.show()
+        #pdb.set_trace()
         print("Testing inequality")
         QQ = 500
         M = 10
@@ -121,7 +125,13 @@ if __name__ == '__main__':
             X[i,:] = scipy.stats.norm().rvs(M)
             Y[i,:] = numpy.random.rand(M)-0/2
             #Y.append(numpy.random.rand(M)-0/2)
-            
+
+
+        ## distribution for inequality (?)
+        boot1 = build_h0(numpy.concatenate((X,Y)))
         dis  = compression_measure(X,Y)
-        print(dis, pval(dis,boot))
+        print("H0",dis, pval(dis,boot))
+        print("H1",dis, pval_h1(dis,boot1))
+        plt.hist(boot1)
+        plt.show()
 
