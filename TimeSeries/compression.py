@@ -5,18 +5,42 @@ import matplotlib.pyplot as plt
 
 import pdb
 
+###
+## This is a general measure where the compression is by bytes (the
+## binary representation of the sequence). 
+##
+## The idea is about the same of |A /\ B|/|A U B|: a relative measure.
+## if A and B are similar compressing A, B, and AB they should all
+## take the same size, or very close to it.
+##
+## CAB - min(CA,CB) ... approximate the XOR ... what is not share by the longer sequence
+## if A !=B  then this difference <= MAX(CA,CB)
+## if A==B, the difference =0 and the ratio is 
+## OF course this is an approximaton and we are aming to something close to 1
+###
 def compression_measure(A : numpy.ndarray, B : numpy.ndarray) -> float :
 
-    #pdb.set_trace()
-    
-
+    ## literally a longer sequence, but we could shuffle, sort them
+    ## and compress ... but then we need to do something similar to A
+    ## and B
     AB = numpy.concatenate((A,B),axis=0)
 
     CAB = len(zlib.compress(AB))
     CB  = len(zlib.compress(B))
     CA  = len(zlib.compress(A))
 
+    ## you may have negative measures !
     return (CAB -min(CB,CA))/max(CA,CB) 
+
+
+###
+## The idea is to have a distribution of the measure when the
+## assumption H0 is true, A and B are similar. We take the same
+## sequence and create a bootstrap sequence and collect the measures
+##
+## The average measure should be small and a large sample will mean a
+## probable difference
+###
 
 def build_h0(A : numpy.ndarray) -> numpy.ndarray :
 
@@ -26,6 +50,12 @@ def build_h0(A : numpy.ndarray) -> numpy.ndarray :
 
     return numpy.sort(res)
 
+###
+## The idea is to have a distribution of the measure when the
+## assumption H1 is true, A and B are NOT similar. We take the same
+## sequence and create a bootstrap sequence and collect the measures
+##
+###
 
 def build_h1(A : numpy.ndarray, B: numpy.ndarray) -> numpy.ndarray :
 
@@ -35,8 +65,21 @@ def build_h1(A : numpy.ndarray, B: numpy.ndarray) -> numpy.ndarray :
 
     return numpy.sort(res)
 
-def pval(d : float, dis = numpy.ndarray):
 
+###
+## The simple assumption is that a larger measure out in the
+## distribution, is associate with a possible difference , this ratio
+## provide the probability of error considering H0 true with this
+## measure
+def pval(d : float, dis = numpy.ndarray):
+        
+    return sum(d>dis)/dis.shape[0]
+###
+## The simple assumption is that a small measure out in the
+## distribution, is associate with a possible difference , this ratio
+## provide the probability of error considering H0 true with this
+## measure
+def pval_h1(d : float, dis = numpy.ndarray):
         
     return sum(d>dis)/dis.shape[0]
 
