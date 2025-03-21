@@ -379,6 +379,10 @@ class Operation:
             
             
             opname = r.name[0].lower() if  l.name[0] in ['T', 'P']  else  l.name[0].lower()
+            if opname not in ratio and opname =='p':
+                ## Pss
+                opname = 'b' # A*B temp product the leading dimension is B
+                
             try:
                 if t.name[0]  in ['A', 'B', 'C']:
                     ldc =  'ld' + t.name[0].lower()
@@ -407,7 +411,7 @@ class Operation:
             else:
                 M = N =  lda+"/"+ str(ratio[opname])
 
-            #importpdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
             r = gpu.Code(gpu.GEMA_x,
                          ("gpu",
                           M, N, 
@@ -466,7 +470,13 @@ class Operation:
         R =  self.right.compute()
         
         temp_result = None
+        #print(self)
+        #print(type(L.matrix) if type(L) is not Scalar else None)
+        #print(type(R.matrix) if type(R) is not Scalar else None)
         if self.operation == '+':
+            print(self)
+            print(self.left)
+            print(self.right)
             temp_result = L + R
         elif self.operation == '-':
             #import pdb; pdb.set_trace()
@@ -492,6 +502,7 @@ class Operation:
                 for i in range(len(R)):
                     self.left[i].set_value(R[i].value())
             else:
+                #print(L.shape(),R.shape())
                 self.left.temp_result.set_value(R.value())
                 if type(self.right) is Operation:
                     del self.right.temp_result
@@ -867,7 +878,7 @@ class Data(Operation):
         
         #return str(self)
     def pretty__(self, gpu : GPU = None, ):
-        print(self)
+        #print(self)
         if self.graph :
             ratio = self.graph.ratio()
             
@@ -1122,10 +1133,10 @@ class Graph(Function):
             
         
     def compile_graph(self, TwoOperands : bool = False):
-
+        import pdb;  pdb.set_trace()
         Code = self.pretty__() if TwoOperands else str(self)
         
-        #print(Code); import pdb;  pdb.set_trace()
+        print(Code); 
         E = compile(Code,'test','exec')
 
         return E
@@ -1249,6 +1260,7 @@ class Graph(Function):
         
         O = []
         L = len(dep['uses'])
+        import pdb; pdb.set_trace()
         for ii in range(L) :
             for i in dep['uses'][ii]:
                 A = False
@@ -1307,12 +1319,12 @@ class Graph(Function):
 
         red = ""
         if self.tiled and 'Tiled' in self.Factotum:
-            red +="This is the L3-L2 computation \n"  
+            red +="#This is the L3-L2 computation \n"  
             red +=str(self.Factotum['Tiled']) +"\n"
-            red +="Then L2-L1 computation"+"\n"  
+            red +="#Then L2-L1 computation"+"\n"  
         
             
-        red += " " + str(self.proportions()) +"\n" 
+        red += "#" + str(self.proportions()) +"\n" 
         for n in self.V:
             red += str(n)+"\n"
         return red
@@ -1329,7 +1341,7 @@ class Graph(Function):
     def pretty__(self, python_compiler : bool = True ):
 
         red = "## declaration \n"
-        #import pdb; pdb.set_trace()
+        import pdb; pdb.set_trace()
         for block  in self.declarations:
             ## either a partition or a definition
             #print(block[0])
@@ -1388,7 +1400,7 @@ class Graph(Function):
         K,N = self.B.value().shape
         TYP = Graph.numpytoC(self.declarations[0][0].type_matrix())
         V = "std::vector<%s>" % TYP
-        
+        #import pdb; pdb.set_trace()
         
         F = "\n" + V + " fastgemm%s(int " % header  
         F += " gpu_," if not python_compiler else "gpu," 
@@ -1437,7 +1449,10 @@ class Graph(Function):
             for d in block:
                 #print(d)
                 #import pdb; pdb.set_trace()
-                init +=  d.pretty__(gpu=ROCBLAS if not python_compiler else None)
+                ini =  d.pretty__(gpu=ROCBLAS if not python_compiler else None)
+                #print(ini)
+                init +=  ini
+                
             #
             #print(init)
             red+= init +"\n" 
@@ -1505,7 +1520,8 @@ class Graph(Function):
                         d.left.set_value(d.left.value()*0)
             elif ds.outputs:
                 ds.left.set_value(ds.left.value()*0)
-        
+
+        #import pdb; pdb.set_trace()
         for i in self.V:
             #if verbose: print(i)
             A = i.compute()
@@ -1520,7 +1536,8 @@ class Graph(Function):
         print("compute", end - start)
         self.time = end - start
         if self.temp_result and self.temp_result.padded:
-            self.single_output(self.temp_result)
+            import pdb; pdb.set_trace()
+            #self.single_output(self.temp_result)
             return self.temp_result 
         if self.temp_result and not self.temp_result.padded:
             return self.temp_result 
@@ -2233,6 +2250,7 @@ def bini_mult_example_three_temp(
     ###
     V = []
 
+    
         
     for c in range(AT.shape[1]):
         O = Operation(

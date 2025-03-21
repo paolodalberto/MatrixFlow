@@ -92,8 +92,8 @@ class CPU:
         ## handle, M, N, K, alpha, A,  LDA=K, B, LDB=N, beta,C, LDC=N 
         self.GEMM_i = "## handle, M, N, K, alpha, A,  LDA=K, B, LDB=N, beta,C, LDC=N "
         self.GEMM_x = "" + \
-            "rocblas_dgemm( transa, transb, %d, " + \
-            "%d, %d,  %s, %s, %s, %s, %s,  %s, %s, %s); "
+            "rocblas_dgemm( transa, transb, %s, " + \
+            "%s, %s,  %s, %s, %s, %s, %s,  %s, %s, %s); "
 
         self.GEMA = """
     rocblas_status rocblas_dgeam(
@@ -114,7 +114,7 @@ class CPU:
         self.GEMA_i = "##  M, N, alpha, A, lda, beta,B, LDB=N, C, LDC=N "
         
         self.GEMA_x = "" + \
-            "rocblas_dgeam( transa, transb, %d, %d,  " +\
+            "rocblas_dgeam( transa, transb, %s, %s,  " +\
             "%s, %s, %s, %s, %s, %s,  %s, %s); "
 
 

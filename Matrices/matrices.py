@@ -1,7 +1,7 @@
 import numpy 
 import math
 import os
-#import GpuInterface.procm
+import GpuInterface.procm as procm
 
 ###
 ## A 2 dimensional matrix represented by a numpy matrix 
@@ -64,10 +64,10 @@ class Matrix:
 
         if type(A) is Scalar:
             ## B = alpha A
-            return Matrix(self.value()*A.value())
+            return Matrix(numpy.matrix(self.value()*A.value()))
         elif type(A) in [int,float]:
             ## B = alpha A
-            return Matrix(A*self.value())
+            return Matrix(numpy.matrix(A*self.value()))
         elif type(A) is Matrix :
             ## SELF  * A (multiplication)
 
@@ -140,8 +140,8 @@ class PartitionMatrix:
         shape  = [ A.max[i] -A.min[i] for i in range(2)]
         minloc = A.min
         
-        m= [ (0,shape[0] %  self.logicalshape[0]),
-             (0,shape[1] %  self.logicalshape[1])]
+        m= [ (0, math.ceil(shape[0]/self.logicalshape[0])*self.logicalshape[0] - shape[0]),
+             (0, math.ceil(shape[1]/self.logicalshape[1])*self.logicalshape[1] - shape[1])]
 
 
         ## yep, we pad the matrix to make sure that the fast
@@ -149,24 +149,29 @@ class PartitionMatrix:
         ## solution and Paolo should be alble to do better
 
         if shape[0] %  self.logicalshape[0] > 0 or \
-           shape[1] %  self.logicalshape[1]:
+           shape[1] %  self.logicalshape[1] >0 :
+            print(A.matrix.shape, math.ceil(shape[0]/logicalShape[0])*math.ceil(shape[1]/logicalShape[1]))
             A.padded = True
-            matrix = numpy.pad(matrix, m)
-            
-            shape  = matrix.shape
-        
+            A.matrix = numpy.matrix(numpy.pad(matrix, m))
+            A.max = A.matrix.shape
+            shape  = A.matrix.shape
+            print(A.matrix.shape, math.ceil(shape[0]/logicalShape[0])*math.ceil(shape[1]/logicalShape[1]))
+            import pdb; pdb.set_trace()
         for i in range(math.ceil(shape[0]/logicalShape[0])):
             row = []
             for j in range(math.ceil(shape[1]/logicalShape[1])):
-                A = Matrix(matrix)
+                AA = Matrix(A.matrix)
                 
-                A.min = (minloc[0] + i*logicalShape[0],minloc[1]+j*logicalShape[1])
-                A.max = (
+                AA.min = (minloc[0] + i*logicalShape[0],
+                          minloc[1]+j*logicalShape[1] )
+                AA.max = (
                     min(minloc[0]+(i+1)*logicalShape[0],shape[0]),
                     min(minloc[1]+(j+1)*logicalShape[1],shape[1]))
-                A.pointer = self.original
-                row.append(A)
-                A.logicalshape =  self.logicalshape
+                AA.pointer = self.original
+                AA.logicalshape =  self.logicalshape
+                if A.padded: print(AA.value().shape)
+                row.append(AA)
+                
             self.l.append(row)
 
         #for row in self.l:

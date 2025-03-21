@@ -79,7 +79,8 @@ if __name__ == "__main__":
 
 
     
-    if False:
+    if True:
+        
         print("compute")
         start = time.time()
         D = numpy.matmul(A.value(),B.value())
@@ -87,11 +88,11 @@ if __name__ == "__main__":
         t = end - start
         print("time",t)
         print("# type  alg  size gflops    max")
-        print(Line %("pyt","reg", T,OPS/t/GIGA, numpy.max(C.value() - D.value())))
+        print(Line %("pyt","reg", T,OPS/t/GIGA, numpy.max(C.value() - D)))
+        import pdb; pdb.set_trace()
 
 
-
-    fact =dict(numpy.load('factorizations_f2.npz', allow_pickle=True))
+    fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     FA = {}
     for f in F:
         ## Bilinear using the deepmind format C^t = A*B
@@ -151,7 +152,7 @@ if __name__ == "__main__":
     
     KEYS = list(FA.keys()) if args.minimumspaceonly is None else []
     codes = {}
-    #import pdb; pdb.set_trace()
+    
     for ver in Performance.keys():
         if args.minimumspaceonly is not None and ver =='par':
             KEYS = [] 
@@ -159,14 +160,14 @@ if __name__ == "__main__":
         print(ver,KEYS)
         for k in KEYS:
             print("Alg", k)
-            
+            if k=="3x3": import pdb; pdb.set_trace()
             D = Scalar(0)*C
             c,a,b = FA[k]
             G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
-
+            H = Scalar(1)*D
             if args.built:
                 if "GPU" in os.environ:
-                    H1 = Scalar(0)*C
+                    H1 = Scalar(0)*D
 
                     
                     H = FP[k+ver](0,
@@ -177,11 +178,11 @@ if __name__ == "__main__":
                     R = numpy.matrix(
                         H
                     )
-                    B1 = R.reshape((C.value().shape[0],C.value().shape[1]), order='F')
+                    B1 = R.reshape((D.value().shape[0],D.value().shape[1]), order='F')
             
             
                 else:
-                    H1 = Scalar(0)*C
+                    H1 = Scalar(0)*D
                     H = FP[k+ver](0,
                                     A.value().A.flatten(),  A.value().shape[1],
                                     B.value().A.flatten(),  B.value().shape[1],
@@ -191,11 +192,19 @@ if __name__ == "__main__":
                         H
                     )
                     
-                    B1 = R.reshape(C.value().shape)
+                    B1 = R.reshape(D.value().shape)
                 H = Matrix(B1)
-                print("MAX ERROR", numpy.max(numpy.fabs((H-C).value())))
+
+                if D.padded:
+                    shape = C.matrix.shape
+                    print("MAX ERROR",
+                          numpy.max(numpy.fabs((
+                              H.value()[0:shape[0],0:shape[1]]-C.value()))))
+                else:
+                    print("MAX ERROR", numpy.max(numpy.fabs((H-C).value())))
                 #import pdb; pdb.set_trace()
             if args.build:
+                pdb.set_trace()
                 if "GPU" in os.environ:
                     code = G3.pretty__C(header=k+ver,gpu=ROCBLAS) #python_compiler = True) 
                     codes[k+ver] = code
@@ -228,12 +237,13 @@ if __name__ == "__main__":
             
                 #
             if args.visual:
-                E = numpy.abs(C.value()-D.value())
+                E = numpy.abs(C.value()-H.value())
                 if args.relative:
                     E = E/numpy.abs(C.value())
                 Graph.heatmap_diff(Graph,Matrix(E),save=k+".png")
             else:
-                E = numpy.abs(C.value()-D.value())
+                shape = C.matrix.shape
+                E = numpy.abs(C.value()-D.value()[0:shape[0], 0:shape[1]])
                 print("MAX ERROR", numpy.max(E))
                 print("MAX Relative ERROR", numpy.max(E/numpy.abs(C.value())))
                 
@@ -245,6 +255,7 @@ if __name__ == "__main__":
                 'size' : T
             }
             del G3; gc.collect()
+            if k=="3x3": import pdb; pdb.set_trace()
 
     
     #print(Dimension)

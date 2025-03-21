@@ -46,7 +46,7 @@
 
 #define GPUS_  8
 
-static int DEBUG = 1;
+static int DEBUG = 0;
 
 
 #define HIP_CHECK(stat)						\

@@ -82,19 +82,31 @@ def dgemv_csr(device, C, x, y) :
 ## z = 1*Cx + 1*y  
 ###
 def dgemm(device, L, R) :
-    
-    V =  rocmgpu.gemm(
-         device,
-         L.A.flatten('F'), L.shape[0],
-         R.A.flatten('F'), R.shape[0]
-    )
-    B = numpy.matrix(
-        V
-    )
-    B = B.reshape((L.shape[0],R.shape[1]), order='F')
-
-    if VERIFY:
-        Q =  L@R
-        print("DIFF", numpy.sum(Q-B))
-        
-    return B
+     
+     try :
+          V =  rocmgpu.gemm(
+               device,
+               L.A.flatten('F'), L.shape[0],
+               R.A.flatten('F'), R.shape[0]
+          )
+     except Exception as e:
+          print(e)
+          print(type(L))
+          print(type(R))
+          V =  rocmgpu.gemm(
+               device,
+               L.flatten('F'), L.shape[0],
+               R.flatten('F'), R.shape[0])
+          
+          import pdb; pdb.set_trace()
+          
+     B = numpy.matrix(
+          V
+     )
+     B = B.reshape((L.shape[0],R.shape[1]), order='F')
+     
+     if VERIFY:
+          Q =  L@R
+          print("DIFF", numpy.sum(Q-B))
+          
+     return B
