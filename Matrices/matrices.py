@@ -20,6 +20,13 @@ class Matrix:
         self.gpu     = None
         self.color   = -1
 
+    def clone(self):
+        A = Matrix(self.matrix)
+        A.min = self.min
+        A.max = self.max
+        A.logicalshape = self.logicalshape
+        return A
+        
     def shape(self):
         return  self.matrix.shape, self.min, self.max
 
@@ -32,10 +39,20 @@ class Matrix:
         return self.matrix 
         
     def __add__( self, A ):
+
+        #import pdb; pdb.set_trace()
         L = self.value()
         R = A.value()
+        if not "GPU" in os.environ and self.gpu is None:
+            return Matrix(L+R)
+        gpu = self.gpu if self.gpu is not None else int(os.environ["GPU"])
+        B = procm.dgema(gpu,L,R)
+        C = Matrix(B)
+        C.gpu = gpu 
+        return C
         
-        return Matrix(L+R)
+        
+        
     def __lshift__( self, A ):
         self.set_value(A.value())
         return self
@@ -76,14 +93,16 @@ class Matrix:
             #print(L.shape); print(R.shape)
             #import pdb; pdb.set_trace()
 
-            if not "GPU" in os.environ:
+            if not "GPU" in os.environ and self.gpu is None:
                B= numpy.matmul(L,R)
+               C = Matrix(B)
             else:
-                gpu = int(os.environ["GPU"])
+                
+                gpu = self.gpu if self.gpu is not None else int(os.environ["GPU"])
                 B = procm.dgemm(gpu,L,R)
+                C = Matrix(B)
+                C.gpu = gpu 
 
-            C = Matrix(B)
-            C.gpu = True
             return C
         elif type(A) is Vector:
             ## A*v = w
@@ -103,6 +122,7 @@ class Matrix:
     def space(self):
         return self.matrix.size*self.matrix.dtype.itemsize
 
+    
     
 ###
 ## A partitions A_ij of A so that A_i /\ A_j = 0 and \/A_i = A. The
@@ -156,7 +176,7 @@ class PartitionMatrix:
             A.max = A.matrix.shape
             shape  = A.matrix.shape
             print(A.matrix.shape, math.ceil(shape[0]/logicalShape[0])*math.ceil(shape[1]/logicalShape[1]))
-            import pdb; pdb.set_trace()
+            #import pdb; pdb.set_trace()
         for i in range(math.ceil(shape[0]/logicalShape[0])):
             row = []
             for j in range(math.ceil(shape[1]/logicalShape[1])):

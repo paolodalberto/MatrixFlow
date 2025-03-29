@@ -12,6 +12,33 @@ import traceback
 import sys
 import pdb;
 
+from multiprocessing.pool import ThreadPool
+from threading import current_thread
+
+
+def f(x,  T : int = 2):
+    
+    i.set_gpu(g)
+    print(g,i, i.get_gpu())    #    #print(x)
+    return None
+
+    
+    
+def f1(i):
+    def g_(t : str):
+        return int(t[t.rfind("-")+1:])%3
+    
+    
+    thread = current_thread()
+    count = g_(thread.name)
+    #print("Thread", count, thread.name)
+    i.set_gpu(None if count >=2 else count)
+    #print(count,i, i.get_gpu())    #    #print(x)
+    return i.compute()
+#return i.compute()
+     
+
+
 
 ###
 ## if we build a Abstract Syntax Tree os a sequence of matrix
@@ -19,7 +46,9 @@ import pdb;
 ## assignment is the only one that has no intermediary value to store
 ## because the left will store the result of the right.
 ### 
-        
+
+
+
 class Operation:
     def __init__(
             self,
@@ -134,7 +163,7 @@ class Operation:
                 #import pdb; pdb.set_trace()
                 self.tempname = temp
             
-
+                
     def pretty__q(self):
 
         #import pdb; pdb.set_trace()
@@ -456,8 +485,15 @@ class Operation:
         self.temp_space = A
         return  A
 
+    def get_gpu(self):
+        return [   (self.left.get_gpu()) if self.left else None] + \
+            [   (self.right.get_gpu()) if self.right else None] + \
+            [   self.temp_result.gpu if self.temp_result else None] 
     
-
+    def set_gpu(self, gpu : int):
+        if self.left:        self.left.set_gpu(gpu)
+        if self.right:       self.right.set_gpu(gpu)
+        if self.temp_result: self.temp_result.gpu = gpu
     
     def compute(self):
         #print(self)
@@ -474,9 +510,9 @@ class Operation:
         #print(type(L.matrix) if type(L) is not Scalar else None)
         #print(type(R.matrix) if type(R) is not Scalar else None)
         if self.operation == '+':
-            print(self)
-            print(self.left)
-            print(self.right)
+            #print(self)
+            #print(self.left)
+            #print(self.right)
             temp_result = L + R
         elif self.operation == '-':
             #import pdb; pdb.set_trace()
@@ -571,14 +607,14 @@ class Operation:
         for i in numpy.argsort(-I):
             if I[i] ==0: continue
             elif (I[i] == 1  or I[i] == 1.0 ) :
-                T = As[i]
+                T = As[i].clone()
             elif (I[i] == 1 or I[i] == -1 or I[i] == 1.0 or I[i] == -1.0) and O:
-                T = As[i]
+                T = As[i].clone()
 
             else:
                 T = Operation(
                     "p", "*",
-                    As[i],
+                    As[i].clone(),
                     Data('i',Scalar(I[i])) 
                     
                 )
@@ -603,12 +639,12 @@ class Operation:
         for i in numpy.argsort(-I):
             if I[i] ==0: continue
             elif (I[i] == 1 or I[i] == 1.0 ): 
-                T = Operation("a", "+" , As[i] , P)
+                T = Operation("a", "+" , As[i].clone() , P)
             elif (I[i] == -1  or I[i] == -1.0):
-                T = Operation("a", "-" , As[i] , P)
+                T = Operation("a", "-" , As[i].clone() , P)
             else:
                 T = Operation(
-                    "a", "+", As[i],
+                    "a", "+", As[i].clone(),
                     Operation(
                         "p", "*",
                         P,
@@ -841,6 +877,13 @@ class Data(Operation):
         self.outputs= False
         self.original = None
         self.tempname = name
+
+    def clone(self):
+        A = Data(self.name,self.temp_result,None)
+        if self.temp_result:
+            #import pdb; pdb.set_trace()
+            A.temp_result = self.temp_result.clone()
+        return A
         
     def partition(self):
         return not self.original is None
@@ -942,6 +985,13 @@ class Data(Operation):
               operation : str = '*',
               operands_type = [Matrix, Matrix]):
         return 0
+    def set_gpu(self, gpu: int ):
+        if self.temp_result is not None:
+            self.temp_result.gpu=gpu
+    def get_gpu(self):
+        if self.temp_result is not None:
+            return self.temp_result.gpu
+        return None
     def compute(self):
         return self.temp_result
     def set_value(self, A):
@@ -1136,7 +1186,7 @@ class Graph(Function):
         import pdb;  pdb.set_trace()
         Code = self.pretty__() if TwoOperands else str(self)
         
-        print(Code); 
+        #print(Code); 
         E = compile(Code,'test','exec')
 
         return E
@@ -1510,7 +1560,11 @@ class Graph(Function):
         return red + code + free + ret +"}\n"
 
     ## We execute each statement in the V list in order
-    def compute(self, verbose = False):
+    def compute_pool(self, verbose = False):
+
+        
+        from multiprocessing import Pool
+
         start = time.time()
         for ds in self.declarations:
                         
@@ -1521,17 +1575,59 @@ class Graph(Function):
             elif ds.outputs:
                 ds.left.set_value(ds.left.value()*0)
 
-        #import pdb; pdb.set_trace()
-        for i in self.V:
-            #if verbose: print(i)
-            A = i.compute()
-            if verbose:
-                if type(i.left) is list:
-                    for ii in range(len(i.left)):
-                        print(i.left[ii],"\n",A[ii].value())
-                else:
-                    print(i.left,"\n", A.value()) 
+        count = 0
+
         
+        Vs = [ [  self.V[c], c % 2] for c in range(len(self.V))]     
+
+        
+        with Pool(10) as p:
+
+            for i in p.imap_ordered(f, Vs):
+                print(p)
+            #p.map(f,Vs)
+
+        import pdb; pdb.set_trace()
+        #for i in Vs:
+        #    f(i)
+        
+        
+        #import pdb; pdb.set_trace()
+        #for i in self.V:
+        #    print(count, i, i.get_gpu())
+        #    A = i.compute()
+        
+        end = time.time()
+        print("compute", end - start)
+        self.time = end - start
+        if self.temp_result and self.temp_result.padded:
+            import pdb; pdb.set_trace()
+            #self.single_output(self.temp_result)
+            return self.temp_result 
+        if self.temp_result and not self.temp_result.padded:
+            return self.temp_result 
+        return 
+    ## We execute each statement in the V list in order
+    def compute(self, verbose = False):
+        
+        import time
+
+        start = time.time()
+        for ds in self.declarations:
+                        
+            if type(ds) is list:
+                for d in ds:
+                    if d.outputs:
+                        d.left.set_value(d.left.value()*0)
+            elif ds.outputs:
+                ds.left.set_value(ds.left.value()*0)
+
+        count = 0
+        for i in self.V: i.compute()
+        #with ThreadPool(10) as p:
+        #    p.map(f1, self.V)
+            
+        #import pdb; pdb.set_trace()
         end = time.time()
         print("compute", end - start)
         self.time = end - start
@@ -2043,7 +2139,7 @@ def bini_mult_example(
             O.parallel = True
             V.append(O)
             try:
-                O.compute()
+                if False: O.compute()
             except Exception as e:
                 print(e)
                 print(O)
@@ -2133,6 +2229,7 @@ def bini_mult_example(
         G1.compute()
 
     ## we create a stmt-by-stm data dependency
+    
     print("Dependency")
     G1.dependency()
 

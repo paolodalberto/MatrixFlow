@@ -61,6 +61,10 @@ if __name__ == "__main__":
     G1 = algorithm_mult_example(D, Scalar(1),A,B,X)
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     #G1.data_dependency()
+    print("MAX ERROR",
+          numpy.max(numpy.fabs((
+              D.value()-C.value()))))
+    
     import pdb; pdb.set_trace()
     print(G1)
     del G1; gc.collect()
@@ -78,6 +82,10 @@ if __name__ == "__main__":
     G3 = bini_mult_example(D,c, A,a,B,b,1)
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     print(G3)
+    print("MAX ERROR",
+          numpy.max(numpy.fabs((
+              D.value()-C.value()))))
+    
     import pdb; pdb.set_trace()
     del G3; gc.collect()
 
@@ -88,6 +96,10 @@ if __name__ == "__main__":
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     print(G3)
     print(D)
+    print("MAX ERROR",
+          numpy.max(numpy.fabs((
+              D.value()-C.value()))))
+    
     import pdb; pdb.set_trace()
     del G3; gc.collect()
 
@@ -97,8 +109,12 @@ if __name__ == "__main__":
         ac,bc,cc = fact['%d,%d,%d' % (X*Y,X*Y,X*Y)]
         D = Scalar(0)*C
         G3 = bini_mult_example(D,cc, A,ac,B,bc,1)
+        
         if args.error and args.error !="anything" : Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
         print(G3)
+        print("MAX ERROR",
+              numpy.max(numpy.fabs((
+                  D.value()-C.value()))))
         del G3; gc.collect()
     except Exception as e:
         print("Warning: very likely not found the algorithm", e)
@@ -112,6 +128,9 @@ if __name__ == "__main__":
     G3 = bini_mult_example(D,c1, A,a1,B,b1,1)
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     print(G3)
+    print("MAX ERROR",
+          numpy.max(numpy.fabs((
+              D.value()-C.value()))))
     del G3; gc.collect()
     
     ## X and Y 
@@ -121,6 +140,9 @@ if __name__ == "__main__":
     G3 = bini_mult_example(D,c1, A,a1,B,b1,1)
     if args.error and args.error !="anything":Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     print(G3)
+    print("MAX ERROR",
+          numpy.max(numpy.fabs((
+              D.value()-C.value()))))
     del G3; gc.collect()
 
 
@@ -132,5 +154,8 @@ if __name__ == "__main__":
     if args.error and args.error !="anything": Graph.heatmap_diff(Graph,Matrix(numpy.abs(C.value()-D.value())))
     print(G3)
     print(D)
+    print("MAX ERROR",
+          numpy.max(numpy.fabs((
+              D.value()-C.value()))))
     import pdb; pdb.set_trace()
     del G3; gc.collect()

@@ -81,7 +81,7 @@ if __name__ == "__main__":
     
     if True:
         
-        print("compute")
+        print("compute G")
         start = time.time()
         D = numpy.matmul(A.value(),B.value())
         end = time.time()
@@ -89,8 +89,8 @@ if __name__ == "__main__":
         print("time",t)
         print("# type  alg  size gflops    max")
         print(Line %("pyt","reg", T,OPS/t/GIGA, numpy.max(C.value() - D)))
-        import pdb; pdb.set_trace()
-
+        #import pdb; pdb.set_trace()
+        
 
     fact =dict(numpy.load('factorizations_r.npz', allow_pickle=True))
     FA = {}
@@ -160,10 +160,11 @@ if __name__ == "__main__":
         print(ver,KEYS)
         for k in KEYS:
             print("Alg", k)
-            if k=="3x3": import pdb; pdb.set_trace()
+            #if k=="3x3": import pdb; pdb.set_trace()
             D = Scalar(0)*C
             c,a,b = FA[k]
-            G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
+            #G3 = bini_mult_example_three_temp(D,c, A,a,B,b) #,True,True)
+            G3 = bini_mult_example(D,c, A,a,B,b) #,True,True)
             H = Scalar(1)*D
             if args.built:
                 if "GPU" in os.environ:
@@ -255,7 +256,7 @@ if __name__ == "__main__":
                 'size' : T
             }
             del G3; gc.collect()
-            if k=="3x3": import pdb; pdb.set_trace()
+            #if k=="3x3": import pdb; pdb.set_trace()
 
     
     #print(Dimension)
