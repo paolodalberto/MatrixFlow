@@ -143,29 +143,27 @@ Let us start with scalar operations on Matrix/Vectors:
 \end{definition}
 
 For example, we will use $G_{x*x}(\Vc{X}) = x_{i,j}^2$ and
-$G_{\exp}(\Vc{X}) = \exp(x_{i,j})$. 
+$G_{\exp}(\Vc{X}) = \exp(x_{i,j})$. The definition goal is the
+computation abstraction, this is also called a element wise operation.
 
 
 \begin{definition}
 An associative Projection $P_+: \Vc{X}\in\R^{M\times N} \rightarrow
 \Vc{F} \in \R^{M}$, is a function where the element
 \[ f_i = \sum_{j=1}^N x_{i,j}. \]
-The $+/\sum$ sign is not in general a summation, We choose it because
-this is a natural symbol for the associative property:
+The $+/\sum$ sign has the general properties of classic addition and
+the most important the associative property:
 \[
 f_i = (x_{i,1}) + (\sum_{j=2}^N x_{i,j}) = (\sum_{j=1}^{N-1} x_{i,j}) + (x_{i,N}).
 \]
-
 \end{definition}
-The definition is a row projection.  There are norms where the
-projection is by column. The formalism can easily take care of that by
-specifying a direction (i.e., in the code we introduce it).  Let us
-digest our formalism a little.  As we will read our matrix, we are
-going to maintain the order and projecting of matrix $\Vc{X}$ (row
-elements $x_{i,*}$). We do not need the projection to be commutative
-in general but all the projections of interests are. Also, we require
-the computation of multiple projections for the computation of the
-normalization factor.
+
+This is a row projection but column projections are similar.  As we
+will read our matrix, we are going to maintain the order and
+projecting of matrix $\Vc{X}$ (row elements $x_{i,*}$). The
+projections need not to be commutative in general but all the
+projections of interests are. Also, we require the computation of
+multiple projections for the computation of the normalization factor.
 
 We abuse the notation of the symbol $+$ in the associative expression
 $f_i = (x_{i,1} + (\sum_{j=2}^N x_{i,j}))$, in the sense that the
@@ -193,12 +191,12 @@ function for the final composition of the normalization factors.
 Now let start formulating the normalization computation.
 
 \begin{definition}
-  We have two normalization functions by row 
+  We have two normalization functions: first, by row
   \begin{equation}
     N_*: \Vc{X}\in\R^{M\times N} \times \Vc{T}\in \R^M \rightarrow \Vc{Y}
     \in \R^{M\times N}, \text{ where } y_{i,j} = x_{i,j}*t_i
   \end{equation}
-  and by column
+  and second by column
   \begin{equation}
     N_*: \Vc{X}\in\R^{M\times N} \times  \Vc{S}\in \R^N \rightarrow \Vc{Y}
     \in \R^{M\times N}, \text{ where } y_{i,j} = x_{i,j}*s_j
@@ -587,8 +585,7 @@ connections are broadcasts: the same data is broadcast to all cores
 and the core will select a subpart (if it likes). Each core has eight
 banks of 8KB each composing the lowest level L1, we give two banks for
 inputs for ping pong, two for weights, two for outputs, and two banks
-for Temporary Space. We use this information in the following Tiling
-generation section \ref{} 
+for Temporary Space. 
 
 Intuitively, Tiling is a {\em spatial} and a {\em temporal}
 partition. Where, a partition describes a way to take a matrix and
@@ -635,6 +632,15 @@ layout.
   column as a temporal partition.
 \end{definition}
 
+Clearly, we are abusing the $\sum$ symbol. In this contest, the symbol
+represents an iteration space that our computation needs to split in
+space and time. Note, $\dot\sum$ is a way to split the operand and
+thus the computation spatially.  $\dot\sum^c$ we split spatially and
+vertically and $\dot\sum^r$ we split spatially and horizontally.
+Thus, $\sum$ is a way to split the computation temporally: $\sum^c$ we
+split temporally and vertically and $\sum^r$ we split temporally and
+horizontally. We can combine these operators constructively and
+intuitively as it follows.
 
 \begin{definition}
   The L3 to L2 traversal of a matrix $\Vc{X}$ is the composition of a
@@ -652,8 +658,9 @@ context and without double buffering). More constraints are introduced
 when more information are available. For Norms we need double
 buffering and we stream at very least $\Vc{X}$ and the output of the
 Norm $\Vc{Y}$. In general, a complete tiling/traversal for L3, L2, and
-L1 could be summarized using our notation by loops: spatial by row, temporal by row,
-spatialby row, temporal by row (all independent computations).
+L1 could be summarized using our notation by loops: spatial by row,
+temporal by row, spatial by row, temporal by row (all independent
+computations).
 \begin{equation}
 T(\Vc{X}) = \dot\sum_k^r \Vc{X}^k =
 \dot\sum_k^r\sum_{i}^{r}\Vc{X}^k_{i} =
@@ -900,6 +907,63 @@ for k in K:
 In practice, we formulate the computation as a recursive descent visit
 into the tiling data structure. Instance Norm has parallel computation
 by columns and other Norms  are by row. 
+
+
+
+\section{Unified Implementation}
+
+We consider the practical implementation of the computation
+$\dot\sum_k^r\sum_{i}^c\sum_{m}^c\Vc{X}^{k}_{i,m}$ that we call
+affectionately a two-pass in L2 computation. 
+\begin{verbatim}
+# ----
+for k in K: 
+    T = 0# the first time we start the projection 
+    for i in I do: 
+        for m in J: 
+            T+= Projection(X[k,i,m]) 
+    T = S(T)  # the first time we start the normalization
+    for i in I do: 
+        for m in J: 
+            X[k,i,m] = X[k,i,m]/T
+# ----
+\end{verbatim} 
+We have a matrix $\Vc{X}$ and we split in parallel set of rows:
+$\dot\sum_k^r\Vc{X}^{k}$ but we do not have the resources to execute
+them in parallel and thus we can split the computation in
+time:$\sum_k^r\Vc{X}^{k}$ and there will be $k\in K$ computations.
+
+The computation is $K$ times:
+\begin{itemize}
+\item $\Vc{T} = P_+(\Vc{X}^k)$
+\item $\Vc{S} = S_+(\Vc{T})$
+\item $\Vc{Y}^k = N_*(\Vc{X}^k,\Vc{S})$
+\end{itemize}
+Implicitly we need to read $\Vc{X}^k$ twice and we can represent such
+a sequence as
+{\small
+\begin{verbatim}
+# ----
+# L3 
+for k in K:  # L2 it can be more complex  
+    for iota in [1,2]: # repetition 2 
+        if iota==1 : T = 0# the first time we start the projection 
+        # L2 -> L1 traversal 
+        for i in I do:  
+            for m in J:  # Core computation L1
+                if iota==1:          T+= P+(X[k,i,m]) 
+                if iota==1 and i==1: T = S(T)  # first time normalization
+                if iota==2:          Y[k,i,m] = N*(X[k,i,m],T)
+# ----
+\end{verbatim} }
+Note that the inner loop represent the core computation and the
+control is based on counting the number of iterations.
+
+This is the mechanical description of the computation. The tiling
+shapes and sizes are actually computed bottom up. We compute the
+largest problem fitting the core or L1 data cache, then we use this
+information to compute the problem fitting L2.
+
 
 
 

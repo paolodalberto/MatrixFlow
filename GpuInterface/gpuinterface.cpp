@@ -471,11 +471,11 @@ std::vector<double> gemm(int device_id,
   
   // copy matrices from host to device
   HIP_CHECK(hipMemcpy(da, ha.data(), sizeof(double) * size_a, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "\t A "  << ha[0] << " " << ha[lda-1]  << std::endl;
+  if (DEBUG) std::cout << "\t A "  << ha[0] << " " << ha[1]  << std::endl;
   HIP_CHECK(hipMemcpy(db, hb.data(), sizeof(double) * size_b, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "\t B "  << hb[0] << " " <<hb[ldb-1]  << std::endl;
+  if (DEBUG) std::cout << "\t B "  << hb[0] << " " <<hb[1]  << std::endl;
   HIP_CHECK(hipMemcpy(dc, hc.data(), sizeof(double) * size_c, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "\t C "  << hc[0] << " " <<hc[ldc-1]  << std::endl;
+  if (DEBUG) std::cout << "\t C "  << hc[0] << " " <<hc[1]  << std::endl;
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   if (DEBUG) std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
@@ -495,7 +495,7 @@ std::vector<double> gemm(int device_id,
   // copy output from device to CPU
   start = std::chrono::high_resolution_clock::now();
   HIP_CHECK(hipMemcpy(hc.data(), dc, sizeof(double) * size_c, hipMemcpyDeviceToHost));
-  if (DEBUG) std::cout << "\t C <- "  << hc[0] << " " <<hc[ldc]  << std::endl;
+  if (DEBUG) std::cout << "\t C <- "  << hc[0] << " " <<hc[1]  << std::endl;
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   if (DEBUG) std::cout << "\t Read data from  Kernel "  << duration.count()/1000000.0 << std::endl;
@@ -533,7 +533,7 @@ py::array_t<double> gemm_(int device_id,
   int size_a = (int)ha.size();
   int size_b = (int)hb.size();
   int size_c = (int)hc.size();
-  const double  alpha = 1.0 , beta = 0.0;
+  const double  alpha = 1.0 , beta = 1.0;
   
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -558,11 +558,11 @@ py::array_t<double> gemm_(int device_id,
   
   // copy matrices from host to device
   HIP_CHECK(hipMemcpy(da, ha.data(), sizeof(double) * size_a, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "\t A "  << ha.data()[0] << " " << ha.data()[1]  << std::endl;
+  if (DEBUG) std::cout << "\t A_ "  << ha.data()[0] << " " << ha.data()[1]  << std::endl;
   HIP_CHECK(hipMemcpy(db, hb.data(), sizeof(double) * size_b, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "\t B "  << hb.data()[0] << " " <<hb.data()[1]  << std::endl;
+  if (DEBUG) std::cout << "\t B_ "  << hb.data()[0] << " " <<hb.data()[1]  << std::endl;
   HIP_CHECK(hipMemcpy(dc, hc.data(), sizeof(double) * size_c, hipMemcpyHostToDevice));
-  if (DEBUG) std::cout << "\t C "  << hc.data()[0] << " " <<hc.data()[1]  << std::endl;
+  if (DEBUG) std::cout << "\t C_ "  << hc.data()[0] << " " <<hc.data()[1]  << std::endl;
   auto stop = std::chrono::high_resolution_clock::now();
   auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   if (DEBUG) std::cout << "\t Data and Initialization Kernel "  << duration.count()/1000000.0 << std::endl;
@@ -582,7 +582,7 @@ py::array_t<double> gemm_(int device_id,
   // copy output from device to CPU
   start = std::chrono::high_resolution_clock::now();
   HIP_CHECK(hipMemcpy((void *) hc.data(), dc, sizeof(double) * size_c, hipMemcpyDeviceToHost));
-  if (DEBUG) std::cout << "\t C <- "  << hc.data()[0] << " " <<hc.data()[1]  << std::endl;
+  if (DEBUG) std::cout << "\t C_ <- "  << hc.data()[0] << " " <<hc.data()[1]  << std::endl;
   stop = std::chrono::high_resolution_clock::now();
   duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
   if (DEBUG) std::cout << "\t Read data from  Kernel "  << duration.count()/1000000.0 << std::endl;

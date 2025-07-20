@@ -2608,26 +2608,26 @@ def gen_matrix(X : int , Y : int, random = None):
                 [
                     [ (1+i+j+i*j -i*17) for i in range(Y)] for j in range(X)
                 ]
-            )
+                ).astype(numpy.float64,order='F')
         )
         
     elif random =='up':
         A = Matrix(
             numpy.matrix(
                 numpy.random.uniform(0,1,(X,Y))
-            )
+            ).astype(numpy.float64,order='F')
         )
     elif random =='down':
         A = Matrix(
             numpy.matrix(
                 numpy.random.uniform(-1,0,(X,Y))
-            )
+            ).astype(numpy.float64,order='F')
         )
     else :
         A = Matrix(
             numpy.matrix(
                 numpy.random.uniform(-1,1,(X,Y))
-            )
+            ).astype(numpy.float64,order='F')
         )
     return A
 

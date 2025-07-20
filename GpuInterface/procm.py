@@ -81,7 +81,7 @@ def dgemv_csr(device, C, x, y) :
 ##    b may be not dense 
 ## z = 1*Cx + 1*y  
 ###
-def dgemm(device, L, R) :
+def dgemm_(device, L, R) :
      #import pdb; pdb.set_trace()
      try :
           V =  rocmgpu.gemm(
@@ -109,13 +109,13 @@ def dgemm(device, L, R) :
      if VERIFY:
           Q =  L@R
           print("DIFF", numpy.sum(Q-B))
-          
+          import pdb; pdb.set_trace()
      return B
 
-def dgemm_(device, L, R) :
+def dgemm(device, L, R) :
      #import pdb; pdb.set_trace()
      try :
-          V = numpy.zeros((L.shape[0],R.shape[1]))
+          V = numpy.zeros((L.shape[0],R.shape[1]), dtype=L.dtype)
           V =  rocmgpu.gemm_(
                device,
                V, V.shape[0],
@@ -130,18 +130,18 @@ def dgemm_(device, L, R) :
           import pdb; pdb.set_trace()
           
 
-     
+     #V = V.transpose()
      B = numpy.matrix(
           V.data
      )
-     B = B.reshape((L.shape[0],R.shape[1]), order='F')
+     #B = B.reshape((L.shape[0],R.shape[1]), order='C')
 
      
      if   VERIFY:
-          import pdb; pdb.set_trace()
+          
           Q =  L@R
           print("DIFF", numpy.sum(Q-B))
-          
+          import pdb; pdb.set_trace()
           
      return B
 
@@ -152,7 +152,7 @@ def dgemm_(device, L, R) :
 ##    b may be not dense 
 ## z = 1*Cx + 1*y  
 ###
-def dgema(device, L, R) :
+def dgema_(device, L, R) :
      #import pdb; pdb.set_trace()
      try :
           V =  rocmgpu.gema(
@@ -182,10 +182,10 @@ def dgema(device, L, R) :
           print("DIFF", numpy.sum(Q-B))
           
      return B
-def dgema_(device, L, R) :
+def dgema(device, L, R) :
      #import pdb; pdb.set_trace()
      try :
-          V = numpy.zeros((L.shape[0], L.shape[1]))
+          V = numpy.zeros((L.shape[0], L.shape[1]), dtype=L.dtype)
           V =  rocmgpu.gema_(
                device,
                V, V.shape[0],
@@ -206,9 +206,9 @@ def dgema_(device, L, R) :
           
      
      B = numpy.matrix(
-          V
+          V.data
      )
-     B = B.reshape((L.shape[0],L.shape[1]), order='F')
+     #B = B.reshape((L.shape[0],L.shape[1]), order='F')
      
      if VERIFY:
           Q =  L+R
