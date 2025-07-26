@@ -1367,7 +1367,13 @@ class MHA(Gemm):
         D = numpy.zeros((m),dtype=Q.dtype)
         M = numpy.zeros((m),dtype=Q.dtype)
         M1 = numpy.zeros((m),dtype=Q.dtype)
+        
+        #pdb.set_trace()     
+        K = K/numpy.max(numpy.fabs(K))
+        Q = Q/numpy.max(numpy.fabs(Q))
+        #V = V/numpy.max(numpy.fabs(V))
 
+        
         ## qi
         for q in range(0,Q.shape[0],m):
             N = N*0
@@ -1386,6 +1392,8 @@ class MHA(Gemm):
                 M1 = numpy.maximum(M,M1)
                 T = numpy.exp(T-M1[:,None])
                 S = numpy.exp(M1-M)
+                #print(T,M1, M,S)
+                #pdb.set_trace()
                 M = M1
                 
                 if k>0 :
@@ -1413,13 +1421,19 @@ class MHA(Gemm):
         M = X.shape[0]//m
         N = X.shape[1]//n
         XS = numpy.zeros((M,N)).astype(numpy.float16)
+        A = numpy.zeros((m,n)).astype(numpy.int8)
 
+        print(M, N)
         for i in range(M):
             for j in range(N):
                 Mx = numpy.max(numpy.fabs(X[i*m:(i+1)*m,j*n:(j+1)*n]))
                 XS[i,j] = Mx/(2**7)  # scale
-                XQ[i*m:(i+1)*m,j*n:(j+1)*n] = numpy.round(X[i*m:(i+1)*m,j*n:(j+1)*n]/XS[i,j] )
+                if XS[i,j] !=0.0:
+                    A = numpy.round(X[i*m:(i+1)*m,j*n:(j+1)*n]/XS[i,j] )
                     
+                XQ[i*m:(i+1)*m,j*n:(j+1)*n] = A.astype(numpy.int8)
+                print(i, j, XS[i,j],XS.dtype)
+                
         return XS,XQ
 
     def de_quantize_float16_block(            
@@ -1475,6 +1489,7 @@ class MHA(Gemm):
             dq = de_quantize_float16_block
     ):
         [m,n,Qtime, KVtime]= x
+        print("m,n", m,n);
         ## result 
         R = Q*0
 
@@ -1485,13 +1500,26 @@ class MHA(Gemm):
         M1 = numpy.zeros((m),dtype=Q.dtype)
 
         # normalization of K
-        K = K - numpy.mean(K,axis=0)
+        if False:
+            MK = numpy.mean(K,axis=1)
+            print("Media K shape", MK.shape)
+            print("K", K.shape)
+            K1 = K - MK[:,None]
+        
+            import matplotlib.pyplot as plt
+            plt.imshow(K1, cmap='hot', interpolation='nearest')
+            plt.colorbar(label='Value')
+            plt.show()
 
-        #pdb.set_trace()
+
+        
+            pdb.set_trace()
+            K = K1
+            
         ## Q and K quantized
         Qs,Qz = q(Q/numpy.sqrt(n), [m, Q.shape[1]])
         Ks,Kz = q(K, [K.shape[0],n])
-        
+        pdb.set_trace()
         ## qi
         for q in range(0,Q.shape[0],m):
             N = N*0
@@ -2654,22 +2682,35 @@ def test_mha():
     mha = MHA()
     #pdb.set_trace()
     
-    P = [77, 768, 77,16]
-    Ref = mha.minimum_computation_time(P)
-    RT = mha.gen_fm_par_fm_(P)
-    time = mha.time_estimates(RT,P)
-    print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
+#    P = [77, 768, 77,16]
+#    Ref = mha.minimum_computation_time(P)
+#    RT = mha.gen_fm_par_fm_(P)
+#    time = mha.time_estimates(RT,P)
+#    print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    P = [77, 768, 77, 8]
+    M = 40 # Token     
+    N = 72 # 768  Channel
+    
+    P = [M, N, M, 8]
     Ref = mha.minimum_computation_time(P,True)
     RT = mha.gen_fm_par_fm_(P,True)
     time = mha.time_estimates(RT,P,True)
     print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
     for t in range(1) : 
-        Q = numpy.random.rand(768,77)
-        K = numpy.random.rand(77,768)
-        V = numpy.random.rand(768,77)
+        Q = (numpy.random.rand(N,M)-1/2)*19
+        K = numpy.ones((N,M))*4 # channel and Token
+        W = (numpy.random.rand(M)-1/2)*10 # channel and Token
+        KW = K*W[None,:]
+        K = KW*1
+
+        import matplotlib.pyplot as plt
+        plt.imshow(K, cmap='hot', interpolation='nearest')
+        plt.colorbar(label='Value')
+        plt.show()
+
+        K = K.transpose()        
+        V = (numpy.random.rand(N,M)-1/2)*10
 
         Q16 = numpy.ndarray.astype(Q,numpy.float16)
         K16 = numpy.ndarray.astype(K,numpy.float16)
@@ -2677,14 +2718,27 @@ def test_mha():
 
         #pdb.set_trace()
         One = mha.shead(Q,K,V)
-        one = mha.shead(Q16,K16,V16)
-        print("scipy L1 %1.3e" % ( sum(sum(numpy.fabs(One-one)))/One.shape[0]/One.shape[1]))
-        two = mha.ddr_computation_(Q16,K16,V16,[])
-        print("separ L1 %1.3e" % (sum(sum(numpy.fabs(One-two)))/One.shape[0]/One.shape[1]))
+        #one = mha.shead(Q16,K16,V16)
+        #print("scipy L1 %1.3e" % ( sum(sum(numpy.fabs(One-one)))/One.shape[0]/One.shape[1]))
+        #two = mha.ddr_computation_(Q16,K16,V16,[])
+        #print("separ L1 %1.3e" % (sum(sum(numpy.fabs(One-two)))/One.shape[0]/One.shape[1]))
         three = mha.ddr_computation_block(Q16,K16,V16,RT)
         print("block L1 %1.3e" % (sum(sum(numpy.fabs(One-three)))/One.shape[0]/One.shape[1]))
+
+        MK = numpy.mean(KW,axis=0)
+        print("Media K shape", MK.shape)
+        print("K", K.shape)
+        K = KW - MK
+
+        plt.imshow(K, cmap='hot', interpolation='nearest')
+        plt.colorbar(label='Value')
+        plt.show()
+        K = K.transpose()
+        K16 = numpy.ndarray.astype(K,numpy.float16)
+
         four = mha.sage_computation_block(Q16,K16,V16,RT)
         print("sage  L1 %1.3e" % (sum(sum(numpy.fabs(One-four)))/One.shape[0]/One.shape[1]))
+        print("sage-block  L1 %1.3e" % (sum(sum(numpy.fabs(three-four)))/One.shape[0]/One.shape[1]))
     pdb.set_trace() 
 
 
