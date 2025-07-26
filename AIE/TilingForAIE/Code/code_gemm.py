@@ -1402,6 +1402,131 @@ class MHA(Gemm):
             # blocked result
             R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
         return R
+
+    def quantize_int8_block(
+            X : numpy.array,
+            x : list ) -> list: # scale + block Quantized 
+
+        m,n = x ## block sizes
+        # assume X is divisible by m, n
+        XQ = (X*0).astype(numpy.int8)
+        M = X.shape[0]//m
+        N = X.shape[1]//n
+        XS = numpy.zeros((M,N)).astype(numpy.float16)
+
+        for i in range(M):
+            for j in range(N):
+                Mx = numpy.max(numpy.fabs(X[i*m:(i+1)*m,j*n:(j+1)*n]))
+                XS[i,j] = Mx/(2**7)  # scale
+                XQ[i*m:(i+1)*m,j*n:(j+1)*n] = numpy.round(X[i*m:(i+1)*m,j*n:(j+1)*n]/XS[i,j] )
+                    
+        return XS,XQ
+
+    def de_quantize_float16_block(            
+            x : list # scale + quantized
+    ) -> numpy.array:
+
+        XS, XQ = x
+
+        
+        m,n = XQ.shape[0]//XS.shape[0],XQ.shape[1]//XS.shape[1] ## block size
+        M   = XQ.shape[0]//m
+        N   = XQ.shape[1]//n
+        
+        X = (XQ*0).astype(numpy.float16)
+
+
+        for i in range(M):
+            for j in range(N):
+                X[i*m:(i+1)*m,j*n:(j+1)*n] = XQ[i*m:(i+1)*m,j*n:(j+1)*n]*XS[i,j]
+                
+        return X
+                
+
+    
+    ###
+    ##  This is the blocked computation we would do using AIE.
+    ##
+    ##  The tiling suggests [m,n,Qtime, KVtime]= x. The parameter m
+    ##  specify the number of row of Q and thus the row of R we
+    ##  compute in one iteration. the parameter n specifies the number
+    ##  of column of K (the row of V) we use for the block computation of (Q0Ki)Vi
+    ## 
+    ##  for qi in Q
+    ##    N = 0
+    ##    D = 0
+    ##    M = 0
+    ##    for kj,vj  in K,V
+    ##        t = qi*kj
+    ##        M1 = max(t)
+    ##        M1 = max(M,M1)
+    ##        t = exp(t - M1)
+    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
+    ##        D = D/S + sum(T)
+    ##        N = N/S + t*vi
+    ###
+    def sage_computation_block(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array, ## operand
+            x : list,        ## problem size
+            q =  quantize_int8_block,
+            dq = de_quantize_float16_block
+    ):
+        [m,n,Qtime, KVtime]= x
+        ## result 
+        R = Q*0
+
+        ## temp
+        N  = numpy.zeros((m,V.shape[1]),dtype=Q.dtype)
+        D  = numpy.zeros((m),dtype=Q.dtype)
+        M  = numpy.ones((m),dtype=Q.dtype)
+        M1 = numpy.zeros((m),dtype=Q.dtype)
+
+        # normalization of K
+        K = K - numpy.mean(K,axis=0)
+
+        #pdb.set_trace()
+        ## Q and K quantized
+        Qs,Qz = q(Q/numpy.sqrt(n), [m, Q.shape[1]])
+        Ks,Kz = q(K, [K.shape[0],n])
+        
+        ## qi
+        for q in range(0,Q.shape[0],m):
+            N = N*0
+            D = D*0
+            M = M*0
+            Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
+
+            ## ki, vi 
+            for k in range(0,K.shape[1],n):
+                #pdb.set_trace()
+                KI =  Kz[:                     , k:min(k+n, K.shape[1]) ]
+                VI =  V[k:min(k+n, K.shape[1]), : ]
+                T = numpy.matmul(Q0,KI)*Qs[q//m,0]*Ks[0,k//n]
+                ## normalization of the current and previous terms
+                M1 =  numpy.max(T,1)
+                M1 = numpy.maximum(M,M1)
+                T  = numpy.exp(T-M1[:,None])
+                S  = numpy.exp(M1-M)
+                #pdb.set_trace()
+                M  = M1
+                
+                if k>0 :
+                    # we could use D and N with better bit or
+                    # accumulation to improve further the accuracy of
+                    # the block computation.
+                    D = D/S  + sum(T.transpose())
+                    N = N/S[:,None] + numpy.matmul(T,VI)
+                else:
+                    D = sum(T.transpose())
+                    N = numpy.matmul(T,VI)
+
+            #pdb.set_trace()
+            # blocked result
+            R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
+        return R
             
     def minimum_computation_time(
             self,
@@ -2527,14 +2652,15 @@ def test_conv_2():
     
 def test_mha():
     mha = MHA()
-
-    P = [77, 768, 16]
+    #pdb.set_trace()
+    
+    P = [77, 768, 77,16]
     Ref = mha.minimum_computation_time(P)
     RT = mha.gen_fm_par_fm_(P)
     time = mha.time_estimates(RT,P)
     print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    P = [77, 768, 8]
+    P = [77, 768, 77, 8]
     Ref = mha.minimum_computation_time(P,True)
     RT = mha.gen_fm_par_fm_(P,True)
     time = mha.time_estimates(RT,P,True)
@@ -2545,20 +2671,20 @@ def test_mha():
         K = numpy.random.rand(77,768)
         V = numpy.random.rand(768,77)
 
-        Q32 = numpy.ndarray.astype(Q,numpy.float16)
-        K32 = numpy.ndarray.astype(K,numpy.float16)
-        V32 = numpy.ndarray.astype(V,numpy.float16)
+        Q16 = numpy.ndarray.astype(Q,numpy.float16)
+        K16 = numpy.ndarray.astype(K,numpy.float16)
+        V16 = numpy.ndarray.astype(V,numpy.float16)
 
         #pdb.set_trace()
         One = mha.shead(Q,K,V)
-        one = mha.shead(Q32,K32,V32)
-        two = mha.ddr_computation_(Q32,K32,V32,[])
-        three = mha.ddr_computation_block(Q32,K32,V32,RT)
-        
+        one = mha.shead(Q16,K16,V16)
         print("scipy L1 %1.3e" % ( sum(sum(numpy.fabs(One-one)))/One.shape[0]/One.shape[1]))
+        two = mha.ddr_computation_(Q16,K16,V16,[])
         print("separ L1 %1.3e" % (sum(sum(numpy.fabs(One-two)))/One.shape[0]/One.shape[1]))
+        three = mha.ddr_computation_block(Q16,K16,V16,RT)
         print("block L1 %1.3e" % (sum(sum(numpy.fabs(One-three)))/One.shape[0]/One.shape[1]))
-        
+        four = mha.sage_computation_block(Q16,K16,V16,RT)
+        print("sage  L1 %1.3e" % (sum(sum(numpy.fabs(One-four)))/One.shape[0]/One.shape[1]))
     pdb.set_trace() 
 
 
@@ -2914,8 +3040,8 @@ if __name__ == "__main__":
 #    estimate_head_psj()
 #    estimate_head_psf()
 #    test_conv()
-    test_conv_2()
-#    test_mha()
+#    test_conv_2()
+    test_mha()
 #    test_gemm_2(4,8,8)
 #     test_mha_L(8)
 #    test_layernorm()
