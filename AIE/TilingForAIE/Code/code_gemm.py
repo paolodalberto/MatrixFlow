@@ -1369,10 +1369,11 @@ class MHA(Gemm):
         M1 = numpy.zeros((m),dtype=Q.dtype)
         
         #pdb.set_trace()     
-        K = K/numpy.max(numpy.fabs(K))
-        Q = Q/numpy.max(numpy.fabs(Q))
+        #K = K/numpy.max(numpy.fabs(K))
+        #Q = Q/numpy.max(numpy.fabs(Q))
         #V = V/numpy.max(numpy.fabs(V))
-
+        #Q = Q/numpy.sqrt(n)
+        #K = K/numpy.sqrt(n)
         
         ## qi
         for q in range(0,Q.shape[0],m):
@@ -1423,7 +1424,7 @@ class MHA(Gemm):
         XS = numpy.zeros((M,N)).astype(numpy.float16)
         A = numpy.zeros((m,n)).astype(numpy.int8)
 
-        print(M, N)
+        #print(M, N)
         for i in range(M):
             for j in range(N):
                 Mx = numpy.max(numpy.fabs(X[i*m:(i+1)*m,j*n:(j+1)*n]))
@@ -1432,7 +1433,7 @@ class MHA(Gemm):
                     A = numpy.round(X[i*m:(i+1)*m,j*n:(j+1)*n]/XS[i,j] )
                     
                 XQ[i*m:(i+1)*m,j*n:(j+1)*n] = A.astype(numpy.int8)
-                print(i, j, XS[i,j],XS.dtype)
+                #print(i, j, XS[i,j],XS.dtype)
                 
         return XS,XQ
 
@@ -1489,7 +1490,7 @@ class MHA(Gemm):
             dq = de_quantize_float16_block
     ):
         [m,n,Qtime, KVtime]= x
-        print("m,n", m,n);
+        #print("m,n", m,n);
         ## result 
         R = Q*0
 
@@ -1500,26 +1501,22 @@ class MHA(Gemm):
         M1 = numpy.zeros((m),dtype=Q.dtype)
 
         # normalization of K
-        if False:
+        if True:
             MK = numpy.mean(K,axis=1)
-            print("Media K shape", MK.shape)
-            print("K", K.shape)
-            K1 = K - MK[:,None]
-        
-            import matplotlib.pyplot as plt
-            plt.imshow(K1, cmap='hot', interpolation='nearest')
-            plt.colorbar(label='Value')
-            plt.show()
-
-
-        
-            pdb.set_trace()
-            K = K1
+            #print("Media K shape", MK.shape)
+            #print("K", K.shape)
+            K = K - MK[:,None]
+            if False:
+                import matplotlib.pyplot as plt
+                plt.imshow(K, cmap='hot', interpolation='nearest')
+                plt.colorbar(label='Value')
+                plt.show()
+            #pdb.set_trace()
             
         ## Q and K quantized
         Qs,Qz = q(Q/numpy.sqrt(n), [m, Q.shape[1]])
         Ks,Kz = q(K, [K.shape[0],n])
-        pdb.set_trace()
+
         ## qi
         for q in range(0,Q.shape[0],m):
             N = N*0
@@ -2688,8 +2685,9 @@ def test_mha():
 #    time = mha.time_estimates(RT,P)
 #    print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    M = 40 # Token     
-    N = 72 # 768  Channel
+    M = 77 # Token     
+    N = 768  #Channel
+    L = 50
     
     P = [M, N, M, 8]
     Ref = mha.minimum_computation_time(P,True)
@@ -2697,52 +2695,60 @@ def test_mha():
     time = mha.time_estimates(RT,P,True)
     print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    for t in range(1) : 
-        Q = (numpy.random.rand(N,M)-1/2)*19
-        K = numpy.ones((N,M))*4 # channel and Token
-        W = (numpy.random.rand(M)-1/2)*10 # channel and Token
-        KW = K*W[None,:]
-        K = KW*1
+    E =  numpy.zeros((5,L))
 
-        import matplotlib.pyplot as plt
-        plt.imshow(K, cmap='hot', interpolation='nearest')
-        plt.colorbar(label='Value')
-        plt.show()
+    
+    for t in range(L) :
+        Q = (numpy.random.rand(N,M)-1/2)
+        if True:
+            K =   (numpy.random.rand(N,M)-1/2) # channel and Token
+            W = (numpy.random.rand(M)-1/2) # channel and Token
+            KW = K*W[None,:]
+            K = KW*1
+        else:
+            K = (numpy.random.rand(N,M)-1/2)
+        if False:
+            import matplotlib.pyplot as plt
+            plt.imshow(K, cmap='hot', interpolation='nearest')
+            plt.colorbar(label='Value')
+            plt.show()
 
         K = K.transpose()        
-        V = (numpy.random.rand(N,M)-1/2)*10
+        V = (numpy.random.rand(N,M)-1/2)
 
         Q16 = numpy.ndarray.astype(Q,numpy.float16)
         K16 = numpy.ndarray.astype(K,numpy.float16)
         V16 = numpy.ndarray.astype(V,numpy.float16)
-
-        #pdb.set_trace()
+                
+        # Reference pdb.set_trace()
         One = mha.shead(Q,K,V)
-        #one = mha.shead(Q16,K16,V16)
-        #print("scipy L1 %1.3e" % ( sum(sum(numpy.fabs(One-one)))/One.shape[0]/One.shape[1]))
-        #two = mha.ddr_computation_(Q16,K16,V16,[])
-        #print("separ L1 %1.3e" % (sum(sum(numpy.fabs(One-two)))/One.shape[0]/One.shape[1]))
+        
+        
+        two = mha.ddr_computation_(Q16,K16,V16,[])
+        separ =numpy.mean(numpy.fabs(One-two)) 
+        
+        #print("separ L1 %1.3e" % (separ))
         three = mha.ddr_computation_block(Q16,K16,V16,RT)
-        print("block L1 %1.3e" % (sum(sum(numpy.fabs(One-three)))/One.shape[0]/One.shape[1]))
-
-        MK = numpy.mean(KW,axis=0)
-        print("Media K shape", MK.shape)
-        print("K", K.shape)
-        K = KW - MK
-
-        plt.imshow(K, cmap='hot', interpolation='nearest')
-        plt.colorbar(label='Value')
-        plt.show()
-        K = K.transpose()
-        K16 = numpy.ndarray.astype(K,numpy.float16)
-
+        bl1 = numpy.mean(numpy.fabs(One-three))
+        #print("block L1 %1.3e" % bl1)
+        one = mha.shead(Q16,K16,V16)
+        sci =  numpy.mean(numpy.fabs(One-one))
+        #print("scipy L1 %1.3e" % (sci))
         four = mha.sage_computation_block(Q16,K16,V16,RT)
-        print("sage  L1 %1.3e" % (sum(sum(numpy.fabs(One-four)))/One.shape[0]/One.shape[1]))
-        print("sage-block  L1 %1.3e" % (sum(sum(numpy.fabs(three-four)))/One.shape[0]/One.shape[1]))
-    pdb.set_trace() 
+        sage = numpy.mean(numpy.fabs(One-four))
+        #print("sage  L1 %1.3e" % sage)
 
-
-
+        E[0,t] = separ
+        E[1,t] = sci 
+        E[2,t] = bl1
+        E[3,t] = sage 
+        
+    print("Averages L1 errors")
+    print("separ L1 %1.3e" % (numpy.mean(E[0,:])))
+    print("scipy L1 %1.3e" % (numpy.mean(E[1,:])))
+    print("block L1 %1.3e" % (numpy.mean(E[2,:])))
+    print("sage  L1 %1.3e" % (numpy.mean(E[3,:])))
+        
 
 def test_mha_L(btype : int = 8):
     mha = MHA()
