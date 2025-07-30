@@ -1325,12 +1325,148 @@ class MHA(Gemm):
         #pdb.set_trace()
         N = numpy.zeros((Q.shape[0], V.shape[1]))
         D = numpy.zeros((Q.shape[0]))
-
+        
         T = numpy.matmul(Q,K)
         T = numpy.exp(T - numpy.max(T,1)[:,None])
         D = sum(T.transpose())
         N = numpy.matmul(T,V)
         return N/D[:,None]
+    
+    
+    
+    def base_cache_block(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array, ## operand
+            x :  list        ## sub problem
+    ) -> list:
+        
+        [m,n,Qtime, KVtime]= x
+        M = numpy.zeros((m),dtype=Q.dtype)
+        R = Q*0
+        N = Q*0
+        D = numpy.zeros(Q.shape[0])
+        M = numpy.zeros(Q.shape[0])
+        ## ki, vi 
+        for k in range(0,K.shape[1],n):
+            #pdb.set_trace()
+            KI =  K[:, k:min(k+n, K.shape[1]) ]
+            T = numpy.matmul(Q,KI)
+            
+            ## normalization of the current and previous terms
+            M1 =  numpy.max(T,1)
+            if k>0:
+                M1 = numpy.maximum(M,M1) 
+        
+            T = numpy.exp(T-M1[:,None])
+            S = numpy.exp(M1-M)
+            #print(T,M1, M,S)
+            #pdb.set_trace()
+            M = M1
+            
+            VI =  V[ k:min(k+n, K.shape[1]),: ]
+            if k>0 :
+                # we could use D and N with better bit or
+                # accumulation to improve further the accuracy of
+                # the block computation.
+                D = D/S  + sum(T.transpose())
+                N = N/S[:,None] + numpy.matmul(T,VI)
+            else:
+                D = sum(T.transpose())
+                N = numpy.matmul(T,VI)
+                
+            #pdb.set_trace()
+            # blocked result
+
+            R[:min(m, Q.shape[0]) , :] = N/D[:,None]
+        
+        return R, N, D, M
+
+
+    ###
+    ##  This is the blocked computation we would do using AIE.
+    ##
+    ##  The tiling suggests [m,n,Qtime, KVtime]= x. The parameter m
+    ##  specify the number of row of Q and thus the row of R we
+    ##  compute in one iteration. the parameter n specifies the number
+    ##  of column of K (the row of V) we use for the block computation of (Q0Ki)Vi
+    ## 
+    ##  for qi in Q
+    ##    N = 0
+    ##    D = 0
+    ##    M = 0
+    ##    for kj,vj  in K,V
+    ##        t = qi*kj
+    ##        M1 = max(t)
+    ##        M1 = max(M,M1)
+    ##        t = exp(t - M1)
+    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
+    ##        D = D/S + sum(T)
+    ##        N = N/S + t*vi
+    ###
+    def cache_block(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array, ## operand
+            x :  list        ## sub problem
+    ) -> list:
+
+        [m,n,Qtime, KVtime]= x
+
+        #print("P", Q.shape,m,n)
+
+        ## recursion step N-1 shape this is the previous computation
+        ## and we remember the previous result and temporary
+        R, Np, Dp, Mp = self.ddr_computation_block(
+            Q[0:(Q.shape[0]-m),:],
+            K[:,0:(K.shape[1]-n)],
+            V[0:(K.shape[1]-n),:],
+            x)
+
+
+        ## what follows it is incremental computation.
+        k = K.shape[1]-n
+
+        KI =  K[:, k:min(k+n, K.shape[1]) ]
+        VI =  V[ k:min(k+n, K.shape[1]),: ]
+        
+        ## border K,V
+        for q in range(0,Q.shape[0]-m,m):
+            #print("q", q,m,Q.shape[0] )
+            N = Np[q:min(q+m, Q.shape[0]),:]
+            D = Dp[q:min(q+m, Q.shape[0])]
+            M = Mp[q:min(q+m, Q.shape[0])]
+            Q0 =  Q[q:min(q+m, Q.shape[0]) , :]
+            T = numpy.matmul(Q0,KI)
+
+            ## normalization of the current and previous terms
+            M1 =  numpy.max(T,1)
+            M1 = numpy.maximum(M,M1)
+            T = numpy.exp(T-M1[:,None])
+            S = numpy.exp(M1-M)
+            M = M1
+            
+            # we could use D and N with better bit or
+            # accumulation to improve further the accuracy of
+            # the block computation.
+            D = D/S  + sum(T.transpose())
+            N = N/S[:,None] + numpy.matmul(T,VI)
+            
+            R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
+
+        R = numpy.resize(R,Q.shape)
+        N = numpy.resize(N,(Q.shape[0],V.shape[1]))
+        D = numpy.resize(D,Q.shape[0])
+        M = numpy.resize(M,Q.shape[0])
+
+        ## border and new Q
+        R[Q.shape[0]-m:,:], N[Q.shape[0]-m:,:], D[Q.shape[0]-m:], M[Q.shape[0]-m:] = self.base_cache_block(
+            Q[Q.shape[0]-m:,:], K,V,x)
+
+        
+        return R, N, D, M
 
     ###
     ##  This is the blocked computation we would do using AIE.
@@ -1367,6 +1503,10 @@ class MHA(Gemm):
         D = numpy.zeros((m),dtype=Q.dtype)
         M = numpy.zeros((m),dtype=Q.dtype)
         M1 = numpy.zeros((m),dtype=Q.dtype)
+        Np = numpy.zeros((Q.shape[0],V.shape[1]),dtype=Q.dtype)
+        Dp = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
+        Mp = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
+        M1p = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
         
         #pdb.set_trace()     
         #K = K/numpy.max(numpy.fabs(K))
@@ -1410,7 +1550,11 @@ class MHA(Gemm):
             #pdb.set_trace()
             # blocked result
             R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
-        return R
+            Np[q:min(q+m, Q.shape[0]) , :] = N
+            Dp[q:min(q+m, Q.shape[0])] = D
+            Mp[q:min(q+m, Q.shape[0])] = M
+            
+        return R,Np,Dp,Mp
 
     def quantize_int8_block(
             X : numpy.array,
@@ -2685,15 +2829,16 @@ def test_mha():
 #    time = mha.time_estimates(RT,P)
 #    print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    M = 77 # Token     
-    N = 768  #Channel
-    L = 50
+    M = 80 # Token     
+    N = 120  #Channel
+    L = 10
     
     P = [M, N, M, 8]
     Ref = mha.minimum_computation_time(P,True)
     RT = mha.gen_fm_par_fm_(P,True)
+    RT = [20,20,1,1]
     time = mha.time_estimates(RT,P,True)
-    print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
+    print("RT", RT, P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
     E =  numpy.zeros((5,L))
 
@@ -2701,7 +2846,8 @@ def test_mha():
     for t in range(L) :
         Q = (numpy.random.rand(N,M)-1/2)
         if True:
-            K =   (numpy.random.rand(N,M)-1/2) # channel and Token
+            #K =   (numpy.random.rand(N,M)-1/2) # channel and Token
+            K =   numpy.ones((N,M)) # channel and Token
             W = (numpy.random.rand(M)-1/2) # channel and Token
             KW = K*W[None,:]
             K = KW*1
@@ -2727,27 +2873,33 @@ def test_mha():
         two = mha.ddr_computation_(Q16,K16,V16,[])
         separ =numpy.mean(numpy.fabs(One-two)) 
         
-        #print("separ L1 %1.3e" % (separ))
-        three = mha.ddr_computation_block(Q16,K16,V16,RT)
+        print("separ L1 %1.3e" % (separ))
+        three,_,_,_  = mha.ddr_computation_block(Q16,K16,V16,RT)
         bl1 = numpy.mean(numpy.fabs(One-three))
-        #print("block L1 %1.3e" % bl1)
+        print("block L1 %1.3e" % bl1)
         one = mha.shead(Q16,K16,V16)
         sci =  numpy.mean(numpy.fabs(One-one))
-        #print("scipy L1 %1.3e" % (sci))
-        four = mha.sage_computation_block(Q16,K16,V16,RT)
+        print("scipy L1 %1.3e" % (sci))
+        four= mha.sage_computation_block(Q16,K16,V16,RT)
         sage = numpy.mean(numpy.fabs(One-four))
-        #print("sage  L1 %1.3e" % sage)
+        print("sage  L1 %1.3e" % sage)
+        five,_,_,_ = mha.cache_block(Q16,K16,V16,[20,20,1,1])
+        inc = numpy.mean(numpy.fabs(One-five))
+        print("increment  L1 %1.3e" % inc)
 
         E[0,t] = separ
         E[1,t] = sci 
         E[2,t] = bl1
         E[3,t] = sage 
+        E[4,t] = inc
+        #pdb.set_trace()
         
     print("Averages L1 errors")
-    print("separ L1 %1.3e" % (numpy.mean(E[0,:])))
-    print("scipy L1 %1.3e" % (numpy.mean(E[1,:])))
-    print("block L1 %1.3e" % (numpy.mean(E[2,:])))
-    print("sage  L1 %1.3e" % (numpy.mean(E[3,:])))
+    print("separ        L1 %1.3e" % (numpy.mean(E[0,:])))
+    print("scipy        L1 %1.3e" % (numpy.mean(E[1,:])))
+    print("block        L1 %1.3e" % (numpy.mean(E[2,:])))
+    print("sage         L1 %1.3e" % (numpy.mean(E[3,:])))
+    print("incremental  L1 %1.3e" % (numpy.mean(E[4,:])))
         
 
 def test_mha_L(btype : int = 8):
