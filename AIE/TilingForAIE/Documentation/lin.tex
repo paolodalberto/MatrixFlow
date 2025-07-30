@@ -185,11 +185,69 @@ scalar to be multiplied to $\Vc{r}_{0,i}$
   \Vc{r}_{0,t+1} = \frac{\Vc{D}_{0,t-1}}{\Vc{D}_{0,t-1} + \Vc{D}_{t,t+1}}\Vc{r}_{0,t-1}  +  \frac{\Vc{D}_{t,t+1}}{\Vc{D}_{0,t-1} + \Vc{D}_{t,t+1}}\Vc{r}_{t,t+1} 
 \end{equation*}
 
-The Divion does not need to be done step by step but only at the
+The Division does not need to be done step by step but only at the
 end. So we have a matrix update iteration as in Equation \ref{eq:sum0}
 and \ref{eq:sum1}, and we can conclude with the final result in
 Equation \ref{eq:res} and \ref{eq:resall}.
 \end{comment}
+
+
+\section{MHA, Blocked, Iterative Method by columns, and caching}
+\label{sec:iterative}
+Consider only the contribution by $\Vc{Q}_m$ and take $\Vc{N}_{m,0}=
+\Vc{D}_{m,0}=0$, $\Vc{M}_{m,0} = \Vc{0}$, assume we have done the
+computation until step $t-1$ and compute $t$ to $t<n$ then
+
+\begin{align*}
+  \Vc{M}^1  &= \max_{row}(\Vc{Q}_m\Vc{K}_{t},\Vc{M}_{m,t-1}) \\
+  \Vc{E}    & =\exp{(\Vc{Q}_m\Vc{K}_{t}-\Vc{M}^1)} \\
+  \Vc{S}    & =\exp{(\Vc{M}^1 - \Vc{M}_{m,t-1})} \\
+  \Vc{M}_{m,t}   & =\Vc{M}^1 \\
+\end{align*}
+\begin{align}
+  \label{eq:sum0}
+  \Vc{N}_{m,t}  &=( \frac{\Vc{N}_{m,t-1}}{\Vc{S}}  + \Vc{E}\Vc{V}_{t}\  ) \\
+  \label{eq:sum1}
+  \Vc{D}_{m,t} &= \frac{\Vc{D}_{m,t-1}}{\Vc{S} +\Vc{E}} 
+\end{align}
+
+Finally, for $t=n$ and for every element of $\Vc{Q}_m$ we can repeat
+the process and compute the final result
+\begin{equation}
+  \label{eq:resall}
+ \forall i \in [0,n],\/ \Vc{R}_i = \frac{\Vc{N}_{i,n}}{\Vc{D}_{i,n}}
+\end{equation}
+\begin{comment}
+Each $\Vc{R}_i$ are independent.  Space requirements: $\Vc{Q}_i,
+\Vc{K}_i, \Vc{V}_i \in \R^{d \times d}$,, $\Vc{Q}_i\Vc{K}_j \in
+\R^{d\times d}$, $\exp\Vc{Q}_i\Vc{K}_j \in \R^{d\times d}$
+$\Vc{D}_{0,i} \in \R^{d}$, $\Vc{N}_{0,t}\Vc{N}_{0,t+1} \in \R^{d
+  \times d}$.
+
+We need to keep in memory $\Vc{D}_{0,t}$ and $\Vc{N}_{0,t}$, we
+compute $\exp{\Vc{Q}_0\Vc{K}_{t+1}}$ to add to $\Vc{D}_{0,t}$, we then
+compute $(\exp{\Vc{Q}_0\Vc{K}_{t+1}})\Vc{V}_{t+1}$. We need 5 matrices
+of size $d \times d$. We store $\Vc{D}_{0,t+1}$ and $\Vc{N}_{0,t+1}$.
+\end{comment}
+
+\subsection{Caching}
+Assume, we have $\Vc{K},\Vc{Q},\Vc{V} \in \R ^{L\times d}$, we split
+them into partitions and we have $n$ of them.  We compute the result
+$\Vc{R}$ as above Equation \ref{eq:resall} and we remember the result
+$\Vc{R}$, the max vector $\Vc{M} = \{\Vc{M}_i\}$, the scaling diagonal
+$ \Vc{D} = \{ \Vc{D}_{i} \}$, and the numerators
+$\{\Vc{N}_{i}\}$. The last two we remember just the last {\em column
+  computation}.
+
+Now, consider the case that we read
+$\Vc{K}_{n+1},\Vc{Q}_{n+1},\Vc{V}_{n+1}$ and we want to compute the
+update version $\Vc{R}$. We have two observa!tions: first, we need to
+compute a fresh $\Vc{R}_{n+1}$ from scratch:
+\begin{align}
+  \Vc{R}_{n+1},\Vc{M}_{n+1},\Vc{N}_{n+1}, \Vc{D}_{n+1} &= \Smax{\Vc{Q}_{n+1}*\Vc{K}^t}*\Vc{V}.
+\end{align}
+Second, the update of $\Vc{R}_i$ with $i<n+1$ is exactly the same
+Equation \ref{eq:sum0}, \ref{eq:sum1}, and \ref{eq:resall}.
 
 
 
@@ -276,64 +334,6 @@ $\Vc{M}$ to $\Vc{N}$, what can we do so that $\Smaxd{\Vc{M}}=
 
 
 
-
-
-\section{MHA, Blocked, Iterative Method by columns, and caching}
-\label{sec:iterative}
-Consider only the contribution by $\Vc{Q}_m$ and take $\Vc{N}_{m,0}=
-\Vc{D}_{m,0}=0$, $\Vc{M}_{m,0} = \Vc{0}$, assume we have done the
-computation until step $t-1$ and compute $t$ to $t<n$ then
-
-\begin{align*}
-  \Vc{M}^1  &= \max_{row}(\Vc{Q}_m\Vc{K}_{t},\Vc{M}_{m,t-1}) \\
-  \Vc{E}    & =\exp{(\Vc{Q}_m\Vc{K}_{t}-\Vc{M}^1)} \\
-  \Vc{S}    & =\exp{(\Vc{M}^1 - \Vc{M}_{m,t-1})} \\
-  \Vc{M}_{m,t}   & =\Vc{M}^1 \\
-\end{align*}
-\begin{align}
-  \label{eq:sum0}
-  \Vc{N}_{m,t}  &=( \frac{\Vc{N}_{m,t-1}}{\Vc{S}}  + \Vc{E}\Vc{V}_{t}\  ) \\
-  \label{eq:sum1}
-  \Vc{D}_{m,t} &= \frac{\Vc{D}_{m,t-1}}{\Vc{S} +\Vc{E}} 
-\end{align}
-
-Finally, for $t=n$ and for every element of $\Vc{Q}_m$ we can repeat
-the process and compute the final result
-\begin{equation}
-  \label{eq:resall}
- \forall i \in [0,n],\/ \Vc{R}_i = \frac{\Vc{N}_{i,n}}{\Vc{D}_{i,n}}
-\end{equation}
-\begin{comment}
-Each $\Vc{R}_i$ are independent.  Space requirements: $\Vc{Q}_i,
-\Vc{K}_i, \Vc{V}_i \in \R^{d \times d}$,, $\Vc{Q}_i\Vc{K}_j \in
-\R^{d\times d}$, $\exp\Vc{Q}_i\Vc{K}_j \in \R^{d\times d}$
-$\Vc{D}_{0,i} \in \R^{d}$, $\Vc{N}_{0,t}\Vc{N}_{0,t+1} \in \R^{d
-  \times d}$.
-
-We need to keep in memory $\Vc{D}_{0,t}$ and $\Vc{N}_{0,t}$, we
-compute $\exp{\Vc{Q}_0\Vc{K}_{t+1}}$ to add to $\Vc{D}_{0,t}$, we then
-compute $(\exp{\Vc{Q}_0\Vc{K}_{t+1}})\Vc{V}_{t+1}$. We need 5 matrices
-of size $d \times d$. We store $\Vc{D}_{0,t+1}$ and $\Vc{N}_{0,t+1}$.
-\end{comment}
-
-\subsection{Caching}
-Assume, we have $\Vc{K},\Vc{Q},\Vc{V} \in \R ^{L\times d}$, we split
-them into partitions and we have $n$ of them.  We compute the result
-$\Vc{R}$ as above Equation \ref{eq:resall} and we remember the result
-$\Vc{R}$, the max vector $\Vc{M} = \{\Vc{M}_i\}$, the scaling diagonal
-$ \Vc{D} = \{ \Vc{D}_{i} \}$, and the numerators
-$\{\Vc{N}_{i}\}$. The last two we remember just the last {\em column
-  computation}.
-
-Now, consider the case that we read
-$\Vc{K}_{n+1},\Vc{Q}_{n+1},\Vc{V}_{n+1}$ and we want to compute the
-update version $\Vc{R}$. We have two observa!tions: first, we need to
-compute a fresh $\Vc{R}_{n+1}$ from scratch:
-\begin{align}
-  \Vc{R}_{n+1},\Vc{M}_{n+1},\Vc{N}_{n+1}, \Vc{D}_{n+1} &= \Smax{\Vc{Q}_{n+1}*\Vc{K}^t}*\Vc{V}.
-\end{align}
-Second, the update of $\Vc{R}_i$ with $i<n+1$ is exactly the same
-Equation \ref{eq:sum0}, \ref{eq:sum1}, and \ref{eq:resall}.
 
 
 
