@@ -159,7 +159,7 @@ associative). Thus, Equations \ref{eq:a} and \ref{eq:b} are proper and
 equivalent. We can apply to the remaining $\Vc{Q}_i$ and $\Vc{R}_i$.
 
 
-\begin{comment}
+%\begin{comment}
 \begin{equation*}
   \Vc{r}_{0,t-1} =
   \frac{\sum_{j=0}^{t-1}(\exp{\Vc{Q}_0\Vc{K}_j})\Vc{V}_j}{\sum_{j=0}^{t-1}\exp{\Vc{Q}_0\Vc{K}_j}}
@@ -188,7 +188,9 @@ The Divion does not need to be done step by step but only at the
 end. So we have a matrix update iteration as in Equation \ref{eq:sum0}
 and \ref{eq:sum1}, and we can conclude with the final result in
 Equation \ref{eq:res} and \ref{eq:resall}.
-\end{comment}
+%\end{comment}
+
+
 
 \subsection{Range of $\exp(\Vc{Q}_0\Vc{K}_j)$}
 \label{sec:range}
@@ -274,10 +276,11 @@ $\Vc{M}$ to $\Vc{N}$, what can we do so that $\Smaxd{\Vc{M}}=
 
 
 
+\newpage
 
-
-\section{MHA, Blocked and  Iterative Method}
+\section{MHA, Blocked, Iterative Method by columns, and caching}
 \label{sec:iterative}
+
 Take $\Vc{N}_{0,0}= \Vc{D}_{0,0}=0$, $\Vc{M} = \Vc{0}$, $\Vc{M}_1 =
 \max_{row} (\Vc{Q}_m\Vc{K}_{t}, M)$ and
 $\Vc{E}_t^m=\exp{(\Vc{Q}_m\Vc{K}_{t}-\Vc{M}_1)}$, and $\Vc{S}
@@ -298,7 +301,7 @@ step $t$ and compute $t+1$ to $t=n$ then
   \label{eq:res}
   \Vc{R}_0 = \frac{\Vc{N}_{0,n}}{\Vc{D}_{0,n}}
 \end{equation}
-This scaling or averiging is actually an element wise operation.
+This scaling or averaging is actually an element wise operation.
 
 For every element of $\Vc{Q}_i$ we can repeat the process and compute the final result
 \begin{equation}
@@ -306,18 +309,48 @@ For every element of $\Vc{Q}_i$ we can repeat the process and compute the final 
  \forall i \in [0,n],\/ \Vc{R}_i = \frac{\Vc{N}_{i,n}}{\Vc{D}_{i,n}}
 \end{equation}
 
-
-
-Space requirements: $\Vc{Q}_i, \Vc{K}_i, \Vc{V}_i \in \R^{d \times
-  d}$,, $\Vc{Q}_i\Vc{K}_j \in \R^{d\times d}$, $\exp\Vc{Q}_i\Vc{K}_j
-\in \R^{d\times d}$ $\Vc{D}_{0,i} \in \R^{d}$,
-$\Vc{N}_{0,t}\Vc{N}_{0,t+1} \in \R^{d \times d}$.
+Each $\Vc{R}_i$ are independent.  Space requirements: $\Vc{Q}_i,
+\Vc{K}_i, \Vc{V}_i \in \R^{d \times d}$,, $\Vc{Q}_i\Vc{K}_j \in
+\R^{d\times d}$, $\exp\Vc{Q}_i\Vc{K}_j \in \R^{d\times d}$
+$\Vc{D}_{0,i} \in \R^{d}$, $\Vc{N}_{0,t}\Vc{N}_{0,t+1} \in \R^{d
+  \times d}$.
 
 We need to keep in memory $\Vc{D}_{0,t}$ and $\Vc{N}_{0,t}$, we
 compute $\exp{\Vc{Q}_0\Vc{K}_{t+1}}$ to add to $\Vc{D}_{0,t}$, we then
 compute $(\exp{\Vc{Q}_0\Vc{K}_{t+1}})\Vc{V}_{t+1}$. We need 5 matrices
 of size $d \times d$. We store  $\Vc{D}_{0,t+1}$ and $\Vc{N}_{0,t+1}$.
 
+
+\subsection{Caching}
+Assume, we have $\Vc{K},\Vc{Q},\Vc{V} \in \R ^{L\times d}$, we split
+them into partitions and we have $n$ of them.
+\begin{equation}
+  \Vc{R} = \Smax{\Vc{Q}*\Vc{K}^t}*\Vc{V}
+\end{equation}
+We compute the result $\Vc{R}$ as above the
+\begin{equation}
+  \label{eq:resall}
+ \forall i \in [0,n-1],\/ \Vc{R}_i = \frac{\Vc{N}_{i,n}}{\Vc{D}_{i,n}}
+\end{equation}
+and we remember the result $\Vc{R}$, the max vector $\Vc{M} =
+\{\Vc{M}_i\}$, the scaling diagonal $ \Vc{D} = \{ \Vc{D}_{i,n} \}$,
+and the numerators $\{\Vc{N}_{i,n}\}$. The last two we remember just
+the last {\em column computation}.
+
+Now, consider the case that we read
+$\Vc{K}_{n+1},\Vc{Q}_{n+1},\Vc{V}_{n+1}$ and we want to compute the
+update version $\Vc{R}$. There two observations: first, we need to
+compute a fresh $\Vc{R}_n$ from scratch; second, the update of
+$\Vc{R}_i$ with $i<n$ is exactly the same Equation \ref{eq:sum0},
+\ref{eq:sum1}, and \ref{eq:res} with the proper row index $i$.
+
+
+
+
+
+
+
+\newpage
 
 \subsection{Implementation of the head}
 
