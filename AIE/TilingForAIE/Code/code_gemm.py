@@ -1417,6 +1417,8 @@ class MHA(Gemm):
 
         [m,n,Qtime, KVtime]= x
 
+        if Qtime==1:
+            Q = Q/numpy.sqrt(n)
         #print("P", Q.shape,m,n)
 
         ## recursion step N-1 shape this is the previous computation
@@ -1757,9 +1759,12 @@ class MHA(Gemm):
                 plt.colorbar(label='Value')
                 plt.show()
             #pdb.set_trace()
-        if numpy.mean(numpy.fabs(K)) > 0.001:
+        war =     numpy.mean(numpy.fabs(K))
+        #print(war, 0.01)
+        if war > 0.01:
             return self.sage_computation_block(Q,K,V,x,q,dq)
 
+        print("extreme")
         # we approximate K ~ 0
         # QK ~ 0
         # exp(QK) ~ 1
@@ -2919,9 +2924,9 @@ def test_mha():
 #    time = mha.time_estimates(RT,P)
 #    print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    M = 160 # Token     
-    N = 240  #Channel
-    L = 1
+    M = 32*3 # Token     
+    N = 64*3  #Channel
+    L = 10
     
     P = [M, N, M, 8]
     Ref = mha.minimum_computation_time(P,True)
@@ -2930,15 +2935,19 @@ def test_mha():
     time = mha.time_estimates(RT,P,True)
     print("RT", RT, P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    E =  numpy.zeros((6,L))
+    E =  numpy.zeros((5,L,2))
+    El =  [ [] for i in range(5) ]
+    
 
-    KC = 1.0
+    KC = 5.0
     
     for t in range(L) :
+        
+        ## preparation of the data 
         Q = 5*(numpy.random.rand(N,M)-1/2)
         if True:
-            #K =   (numpy.random.rand(N,M)-1/2) # channel and Token
-            K =   numpy.ones((N,M)) # channel and Token
+            K =   0.02*(numpy.random.rand(N,M)) # channel and Token
+            #K =   numpy.ones((N,M)) # channel and Token
             W = KC*(numpy.random.rand(M)-1/2) # channel and Token
             KW = K*W[None,:]
             K = KW*1
@@ -2953,50 +2962,91 @@ def test_mha():
         K = K.transpose()        
         V = KC*(numpy.random.rand(N,M)-1/2)
 
+        ## same as above but float16
         Q16 = numpy.ndarray.astype(Q,numpy.float16)
         K16 = numpy.ndarray.astype(K,numpy.float16)
         V16 = numpy.ndarray.astype(V,numpy.float16)
                 
-        # Reference pdb.set_trace()
+        # Reference computation pdb.set_trace()
         One = mha.shead(Q,K,V)
         
-        
+        # separated computation float16
         two = mha.ddr_computation_(Q16,K16,V16,[])
-        separ =numpy.mean(numpy.fabs(One-two)) 
+        G = One-two
+        A = numpy.fabs(G)
+        separ =numpy.mean(A)
+        separm =numpy.max(A)
+        El[0] += list(G.flatten())
+        E[0,t,:] = [ separ,separm]
+        print("separ L1 %1.3e %1.3e" % (separ,separm))
         
-        print("separ L1 %1.3e" % (separ))
+        # Block computation 
         three,_,_,_  = mha.ddr_computation_block(Q16,K16,V16,RT)
-        bl1 = numpy.mean(numpy.fabs(One-three))
-        print("block L1 %1.3e" % bl1)
+        G = (One-three)
+        A = numpy.fabs(G)
+        bl1  = numpy.mean(A)
+        bl1m = numpy.max(A)
+        El[1] += list(G.flatten())
+        E[1,t,:] = [ bl1,bl1m]
+        print("block L1 %1.3e %1.3e" % (bl1, bl1m))
+        
+        ## scypy float 16
         one = mha.shead(Q16,K16,V16)
-        sci =  numpy.mean(numpy.fabs(One-one))
-        print("scipy L1 %1.3e" % (sci))
-        four= mha.sage_computation_block(Q16,K16,V16,RT)
-        sage = numpy.mean(numpy.fabs(One-four))
-        print("sage  L1 %1.3e" % sage)
-        fourp= mha.sage_computation_block_extreme(Q16,K16,V16,RT)
-        sage_e = numpy.mean(numpy.fabs(One-fourp))
-        print("sagee  L1 %1.3e" % sage_e)
-        five,_,_,_ = mha.cache_block(Q16,K16,V16,[20,20,1,1])
-        inc = numpy.mean(numpy.fabs(One-five))
-        print("increment  L1 %1.3e" % inc)
+        G = (One-one)
+        A = numpy.fabs(G)
+        sci =  numpy.mean(A)
+        scim =  numpy.max(A)
+        El[2] += list(G.flatten())
+        E[2,t,:] = [ sci,scim]
+        print("scipy L1 %1.3e %1.3e" % (sci,scim))
 
-        E[0,t] = separ
-        E[1,t] = sci 
-        E[2,t] = bl1
-        E[3,t] = sage 
-        E[4,t] = inc
-        E[5,t] = sage_e
+        ## sage computation 
+        four= mha.sage_computation_block(Q16,K16,V16,RT)
+        G = (One-four)
+        A = numpy.fabs(G)
+        sage = numpy.mean(A)
+        sagem = numpy.max(A)
+        El[3] += list(G.flatten())
+        E[3,t,:] = [ sage,sagem]
+        print("sage  L1 %1.3e %1.3e" % (sage,sagem))
+
+        ## sage extreme
+        fourp= mha.sage_computation_block_extreme(Q16,K16,V16,RT)
+        G = (One-fourp)
+        A = numpy.fabs(G)
+        sage_e = numpy.mean(A)
+        sage_em = numpy.max(A)
+        El[4] += list(G.flatten())
+        E[4,t,:] = [ sage_e,sage_em]
+        print("sagee L1 %1.3e %1.3e" % (sage_e,sage_em))
+
         #pdb.set_trace()
-        
+        if False:
+            five,_,_,_ = mha.cache_block(Q16,K16,V16,[1,1,1,1])
+            inc = numpy.mean(numpy.fabs(One-five))
+            incm = numpy.max(numpy.fabs(One-five))
+            print("increment  L1 %1.3e" % inc)
+
+    #pdb.set_trace()
+    
     print("Averages L1 errors")
-    print("separ        L1 %1.3e" % (numpy.mean(E[0,:])))
-    print("scipy        L1 %1.3e" % (numpy.mean(E[1,:])))
-    print("block        L1 %1.3e" % (numpy.mean(E[2,:])))
-    print("sage         L1 %1.3e" % (numpy.mean(E[3,:])))
-    print("sage_e       L1 %1.3e" % (numpy.mean(E[5,:])))
-    print("incremental  L1 %1.3e" % (numpy.mean(E[4,:])))
+    print("separ        L1 %1.3e MAX %1.3e" % (numpy.mean(E[0,:,0]),numpy.max(E[0,:,1])))
+    print("block        L1 %1.3e MAX %1.3e" % (numpy.mean(E[1,:,0]),numpy.max(E[1,:,1])))
+    print("scipy        L1 %1.3e MAX %1.3e" % (numpy.mean(E[2,:,0]),numpy.max(E[2,:,1])))
+    print("sage         L1 %1.3e MAX %1.3e" % (numpy.mean(E[3,:,0]),numpy.max(E[3,:,1])))
+    print("sage_e       L1 %1.3e MAX %1.3e" % (numpy.mean(E[4,:,0]),numpy.max(E[4,:,1])))
+    #print("incremental  L1 %1.3e %1.3e" % (numpy.mean(E[4,:,0]),numpy.max(E[5,:,1])))
+
+    import matplotlib.pyplot as plt
+    titles = ["separated", "block", "scipy 16", "sage" ,"sage extreme"]
+    i = 0
+    for e in El:
         
+        plt.hist(e,100)
+        plt.title(titles[i])
+        plt.savefig(titles[i]+".png") 
+        plt.show()
+        i+=1
 
 def test_mha_L(btype : int = 8):
     mha = MHA()
