@@ -1358,9 +1358,11 @@ class MHA(Gemm):
             M1 =  numpy.max(T,1)
             if k>0:
                 M1 = numpy.maximum(M,M1) 
-        
+                S = numpy.exp(M1-M)
+            else:
+                S = numpy.exp(M1)
             T = numpy.exp(T-M1[:,None])
-            S = numpy.exp(M1-M)
+            
             #print(T,M1, M,S)
             #pdb.set_trace()
             M = M1
@@ -1423,7 +1425,7 @@ class MHA(Gemm):
             Q[0:(Q.shape[0]-m),:],
             K[:,0:(K.shape[1]-n)],
             V[0:(K.shape[1]-n),:],
-            x)
+            [m,n,0, 0])
 
 
         ## what follows it is incremental computation.
@@ -1443,9 +1445,13 @@ class MHA(Gemm):
 
             ## normalization of the current and previous terms
             M1 =  numpy.max(T,1)
-            M1 = numpy.maximum(M,M1)
+            if k>0 :
+                M1 = numpy.maximum(M,M1)
+                S = numpy.exp(M1-M)
+            else:
+                S = numpy.exp(M1)
             T = numpy.exp(T-M1[:,None])
-            S = numpy.exp(M1-M)
+            
             M = M1
             
             # we could use D and N with better bit or
@@ -1462,8 +1468,8 @@ class MHA(Gemm):
         M = numpy.resize(M,Q.shape[0])
 
         ## border and new Q
-        R[Q.shape[0]-m:,:], N[Q.shape[0]-m:,:], D[Q.shape[0]-m:], M[Q.shape[0]-m:] = self.base_cache_block(
-            Q[Q.shape[0]-m:,:], K,V,x)
+        R[Q.shape[0]-m:,:], N[Q.shape[0]-m:,:], D[Q.shape[0]-m:], M[Q.shape[0]-m:] = self.ddr_computation_block(
+            Q[Q.shape[0]-m:,:], K,V,[m,n,0, 0])
 
         
         return R, N, D, M
@@ -1512,7 +1518,8 @@ class MHA(Gemm):
         #K = K/numpy.max(numpy.fabs(K))
         #Q = Q/numpy.max(numpy.fabs(Q))
         #V = V/numpy.max(numpy.fabs(V))
-        #Q = Q/numpy.sqrt(n)
+        if Qtime==1:
+            Q = Q/numpy.sqrt(n)
         #K = K/numpy.sqrt(n)
         
         ## qi
@@ -1530,11 +1537,12 @@ class MHA(Gemm):
                 T = numpy.matmul(Q0,KI)
                 ## normalization of the current and previous terms
                 M1 =  numpy.max(T,1)
-                M1 = numpy.maximum(M,M1)
+                if k>0:
+                    M1 = numpy.maximum(M,M1)
+                    S = numpy.exp(M1-M)
+                else:
+                    S = numpy.exp(M1)
                 T = numpy.exp(T-M1[:,None])
-                S = numpy.exp(M1-M)
-                #print(T,M1, M,S)
-                #pdb.set_trace()
                 M = M1
                 
                 if k>0 :
@@ -1694,6 +1702,88 @@ class MHA(Gemm):
 
             #pdb.set_trace()
             # blocked result
+            R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
+        return R
+    ###
+    ##  This is the blocked computation we would do using AIE.
+    ##
+    ##  The tiling suggests [m,n,Qtime, KVtime]= x. The parameter m
+    ##  specify the number of row of Q and thus the row of R we
+    ##  compute in one iteration. the parameter n specifies the number
+    ##  of column of K (the row of V) we use for the block computation of (Q0Ki)Vi
+    ## 
+    ##  for qi in Q
+    ##    N = 0
+    ##    D = 0
+    ##    M = 0
+    ##    for kj,vj  in K,V
+    ##        t = qi*kj
+    ##        M1 = max(t)
+    ##        M1 = max(M,M1)
+    ##        t = exp(t - M1)
+    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
+    ##        D = D/S + sum(T)
+    ##        N = N/S + t*vi
+    ###
+    def sage_computation_block_extreme(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array, ## operand
+            x : list,        ## problem size
+            q =  quantize_int8_block,
+            dq = de_quantize_float16_block
+    ):
+        [m,n,Qtime, KVtime]= x
+        #print("m,n", m,n);
+        ## result 
+        R = Q*0
+
+        ## temp
+        N  = numpy.zeros((m,V.shape[1]),dtype=Q.dtype)
+        D  = numpy.zeros((m),dtype=Q.dtype)
+        M  = numpy.ones((m),dtype=Q.dtype)
+        M1 = numpy.zeros((m),dtype=Q.dtype)
+
+        # normalization of K
+        if True:
+            MK = numpy.mean(K,axis=1)
+            #print("Media K shape", MK.shape)
+            #print("K", K.shape)
+            K = K - MK[:,None]
+            if False:
+                import matplotlib.pyplot as plt
+                plt.imshow(K, cmap='hot', interpolation='nearest')
+                plt.colorbar(label='Value')
+                plt.show()
+            #pdb.set_trace()
+        if numpy.mean(numpy.fabs(K)) > 0.001:
+            return self.sage_computation_block(Q,K,V,x,q,dq)
+
+        # we approximate K ~ 0
+        # QK ~ 0
+        # exp(QK) ~ 1
+        # SM(QK) ~ 1/N 
+
+        ## Q and K quantized
+        SQK = (numpy.ones((m,n))).astype(Q.dtype)
+        ## qi
+        for q in range(0,Q.shape[0],m):
+            
+            ## ki, vi 
+            for k in range(0,K.shape[1],n):
+                
+                VI =  V[k:min(k+n, K.shape[1]), : ]
+                T = SQK
+                ## normalization of the current and previous terms
+                
+                if k>0 :
+                    D = D  + sum(T.transpose())
+                    N = N  + numpy.matmul(T,VI)
+                else:
+                    D = sum(T.transpose())
+                    N = numpy.matmul(T,VI)
+
             R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
         return R
             
@@ -2829,30 +2919,31 @@ def test_mha():
 #    time = mha.time_estimates(RT,P)
 #    print(P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    M = 80 # Token     
-    N = 120  #Channel
-    L = 10
+    M = 160 # Token     
+    N = 240  #Channel
+    L = 1
     
     P = [M, N, M, 8]
     Ref = mha.minimum_computation_time(P,True)
     RT = mha.gen_fm_par_fm_(P,True)
-    RT = [20,20,1,1]
+    RT = [1,1,1,1]
     time = mha.time_estimates(RT,P,True)
     print("RT", RT, P,"time", time, "ref", Ref, "slowdown", time/Ref)
 
-    E =  numpy.zeros((5,L))
+    E =  numpy.zeros((6,L))
 
+    KC = 1.0
     
     for t in range(L) :
-        Q = (numpy.random.rand(N,M)-1/2)
+        Q = 5*(numpy.random.rand(N,M)-1/2)
         if True:
             #K =   (numpy.random.rand(N,M)-1/2) # channel and Token
             K =   numpy.ones((N,M)) # channel and Token
-            W = (numpy.random.rand(M)-1/2) # channel and Token
+            W = KC*(numpy.random.rand(M)-1/2) # channel and Token
             KW = K*W[None,:]
             K = KW*1
         else:
-            K = (numpy.random.rand(N,M)-1/2)
+            K = KC*(numpy.random.rand(N,M)-1/2)
         if False:
             import matplotlib.pyplot as plt
             plt.imshow(K, cmap='hot', interpolation='nearest')
@@ -2860,7 +2951,7 @@ def test_mha():
             plt.show()
 
         K = K.transpose()        
-        V = (numpy.random.rand(N,M)-1/2)
+        V = KC*(numpy.random.rand(N,M)-1/2)
 
         Q16 = numpy.ndarray.astype(Q,numpy.float16)
         K16 = numpy.ndarray.astype(K,numpy.float16)
@@ -2883,6 +2974,9 @@ def test_mha():
         four= mha.sage_computation_block(Q16,K16,V16,RT)
         sage = numpy.mean(numpy.fabs(One-four))
         print("sage  L1 %1.3e" % sage)
+        fourp= mha.sage_computation_block_extreme(Q16,K16,V16,RT)
+        sage_e = numpy.mean(numpy.fabs(One-fourp))
+        print("sagee  L1 %1.3e" % sage_e)
         five,_,_,_ = mha.cache_block(Q16,K16,V16,[20,20,1,1])
         inc = numpy.mean(numpy.fabs(One-five))
         print("increment  L1 %1.3e" % inc)
@@ -2892,6 +2986,7 @@ def test_mha():
         E[2,t] = bl1
         E[3,t] = sage 
         E[4,t] = inc
+        E[5,t] = sage_e
         #pdb.set_trace()
         
     print("Averages L1 errors")
@@ -2899,6 +2994,7 @@ def test_mha():
     print("scipy        L1 %1.3e" % (numpy.mean(E[1,:])))
     print("block        L1 %1.3e" % (numpy.mean(E[2,:])))
     print("sage         L1 %1.3e" % (numpy.mean(E[3,:])))
+    print("sage_e       L1 %1.3e" % (numpy.mean(E[5,:])))
     print("incremental  L1 %1.3e" % (numpy.mean(E[4,:])))
         
 
