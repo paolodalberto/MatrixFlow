@@ -1659,7 +1659,11 @@ class MHA(Gemm):
             MK = numpy.mean(K,axis=1)
             #print("Media K shape", MK.shape)
             #print("K", K.shape)
+            VT = numpy.var(K)
+            MT = numpy.mean(K)
             K = K - MK[:,None]
+            print("var", VT, numpy.var(K))
+            print("mean", MT,numpy.mean(K))
             if False:
                 import matplotlib.pyplot as plt
                 plt.imshow(K, cmap='hot', interpolation='nearest')
@@ -1687,8 +1691,12 @@ class MHA(Gemm):
                 ## normalization of the current and previous terms
                 M1 =  numpy.max(T,1)
                 M1 = numpy.maximum(M,M1)
+                if k>0:
+                    M1 = numpy.maximum(M,M1)
+                    S = numpy.exp(M1-M)
+                else:
+                    S = numpy.exp(M1)
                 T  = numpy.exp(T-M1[:,None])
-                S  = numpy.exp(M1-M)
                 #pdb.set_trace()
                 M  = M1
                 
@@ -2939,18 +2947,20 @@ def test_mha():
     El =  [ [] for i in range(5) ]
     
 
-    KC = 5.0
+    KC = 1.0
     
     for t in range(L) :
         
         ## preparation of the data 
-        Q = 5*(numpy.random.rand(N,M)-1/2)
+        Q = KC*(numpy.random.rand(N,M)-1/2)
         if True:
-            K =   0.02*(numpy.random.rand(N,M)) # channel and Token
+            K =  numpy.random.normal(loc=0, scale=0.0051, size = (N,M)) #// 0.02*(numpy.random.rand(N,M)) # channel and Token
             #K =   numpy.ones((N,M)) # channel and Token
             W = KC*(numpy.random.rand(M)-1/2) # channel and Token
-            KW = K*W[None,:]
+            KW = K + W[None,:]
             K = KW*1
+            #print(numpy.var(K))
+            #print(numpy.mean(K,axis=0))
         else:
             K = KC*(numpy.random.rand(N,M)-1/2)
         if False:
