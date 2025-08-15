@@ -6,7 +6,7 @@ mha = code_gemm.MHA()
 RT = [1,1,1,1]
 L = 32
 
-def quant(i, m,n,H = 32, M =128, I = 3072):
+def quant(i, m,n,H = 32, M =128, I = 3072, Norm = True):
 
     E =  numpy.zeros((5,2))
     El =  [ [] for i in range(5) ]
@@ -35,14 +35,11 @@ def quant(i, m,n,H = 32, M =128, I = 3072):
             P = K[:, i*M:(i+1)*M]
             #print(P.shape)
         
-            Ks,Kq =  code_gemm.MHA.quantize_int8_block(P, [m,n])
-            KR =  code_gemm.MHA.de_quantize_float16_block([Ks,Kq])
-            if i==0: print(Ks.shape)
+            Kq,Ks,Kz =  code_gemm.MHA.quantize_int8_block(P, [m,n])
+            KR =  code_gemm.MHA.de_quantize_float16_block([Kq,Ks,Kz])
+            #if i==0: print(Ks.shape)
             fabs = numpy.fabs(P-KR)
             MX = numpy.max(fabs)
-            #if MX>16.0:
-            #    import pdb; pdb.set_trace()
-            
             AV = numpy.mean(fabs)
             #print(i, MX,AV)
             T += fabs
@@ -57,12 +54,16 @@ def quant(i, m,n,H = 32, M =128, I = 3072):
         #print(T)
         return [T,E]
     
-
-    EQ = pl(0,Q/numpy.sqrt(M),H,M,I,"Q mean",m,n)
-    print("Q", numpy.max(EQ[1][:,0]))
-    EK = pl(1,K- numpy.mean(K,axis=1)[:,None],H,M,I,"K mean",m,n)
-    print("K", numpy.max(EK[1][:,0]))
+    if Norm:
+        Q = Q/numpy.sqrt(M)
+        K = K- numpy.mean(K,axis=1)[:,None]
+    EQ = pl(0,Q,H,M,I,"Q mean",m,n)
+    
+    EK = pl(1,K,H,M,I,"K mean",m,n)
     EV = pl(2,V,H,M,I,"V mean",m,n)
+    print(m,n)
+    print("Q", numpy.max(EQ[1][:,0]))
+    print("K", numpy.max(EK[1][:,0]))
     print("V", numpy.max(EV[1][:,0]))
     
     plt.show()
@@ -195,7 +196,7 @@ def comp(i, H = 32, M =128, I = 3072):
     def bl( Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array):
-        return mha.ddr_computation_block(Q,K,V,RT,False)
+        return mha.ddr_computation_block(Q,K,V,[1,1,0,0],False)
 
     three = mha.heads(
         Q16,K16,V16, H,
@@ -245,17 +246,19 @@ if __name__ == "__main__":
         for i in R:
             dist(i)
         
-    if True:
-        results = [comp(0) ]
+    if False:
+        results = [comp(0), comp(17), comp(31) ]
         
-    if False :
-        results = [quant(0,1,1),quant(0,8,8),quant(0,16,16),
-                   quant(17,1,1),quant(17,8,8),quant(17,16,16)
+    if True :
+        results = [quant( 0,16,16), quant( 0,16,16,Norm=False),
+                   quant(0, 128,1), quant(0, 128,1,Norm=False),
+                   quant(17,16,16), quant(17,16,16,Norm=False),
+                   quant(17,128,1), quant(17,128,1,Norm=False)
                    ]
         
     if False:
         R  = [i for i in range(32)]
-        with Pool(processes=32) as pool: # Create a pool with 4 worker processes
+        with Pool(processes=16) as pool: # Create a pool with 4 worker processes
             results = pool.map(comp, R)
             #print(results)
         
@@ -293,6 +296,6 @@ if __name__ == "__main__":
             plt.title(titles[i])
             plt.yscale('log')
             plt.savefig(names[i]+".png") 
-            plt.show()
+            #plt.show()
             i+=1
 

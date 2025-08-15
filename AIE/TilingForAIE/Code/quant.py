@@ -4,7 +4,7 @@
 
 import numpy 
 
-def quantize(x_float, num_bits=8, signed=True):
+def quantize(x_float, num_bits=8, signed=False):
     """
     Quantizes a floating-point value to an 8-bit integer.
 
@@ -23,7 +23,14 @@ def quantize(x_float, num_bits=8, signed=True):
     min_val = numpy.min(x_float)
     max_val = numpy.max(x_float)
 
+    if min_val == max_val:
+        if min_val > 0:
+            min_val = 0.0
+        else:
+            max_val= 0.0
+    
     float_range = max_val - min_val
+    
     if signed:
         int_min = -(2**(num_bits - 1))
         int_max = (2**(num_bits - 1)) - 1
@@ -35,15 +42,18 @@ def quantize(x_float, num_bits=8, signed=True):
 
     # Calculate the scaling factor (S) and zero-point (Z)
     scale = float_range / int_range
-    zero_point = int_min - round(min_val / scale)
+    if float_range!=0.0:
+        zero_point = int_min - round(min_val / scale)
     
-    # Quantize the float value and clip it to the integer range
-    x_q = numpy.round(x_float / scale + zero_point)
-    x_q = numpy.maximum(int_min, numpy.minimum(int_max, x_q)) # Clip to int8 range
-
+        # Quantize the float value and clip it to the integer range
+        x_q = numpy.round(x_float / scale + zero_point)
+        x_q = numpy.maximum(int_min, numpy.minimum(int_max, x_q)) # Clip to int8 range
+    else:
+        zero_point = 0
+        x_q = numpy.round(x_float)
     return (x_q).astype(numpy.int64), scale, zero_point
 
-def dequantize_from_int8(X):
+def dequantize(X):
     x_q, scale, zero_point = X 
     return  scale * (x_q - zero_point)
 
@@ -53,7 +63,7 @@ def dequantize_from_int8(X):
 if __name__ == "__main__":
 
 
-    SIZE =50
+    SIZE =256
 
     Q = numpy.random.rand(SIZE,SIZE) -1/2
     K = numpy.random.rand(SIZE,SIZE) -1/2
@@ -61,28 +71,28 @@ if __name__ == "__main__":
     R = numpy.matmul(Q,K)
 
     Qz,qs,qz = quantize(Q)
-    print("MAX", numpy.max(Qz))
+    print("MAX", numpy.max(Qz),numpy.min(Qz))
     print(f"Scale and zero: {qs} {qz}")
     Kz,ks,kz = quantize(K)
-    print("MAX", numpy.max(Kz))
+    print("MAX", numpy.max(Kz),numpy.min(Kz))
     print(f"Scale and zero: {ks} {kz}")
 
-    QQ = dequantize_from_int8([Qz,qs,qz])
+    QQ = dequantize([Qz,qs,qz])
     print("MAX", numpy.max(QQ))
     
-    KK = dequantize_from_int8([Kz,ks,kz])
+    KK = dequantize([Kz,ks,kz])
     print("MAX", numpy.max(KK))
     
     
     print(numpy.max(numpy.fabs(Q-QQ)))
     print(numpy.max(numpy.fabs(K-KK)))
     
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     R1 = numpy.matmul(QQ,KK)
 
-    print(numpy.max(numpy.fabs(R-R1)))
-
+    print("R", numpy.max(numpy.fabs(R-R1)))
+    
     RI = numpy.matmul(Qz-qz,Kz-kz)
-    print("MAX", numpy.max(RI))
+    print("MAX", numpy.max(RI), numpy.min(RI),(2**7,2**15, 2**31))
     RQ = RI*qs*ks
     print(numpy.max(numpy.fabs(R-RQ)))

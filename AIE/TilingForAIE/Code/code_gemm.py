@@ -23,6 +23,7 @@ import numpy
 
 import pdb
 import scipy
+import quant 
 
 Frequency = (1)*10**9     # 1 GHz
 Bandwidth = 1 * 8*(2**30) # 4 GBs
@@ -81,7 +82,7 @@ class Gemm():
         self.perfdictionary = {}
 
 
-    ## element wise computation estimate we work with only matrices
+    ## element wise comploutation estimate we work with only matrices
     ## and thus this is a matrix element wise operation
     ## m,n,ctype = x    
     def element_compute(self,x):
@@ -1537,12 +1538,21 @@ class MHA(Gemm):
         M1p = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
         
         #pdb.set_trace()     
+
+        MK =numpy.max(numpy.fabs(K))
+        #if MK>1:
+        #    K = K/MK
+        #MK =numpy.max(numpy.fabs(Q))
+        #if MK>1:
+        #    Q = Q/MK
         #K = K/numpy.max(numpy.fabs(K))
         #Q = Q/numpy.max(numpy.fabs(Q))
         #V = V/numpy.max(numpy.fabs(V))
         if Qtime==1:
-            Q = Q/numpy.sqrt(n)
-        #K = K/numpy.sqrt(n)
+            Q = Q/numpy.sqrt(Q.shape[1])
+            MK = numpy.mean(K,axis=1)
+            K = K - MK[:,None]
+            
         
         ## qi
         for q in range(0,Q.shape[0],m):
@@ -1595,54 +1605,38 @@ class MHA(Gemm):
     
     def quantize_int8_block(
             X : numpy.array,
-            x : list ) -> list: # scale + block Quantized 
+            x : list ) -> list: # block Quantized, scales, zeros  
 
         m,n = x ## block sizes
 
         # assume X is divisible by m, n
-        XQ = (X*0).astype(numpy.int8)
+        XQ = (X*0).astype(numpy.int64)
 
         # number of blocks M * N 
         M = X.shape[0]//m
         N = X.shape[1]//n
 
-        ## scales
-        XS = numpy.zeros((M,N)).astype(numpy.float16)
-        ## quantized matrix 
-        A = numpy.zeros((m,n)).astype(numpy.int8)
+        ## scales & zero points
+        Xs = numpy.zeros((M,N)).astype(numpy.float16)
+        Ze = numpy.zeros((M,N)).astype(numpy.int64)
 
         #print(M, N)
         for i in range(M):
             for j in range(N):
                 T = X[i*m:(i+1)*m,j*n:(j+1)*n]
-                ABS = numpy.fabs(T)
-                Mx = numpy.max(ABS)
-                index = numpy.where(ABS==Mx)
-                
-                MM = T[index[0][0],index[1][0]]
-                try:
-                    if MM>0:
-                        XS[i,j] =Mx/( 2**7-1)
-                    elif MM<0:
-                        XS[i,j] =Mx/( 2**7)
-                    else:XS[i,j] =0.0
-                except:
-                    import pdb; pdb.set_trace()
-
-                A= A*0
-                if XS[i,j] !=0.0:
-                    A = numpy.round(X[i*m:(i+1)*m,j*n:(j+1)*n]/XS[i,j] )
-                    
-                XQ[i*m:(i+1)*m,j*n:(j+1)*n] = A.astype(numpy.int8)
+                TQ,qs,qz = quant.quantize(T)
+                Xs[i,j] = qs
+                Ze[i,j] = qz
+                XQ[i*m:(i+1)*m,j*n:(j+1)*n] = TQ
         
-        return XS,XQ
+        return XQ, Xs, Ze
 
     def de_quantize_float16_block(            
             x : list # scale + quantized
     ) -> numpy.array:
 
         ## scales and quantized 
-        XS, XQ = x
+        XQ, XS, Ze  = x
         
         m,n = XQ.shape[0]//XS.shape[0],XQ.shape[1]//XS.shape[1] ## block size
         M   = XS.shape[0]
@@ -1652,7 +1646,7 @@ class MHA(Gemm):
 
         for i in range(M):
             for j in range(N):
-                X[i*m:(i+1)*m,j*n:(j+1)*n] = XQ[i*m:(i+1)*m,j*n:(j+1)*n]*XS[i,j]
+                X[i*m:(i+1)*m,j*n:(j+1)*n] = quant.dequantize([XQ[i*m:(i+1)*m,j*n:(j+1)*n], XS[i,j],Ze[i,j]])
                 
         return X
                 
@@ -1721,8 +1715,8 @@ class MHA(Gemm):
         
         ## Q and K quantized ... this is for inner products 
         
-        Qs,Qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q, [m, Q.shape[1]])
-        Ks,Kz = q(K,                                     [ K.shape[0],  n])
+        Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q, [m, Q.shape[1]])
+        Kz,ks,kz = q(K,                                     [ K.shape[0],  n])
 
         ## qi
         for q in range(0,Q.shape[0],m):
@@ -1730,18 +1724,18 @@ class MHA(Gemm):
             D = D*0
             M = M*0
             Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
-            QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
+            #QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
 
             ## ki, vi 
             for k in range(0,K.shape[1],n):
-                pdb.set_trace()
+                #pdb.set_trace()
                 KI =  Kz[: , k:min(k+n, K.shape[1]) ]
-                KKI = K[:  , k:min(k+n, K.shape[1]) ]
+                #KKI = K[:  , k:min(k+n, K.shape[1]) ]
                 VI =  V[k:min(k+n, K.shape[1]), : ]
 
-                T = numpy.matmul(Q0,KI)*Qs[q//m,0]*Ks[0,k//n]
-                TZ = numpy.matmul(QQ0,KKI)*Qs[q//m,0]*Ks[0,k//n]
-                pdb.set_trace()
+                T = numpy.matmul(Q0-qz[q//m,0],KI-kz[0,k//n],)*qs[q//m,0]*ks[0,k//n]
+                #TZ = numpy.matmul(QQ0,KKI)
+                #pdb.set_trace()
                 ## normalization of the current and previous terms
                 M1 =  numpy.max(T,axis=1)
                 if k>0:
