@@ -106,7 +106,7 @@ def dist(i, H = 32, M =128, I = 3072):
     #plt.show()
     
 
-def comp(i, H = 32, M =128, I = 3072):
+def comp(i, H = 32, M =128, I = 3072, norm= True):
 
     E =  numpy.zeros((5,2))
     El =  [ [] for i in range(5) ]
@@ -123,27 +123,9 @@ def comp(i, H = 32, M =128, I = 3072):
 
     
     K = K.transpose()
-    #R2 = mha.shead(Q,K,V)
- 
-        
-    #G = R1-R2
-    #A = numpy.fabs(G)
-    #a =numpy.mean(A)
-    #b =numpy.max(A)
-    #print(i, "RScipy L1 %1.3e %1.3e" % (a,b))
-
-    #    plt.hist(G.flatten(),100)
-    #    plt.show()
 
     R = mha.heads(Q,K,V,  H, mha.shead)   
-    #G = R-R2
-    #A = numpy.fabs(G)
-    #a =numpy.mean(A)
-    #b =numpy.max(A)
-    #print(i, "Cross Scipy Heads L1 %1.3e %1.3e" % (a,b))
 
-#    plt.hist(G.flatten(),100)
-#    plt.show()
 
     G = R1-R
     A = numpy.fabs(G)
@@ -152,12 +134,6 @@ def comp(i, H = 32, M =128, I = 3072):
     print(i, "RScipy2 Heads L1 %1.3e %1.3e" % (a,b))
     El[0] = list(G.flatten())
     E[0,:] = [ a,b]
-
-#    plt.hist(G.flatten(),100)
-#    plt.show()
-    
-
-#    import pdb; pdb.set_trace()
 
                    
     ## same as above but float16
@@ -196,7 +172,7 @@ def comp(i, H = 32, M =128, I = 3072):
     def bl( Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array):
-        return mha.ddr_computation_block(Q,K,V,[1,1,0,0],False)
+        return mha.ddr_computation_block(Q,K,V,[1,1,1 if norm else 0,1],False)
 
     three = mha.heads(
         Q16,K16,V16, H,
@@ -215,7 +191,7 @@ def comp(i, H = 32, M =128, I = 3072):
     def sagebl( Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array):
-        return mha.sage_computation_block(Q,K,V,[1,1,1,1],KN=False)
+        return mha.sage_computation_block(Q,K,V,[1,1,1,1],KN=norm)
 
     four= mha.heads(
         Q16,K16,V16, H,
@@ -246,10 +222,33 @@ if __name__ == "__main__":
         for i in R:
             dist(i)
         
-    if False:
+    if True:
         results = [comp(0), comp(17), comp(31) ]
         
-    if True :
+        E =  numpy.zeros((5,len(results),2))
+        El =  [ [] for i in range(5) ]
+        for i in R:
+            E[:,i,:] = results[i][1]
+        for j in range(5):
+            El[j] += results[i][0][j]
+            
+        print("Averages L1 errors")
+        titles =[ 
+            "scipy 64     L1 %1.3e MAX %1.3e" % (numpy.mean(E[0,:,0]),numpy.max(E[0,:,1])),
+            "scipy        L1 %1.3e MAX %1.3e" % (numpy.mean(E[1,:,0]),numpy.max(E[1,:,1])),
+            "sepa         L1 %1.3e MAX %1.3e" % (numpy.mean(E[2,:,0]),numpy.max(E[2,:,1])),
+            "block        L1 %1.3e MAX %1.3e" % (numpy.mean(E[3,:,0]),numpy.max(E[3,:,1])),
+            "sage         L1 %1.3e MAX %1.3e" % (numpy.mean(E[4,:,0]),numpy.max(E[4,:,1]))
+        ]
+        names =[ 
+            "scipy64",
+            "scipy",
+            "sepa",
+            "block",
+            "sage"
+        ]
+
+    if False :
         results = [quant( 0,16,16), quant( 0,16,16,Norm=False),
                    quant(0, 128,1), quant(0, 128,1,Norm=False),
                    quant(17,16,16), quant(17,16,16,Norm=False),
