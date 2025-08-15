@@ -1304,7 +1304,25 @@ class MHA(Gemm):
                 1),
             V
         )
-        
+
+    ###
+    ##  How you would compute the softmax(QK)*V using only scipy and
+    ##  numpy but using the definition.
+    ## 
+    ###
+    def heads(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand transpose 
+            V : numpy.array, ## operand
+            heads : int,
+            lower : any # function 
+    ):
+        H = Q.shape[1]//heads
+        R = Q*0
+        for i in range(heads):
+            R[:,i*H:(i+1)*H]  =   lower(Q[:,i*H:(i+1)*H], K[i*H:(i+1)*H,:] ,V[:,i*H:(i+1)*H] )
+        return R
 
     ###
     ## we explicitly split the computation in long form
@@ -1320,7 +1338,7 @@ class MHA(Gemm):
             Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array, ## operand
-            x : list        ## problem size
+            x : list = []       ## problem size
     ):
         #pdb.set_trace()
         N = numpy.zeros((Q.shape[0], V.shape[1]))
@@ -1418,7 +1436,7 @@ class MHA(Gemm):
         [m,n,Qtime, KVtime]= x
 
         if Qtime==1:
-            Q = Q/numpy.sqrt(n)
+            Q = Q/numpy.sqrt(Q.shape[1])
         #print("P", Q.shape,m,n)
 
         ## recursion step N-1 shape this is the previous computation
@@ -1502,13 +1520,15 @@ class MHA(Gemm):
             Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array, ## operand
-            x : list        ## problem size
+            x : list,        ## problem size
+            multiple  = True
     ):
 
         [m,n,Qtime, KVtime]= x
         R = Q*0
-        N = numpy.zeros((m,V.shape[1]),dtype=Q.dtype)
-        D = numpy.zeros((m),dtype=Q.dtype)
+        Ttype = numpy.float32
+        N = numpy.zeros((m,V.shape[1]),dtype=Ttype)
+        D = numpy.zeros((m),dtype=Ttype)
         M = numpy.zeros((m),dtype=Q.dtype)
         M1 = numpy.zeros((m),dtype=Q.dtype)
         Np = numpy.zeros((Q.shape[0],V.shape[1]),dtype=Q.dtype)
@@ -1530,7 +1550,7 @@ class MHA(Gemm):
             D = D*0
             M = M*0 
             Q0 = Q[q:min(q+m, Q.shape[0]) , :]
-
+            #print(q)
             ## ki, vi 
             for k in range(0,K.shape[1],n):
                 #pdb.set_trace()
@@ -1538,7 +1558,7 @@ class MHA(Gemm):
                 VI =  V[ k:min(k+n, K.shape[1]),: ]
                 T = numpy.matmul(Q0,KI)
                 ## normalization of the current and previous terms
-                M1 =  numpy.max(T,1)
+                M1 =  numpy.max(T,axis=1)
                 if k>0:
                     M1 = numpy.maximum(M,M1)
                     S = numpy.exp(M1-M)
@@ -1563,47 +1583,72 @@ class MHA(Gemm):
             Np[q:min(q+m, Q.shape[0]) , :] = N
             Dp[q:min(q+m, Q.shape[0])] = D
             Mp[q:min(q+m, Q.shape[0])] = M
-            
-        return R,Np,Dp,Mp
 
+        if multiple :
+            return R,Np,Dp,Mp
+        else :
+            return R 
+
+    ##
+    ## X        is a matrix of whatever dtype
+    ## m,n = x  is the block we quantize
+    
     def quantize_int8_block(
             X : numpy.array,
             x : list ) -> list: # scale + block Quantized 
 
         m,n = x ## block sizes
+
         # assume X is divisible by m, n
         XQ = (X*0).astype(numpy.int8)
+
+        # number of blocks M * N 
         M = X.shape[0]//m
         N = X.shape[1]//n
+
+        ## scales
         XS = numpy.zeros((M,N)).astype(numpy.float16)
+        ## quantized matrix 
         A = numpy.zeros((m,n)).astype(numpy.int8)
 
         #print(M, N)
         for i in range(M):
             for j in range(N):
-                Mx = numpy.max(numpy.fabs(X[i*m:(i+1)*m,j*n:(j+1)*n]))
-                XS[i,j] = Mx/(2**7)  # scale
+                T = X[i*m:(i+1)*m,j*n:(j+1)*n]
+                ABS = numpy.fabs(T)
+                Mx = numpy.max(ABS)
+                index = numpy.where(ABS==Mx)
+                
+                MM = T[index[0][0],index[1][0]]
+                try:
+                    if MM>0:
+                        XS[i,j] =Mx/( 2**7-1)
+                    elif MM<0:
+                        XS[i,j] =Mx/( 2**7)
+                    else:XS[i,j] =0.0
+                except:
+                    import pdb; pdb.set_trace()
+
+                A= A*0
                 if XS[i,j] !=0.0:
                     A = numpy.round(X[i*m:(i+1)*m,j*n:(j+1)*n]/XS[i,j] )
                     
                 XQ[i*m:(i+1)*m,j*n:(j+1)*n] = A.astype(numpy.int8)
-                #print(i, j, XS[i,j],XS.dtype)
-                
+        
         return XS,XQ
 
     def de_quantize_float16_block(            
             x : list # scale + quantized
     ) -> numpy.array:
 
+        ## scales and quantized 
         XS, XQ = x
-
         
         m,n = XQ.shape[0]//XS.shape[0],XQ.shape[1]//XS.shape[1] ## block size
-        M   = XQ.shape[0]//m
-        N   = XQ.shape[1]//n
+        M   = XS.shape[0]
+        N   = XS.shape[1]
         
         X = (XQ*0).astype(numpy.float16)
-
 
         for i in range(M):
             for j in range(N):
@@ -1641,7 +1686,8 @@ class MHA(Gemm):
             V : numpy.array, ## operand
             x : list,        ## problem size
             q =  quantize_int8_block,
-            dq = de_quantize_float16_block
+            dq = de_quantize_float16_block,
+            KN = True
     ):
         [m,n,Qtime, KVtime]= x
         #print("m,n", m,n);
@@ -1649,31 +1695,34 @@ class MHA(Gemm):
         R = Q*0
 
         ## temp
-        N  = numpy.zeros((m,V.shape[1]),dtype=Q.dtype)
-        D  = numpy.zeros((m),dtype=Q.dtype)
+        Ttype = numpy.float32
+        N  = numpy.zeros((m,V.shape[1]),dtype=Ttype)
+        D  = numpy.zeros((m),dtype=Ttype)
         M  = numpy.ones((m),dtype=Q.dtype)
         M1 = numpy.zeros((m),dtype=Q.dtype)
-
+        #import pdb; pdb.set_trace()
         # normalization of K
-        if True:
+        if KN:
             MK = numpy.mean(K,axis=1)
             #print("Media K shape", MK.shape)
             #print("K", K.shape)
-            VT = numpy.var(K)
-            MT = numpy.mean(K)
+            #VT = numpy.var(K)
+            #MT = numpy.mean(K)
             K = K - MK[:,None]
-            print("var", VT, numpy.var(K))
-            print("mean", MT,numpy.mean(K))
+            #print("var", VT, numpy.var(K))
+            #print("mean", MT,numpy.mean(K))
             if False:
                 import matplotlib.pyplot as plt
                 plt.imshow(K, cmap='hot', interpolation='nearest')
                 plt.colorbar(label='Value')
                 plt.show()
             #pdb.set_trace()
-            
-        ## Q and K quantized
-        Qs,Qz = q(Q/numpy.sqrt(n), [m, Q.shape[1]])
-        Ks,Kz = q(K, [K.shape[0],n])
+
+        
+        ## Q and K quantized ... this is for inner products 
+        
+        Qs,Qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q, [m, Q.shape[1]])
+        Ks,Kz = q(K,                                     [ K.shape[0],  n])
 
         ## qi
         for q in range(0,Q.shape[0],m):
@@ -1681,16 +1730,130 @@ class MHA(Gemm):
             D = D*0
             M = M*0
             Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
+            QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
 
             ## ki, vi 
             for k in range(0,K.shape[1],n):
-                #pdb.set_trace()
-                KI =  Kz[:                     , k:min(k+n, K.shape[1]) ]
+                pdb.set_trace()
+                KI =  Kz[: , k:min(k+n, K.shape[1]) ]
+                KKI = K[:  , k:min(k+n, K.shape[1]) ]
                 VI =  V[k:min(k+n, K.shape[1]), : ]
+
                 T = numpy.matmul(Q0,KI)*Qs[q//m,0]*Ks[0,k//n]
+                TZ = numpy.matmul(QQ0,KKI)*Qs[q//m,0]*Ks[0,k//n]
+                pdb.set_trace()
                 ## normalization of the current and previous terms
-                M1 =  numpy.max(T,1)
-                M1 = numpy.maximum(M,M1)
+                M1 =  numpy.max(T,axis=1)
+                if k>0:
+                    M1 = numpy.maximum(M,M1)
+                    S = numpy.exp(M1-M)
+                else:
+                    S = numpy.exp(M1)
+                T  = numpy.exp(T-M1[:,None])
+                #pdb.set_trace()
+                M  = M1
+                
+                if k>0 :
+                    # we could use D and N with better bit or
+                    # accumulation to improve further the accuracy of
+                    # the block computation.
+                    D = D/S  + sum(T.transpose())
+                    N = N/S[:,None] + numpy.matmul(T,VI)
+                else:
+                    D = sum(T.transpose())
+                    N = numpy.matmul(T,VI)
+
+            #pdb.set_trace()
+            # blocked result
+            R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
+        return R
+    ###
+    ##  This is the blocked computation we would do using AIE.
+    ##
+    ##  The tiling suggests [m,n,Qtime, KVtime]= x. The parameter m
+    ##  specify the number of row of Q and thus the row of R we
+    ##  compute in one iteration. the parameter n specifies the number
+    ##  of column of K (the row of V) we use for the block computation of (Q0Ki)Vi
+    ## 
+    ##  for qi in Q
+    ##    N = 0
+    ##    D = 0
+    ##    M = 0
+    ##    for kj,vj  in K,V
+    ##        t = qi*kj
+    ##        M1 = max(t)
+    ##        M1 = max(M,M1)
+    ##        t = exp(t - M1)
+    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
+    ##        D = D/S + sum(T)
+    ##        N = N/S + t*vi
+    ###
+    def sage_computation_block_outer(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array, ## operand
+            x : list,        ## problem size
+            q =  quantize_int8_block,
+            dq = de_quantize_float16_block,
+            KN = True
+    ):
+        [m,n,Qtime, KVtime]= x
+        R = Q*0
+
+        ## temp
+        Ttype = numpy.float32
+        N  = numpy.zeros((m,V.shape[1]),dtype=Ttype)
+        D  = numpy.zeros((m),dtype=Ttype)
+        M  = numpy.ones((m),dtype=Q.dtype)
+        M1 = numpy.zeros((m),dtype=Q.dtype)
+        #import pdb; pdb.set_trace()
+        # normalization of K
+        if KN:
+            MK = numpy.mean(K,axis=1)
+            K = K - MK[:,None]
+            if False:
+                import matplotlib.pyplot as plt
+                plt.imshow(K, cmap='hot', interpolation='nearest')
+                plt.colorbar(label='Value')
+                plt.show()
+            #pdb.set_trace()
+
+        
+        ## Q and K quantized
+        
+        Qs,Qz = q( Q/numpy.sqrt(Q.shape[1]) if KN else Q, [Q.shape[0], 1 ] ) # Q.shape[1]])
+        Ks,Kz = q(K, [1 , K.shape[1] ])
+
+        QR = dq([Qs,Qz])
+        KR = dq([Ks,Kz])
+        #pdb.set_trace()
+        ## qi
+        for q in range(0,Q.shape[0],m):
+            N = N*0
+            D = D*0
+            M = M*0
+            Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
+            QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
+
+            ## ki, vi 
+            for k in range(0,K.shape[1],n):
+                pdb.set_trace()
+                KI =  Kz[:, k:min(k+n, K.shape[1]) ]
+                KKI = K[: , k:min(k+n, K.shape[1]) ]
+                VI =  V[k:min(k+n, K.shape[1]), : ]
+                
+                T = numpy.matmul(Q0[:,0:4],KI[0:4,:])*Qs[q//m,0]*Ks[0,k//n]
+                Z = numpy.matmul(QQ0[:,0:4],KKI[0:4,:])
+                print(T,Z)
+                for l in range(1,Q.shape[1]//4):
+                    T += numpy.matmul(Q0[:,l*4:(l+1)*4],KI[l*4:(l+1)*4,:])*Qs[q//m,l]*Ks[l,k//n]
+                    Z += numpy.matmul(QQ0[:,l*4:(l+1)*4],KKI[l*4:(l+1)*4,:])
+
+                    print(T,Z)
+                pdb.set_trace()
+                ## normalization of the current and previous terms
+                M1 =  numpy.max(T,axis=1)
                 if k>0:
                     M1 = numpy.maximum(M,M1)
                     S = numpy.exp(M1-M)
@@ -2954,7 +3117,7 @@ def test_mha():
         ## preparation of the data 
         Q = KC*(numpy.random.rand(N,M)-1/2)
         if True:
-            K =  numpy.random.normal(loc=0, scale=0.0051, size = (N,M)) #// 0.02*(numpy.random.rand(N,M)) # channel and Token
+            K =  numpy.random.normal(loc=0, scale=1.0, size = (N,M)) #// 0.02*(numpy.random.rand(N,M)) # channel and Token
             #K =   numpy.ones((N,M)) # channel and Token
             W = KC*(numpy.random.rand(M)-1/2) # channel and Token
             KW = K + W[None,:]
