@@ -1722,7 +1722,7 @@ class MHA(Gemm):
 
         #pdb.set_trace()
 
-        aaa  = False #True
+        aaa  = True #True
         if aaa:
             Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q,
                          [m, Q.shape[1]])
@@ -1744,7 +1744,7 @@ class MHA(Gemm):
             D = D*0
             M = M*0
             Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
-            QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
+            #QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
 
             
             ## ki, vi 
@@ -1752,10 +1752,11 @@ class MHA(Gemm):
                 #print("k", k)
                 #pdb.set_trace()
                 KI =  Kz[: , k:min(k+n, K.shape[1]) ]
-                KKI = K[:  , k:min(k+n, K.shape[1]) ]
+                #KKI = K[:  , k:min(k+n, K.shape[1]) ]
                 VI =  V[k:min(k+n, K.shape[1]), : ]
                 #
                 if aaa:
+                    #T = numpy.matmul(QQ0,KKI)
                     T = numpy.matmul(Q0-qz[q//m,0],KI-kz[0,k//n])*qs[q//m,0]*ks[0,k//n]
                 else:
                     TZ = numpy.matmul(QQ0,KKI)

@@ -1,9 +1,11 @@
 import numpy
 import matplotlib.pyplot as plt
 import code_gemm 
+import argparse
+
 
 mha = code_gemm.MHA()
-RT = [32,128,1,1]
+RT = [128,128,1,1]
 L = 32
 
 def quant(i, m,n,H = 32, M =128, I = 3072, Norm = False):
@@ -108,7 +110,7 @@ def dist(i, H = 32, M =128, I = 3072):
 
 def comp(i, H = 32, M =128, I = 3072, norm= False, echo = True):
 
-    #if echo: print(i)
+    if echo: print("HEAD", i)
     E =  numpy.zeros((5,2))
     El =  [ [] for i in range(5) ]
     
@@ -197,7 +199,7 @@ def comp(i, H = 32, M =128, I = 3072, norm= False, echo = True):
     def sagebl( Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array):
-        return mha.sage_computation_block(Q,K,V,RT,KN=norm)
+        return mha.sage_computation_block(Q,K,V,[1,1,1,1],KN=norm)
 
     four= mha.heads(
         Q16,K16,V16, H,
@@ -220,7 +222,15 @@ def comp(i, H = 32, M =128, I = 3072, norm= False, echo = True):
 
 
 if __name__ == "__main__":
+    import argparse
 
+    parser = argparse.ArgumentParser(description='A simple program that greets the user.')
+ 
+    parser.add_argument('-s', '--sequential', choices=['true', 'false'], default='true', help='sequential or pool.')
+    
+    args = parser.parse_args()
+    
+    
     from multiprocessing import Pool
 
     if False:
@@ -228,11 +238,11 @@ if __name__ == "__main__":
         for i in R:
             dist(i)
         
-    if True:
+    if args.sequential=='true':
 
         
-        #results = [ comp(i) for i in range(32)] # , comp(17), comp(31) ]
-        results = [ comp(30) ] # , comp(17), comp(31) ]
+        results = [ comp(i) for i in range(32)] # , comp(17), comp(31) ]
+        #results = [ comp(30) ] # , comp(17), comp(31) ]
         
         E =  numpy.zeros((5,len(results),2))
         El =  [ [] for i in range(5) ]
@@ -252,6 +262,7 @@ if __name__ == "__main__":
         for t in titles:
             print(t)
 
+
     if False :
         results = [quant( 0,16,16), quant( 0,16,16,Norm=False),
                    quant(0, 128,1), quant(0, 128,1,Norm=False),
@@ -259,7 +270,8 @@ if __name__ == "__main__":
                    quant(17,128,1), quant(17,128,1,Norm=False)
                    ]
         
-    if False:
+    if args.sequential!='true':
+
         R  = [i for i in range(32)]
         with Pool(processes=16) as pool: # Create a pool with 4 worker processes
             results = pool.map(comp, R)
@@ -297,7 +309,7 @@ if __name__ == "__main__":
             print(titles[i])
             plt.hist(e,1000)
             plt.title(titles[i])
-            plt.yscale('log')
+            #plt.yscale('log')
             plt.savefig(names[i]+".png") 
             #plt.show()
             i+=1
