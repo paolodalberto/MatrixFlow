@@ -1212,7 +1212,7 @@ class MHA(Gemm):
             CoreCSpacebits,CoreASpacebits,CoreBSpacebits,
             m_align,n_align,k_align,frequency,
             to_core_channel_bandwidth_gbits,to_mem_channel_bandwidth_gbits)
-        
+        self.STATIC = 0
     ## creation of the valid solution without gated computation    
     def Q_i(self, Q, K, V, exptype : int = 16, Qping : int = 1 ):
             
@@ -1321,8 +1321,14 @@ class MHA(Gemm):
     ):
         H = Q.shape[1]//heads
         R = Q*0
+        self.STATIC = 0
         for i in range(heads):
-            R[:,i*H:(i+1)*H]  =   lower(Q[:,i*H:(i+1)*H], K[i*H:(i+1)*H,:] ,V[:,i*H:(i+1)*H] )
+            #print("head",i)
+            R[:,i*H:(i+1)*H]  = lower(
+                Q[:,i*H:(i+1)*H],
+                K[i*H:(i+1)*H,:] ,
+                V[:,i*H:(i+1)*H]
+            )
         return R
 
     ###
@@ -1342,13 +1348,14 @@ class MHA(Gemm):
             x : list = []       ## problem size
     ):
         #pdb.set_trace()
-        N = numpy.zeros((Q.shape[0], V.shape[1]))
-        D = numpy.zeros((Q.shape[0]))
+        N = numpy.zeros((Q.shape[0], V.shape[1])).astype(Q.dtype)
+        D = numpy.zeros((Q.shape[0])).astype(Q.dtype)
         
-        T = numpy.matmul(Q,K)
+        T = numpy.matmul(Q,K).astype(Q.dtype)
+        
         T = numpy.exp(T - numpy.max(T,1)[:,None])
-        D = sum(T.transpose())
-        N = numpy.matmul(T,V)
+        D = sum(T.transpose()).astype(Q.dtype)
+        N = numpy.matmul(T,V).astype(Q.dtype)
         return N/D[:,None]
     
     
@@ -1540,14 +1547,8 @@ class MHA(Gemm):
         #pdb.set_trace()     
 
         MK =numpy.max(numpy.fabs(K))
-        #if MK>1:
-        #    K = K/MK
-        #MK =numpy.max(numpy.fabs(Q))
-        #if MK>1:
-        #    Q = Q/MK
-        #K = K/numpy.max(numpy.fabs(K))
-        #Q = Q/numpy.max(numpy.fabs(Q))
         #V = V/numpy.max(numpy.fabs(V))
+
         if Qtime==1:
             Q = Q/numpy.sqrt(Q.shape[1])
             MK = numpy.mean(K,axis=1)
@@ -1555,25 +1556,27 @@ class MHA(Gemm):
             
         
         ## qi
+        self.STATIC +=1
         for q in range(0,Q.shape[0],m):
+            
             N = N*0
             D = D*0
             M = M*0 
             Q0 = Q[q:min(q+m, Q.shape[0]) , :]
-            #print(q)
             ## ki, vi 
             for k in range(0,K.shape[1],n):
-                #pdb.set_trace()
+                
                 KI =  K[:, k:min(k+n, K.shape[1]) ]
                 VI =  V[ k:min(k+n, K.shape[1]),: ]
                 T = numpy.matmul(Q0,KI)
+
+                #if Qtime==1 and numpy.max(T)> 11.0:
+                #    print("WTF block", q,k)
                 ## normalization of the current and previous terms
                 M1 =  numpy.max(T,axis=1)
                 if k>0:
                     M1 = numpy.maximum(M,M1)
-                    S = numpy.exp(M1-M)
-                else:
-                    S = numpy.exp(M1)
+                    S = numpy.exp(M- M1)
                 T = numpy.exp(T-M1[:,None])
                 M = M1
                 
@@ -1581,8 +1584,8 @@ class MHA(Gemm):
                     # we could use D and N with better bit or
                     # accumulation to improve further the accuracy of
                     # the block computation.
-                    D = D/S  + sum(T.transpose())
-                    N = N/S[:,None] + numpy.matmul(T,VI)
+                    D = D*S  + sum(T.transpose())
+                    N = N*S[:,None] + numpy.matmul(T,VI)
                 else:
                     D = sum(T.transpose())
                     N = numpy.matmul(T,VI)
@@ -1594,6 +1597,7 @@ class MHA(Gemm):
             Dp[q:min(q+m, Q.shape[0])] = D
             Mp[q:min(q+m, Q.shape[0])] = M
 
+        
         if multiple :
             return R,Np,Dp,Mp
         else :
@@ -1687,7 +1691,8 @@ class MHA(Gemm):
         #print("m,n", m,n);
         ## result 
         R = Q*0
-
+        self.STATIC +=1
+        
         ## temp
         Ttype = numpy.float32
         N  = numpy.zeros((m,V.shape[1]),dtype=Ttype)
@@ -1714,35 +1719,65 @@ class MHA(Gemm):
 
         
         ## Q and K quantized ... this is for inner products 
-        
-        Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q, [m, Q.shape[1]])
-        Kz,ks,kz = q(K,                                     [ K.shape[0],  n])
 
+        #pdb.set_trace()
+
+        aaa  = False #True
+        if aaa:
+            Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q,
+                         [m, Q.shape[1]])
+            Kz,ks,kz = q(K, [ K.shape[0],  n])
+        else:
+            tn = 8
+            Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q,
+                         [m, tn])
+            Kz,ks,kz = q(K, [ tn,  n])
+
+        #QR = dq([Qz,qs,qz])
+        #KR = dq([Kz,ks,kz])
+        #print(ks.shape,"m,n", m,n, numpy.max(numpy.fabs(QR-Q)),numpy.max(numpy.fabs(KR-K)))
+        
         ## qi
         for q in range(0,Q.shape[0],m):
+            #print("q", q)
             N = N*0
             D = D*0
             M = M*0
             Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
-            #QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
+            QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
 
+            
             ## ki, vi 
             for k in range(0,K.shape[1],n):
+                #print("k", k)
                 #pdb.set_trace()
                 KI =  Kz[: , k:min(k+n, K.shape[1]) ]
-                #KKI = K[:  , k:min(k+n, K.shape[1]) ]
+                KKI = K[:  , k:min(k+n, K.shape[1]) ]
                 VI =  V[k:min(k+n, K.shape[1]), : ]
+                #
+                if aaa:
+                    T = numpy.matmul(Q0-qz[q//m,0],KI-kz[0,k//n])*qs[q//m,0]*ks[0,k//n]
+                else:
+                    TZ = numpy.matmul(QQ0,KKI)
+                    T = TZ*0
+                    for mm in range(Q.shape[1]//tn):
+                        
+                        T += numpy.matmul(Q0[:,mm*tn:(m+1)*tn]-qz[q//m,mm],
+                                          KI[mm*tn:(m+1)*tn,:]-kz[mm,k//n]) *qs[q//m,mm]*ks[mm,k//n]
+                    
+                  
+                T = T.astype(Q.dtype)
+                
+                #print("MM", m,n, numpy.max(numpy.fabs(T-TZ)))
 
-                T = numpy.matmul(Q0-qz[q//m,0],KI-kz[0,k//n],)*qs[q//m,0]*ks[0,k//n]
-                #TZ = numpy.matmul(QQ0,KKI)
+                RT = 0
+                
                 #pdb.set_trace()
                 ## normalization of the current and previous terms
                 M1 =  numpy.max(T,axis=1)
                 if k>0:
                     M1 = numpy.maximum(M,M1)
-                    S = numpy.exp(M1-M)
-                else:
-                    S = numpy.exp(M1)
+                    S = numpy.exp(M-M1)
                 T  = numpy.exp(T-M1[:,None])
                 #pdb.set_trace()
                 M  = M1
@@ -1751,8 +1786,8 @@ class MHA(Gemm):
                     # we could use D and N with better bit or
                     # accumulation to improve further the accuracy of
                     # the block computation.
-                    D = D/S  + sum(T.transpose())
-                    N = N/S[:,None] + numpy.matmul(T,VI)
+                    D = D*S  + sum(T.transpose())
+                    N = N*S[:,None] + numpy.matmul(T,VI)
                 else:
                     D = sum(T.transpose())
                     N = numpy.matmul(T,VI)

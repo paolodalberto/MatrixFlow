@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import code_gemm 
 
 mha = code_gemm.MHA()
-RT = [1,1,1,1]
+RT = [32,128,1,1]
 L = 32
 
-def quant(i, m,n,H = 32, M =128, I = 3072, Norm = True):
+def quant(i, m,n,H = 32, M =128, I = 3072, Norm = False):
 
     E =  numpy.zeros((5,2))
     El =  [ [] for i in range(5) ]
@@ -106,8 +106,9 @@ def dist(i, H = 32, M =128, I = 3072):
     #plt.show()
     
 
-def comp(i, H = 32, M =128, I = 3072, norm= True):
+def comp(i, H = 32, M =128, I = 3072, norm= False, echo = True):
 
+    #if echo: print(i)
     E =  numpy.zeros((5,2))
     El =  [ [] for i in range(5) ]
     
@@ -131,7 +132,7 @@ def comp(i, H = 32, M =128, I = 3072, norm= True):
     A = numpy.fabs(G)
     a =numpy.mean(A)
     b =numpy.max(A)
-    print(i, "RScipy2 Heads L1 %1.3e %1.3e" % (a,b))
+    #print(i, "RScipy2 Heads L1 %1.3e %1.3e" % (a,b))
     El[0] = list(G.flatten())
     E[0,:] = [ a,b]
 
@@ -140,6 +141,9 @@ def comp(i, H = 32, M =128, I = 3072, norm= True):
     Q16 = numpy.ndarray.astype(Q,numpy.float16)
     K16 = numpy.ndarray.astype(K,numpy.float16)
     V16 = numpy.ndarray.astype(V,numpy.float16)
+
+
+
     One = mha.heads(
         Q16,K16,V16, H,
         mha.shead
@@ -169,10 +173,12 @@ def comp(i, H = 32, M =128, I = 3072, norm= True):
     El[2] += list(G.flatten())
     E[2,:] = [ a,b]
 
+    RT[2] = 1 if norm else 0
+    #if echo: print("block")
     def bl( Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array):
-        return mha.ddr_computation_block(Q,K,V,[1,1,1 if norm else 0,1],False)
+        return mha.ddr_computation_block(Q,K,V,RT,False)
 
     three = mha.heads(
         Q16,K16,V16, H,
@@ -183,15 +189,15 @@ def comp(i, H = 32, M =128, I = 3072, norm= True):
     A = numpy.fabs(G)
     a =numpy.mean(A)
     b =numpy.max(A)
-    print(i,"block L1 %1.3e %1.3e" % (a,b))
+    if echo:print(i,"block L1 %1.3e %1.3e" % (a,b))
     El[3] += list(G.flatten())
     E[3,:] = [ a,b]
-
-
+    
+    #if echo: print("sage")
     def sagebl( Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array):
-        return mha.sage_computation_block(Q,K,V,[1,1,1,1],KN=norm)
+        return mha.sage_computation_block(Q,K,V,RT,KN=norm)
 
     four= mha.heads(
         Q16,K16,V16, H,
@@ -203,7 +209,7 @@ def comp(i, H = 32, M =128, I = 3072, norm= True):
     A = numpy.fabs(G)
     a =numpy.mean(A)
     b =numpy.max(A)
-    print(i, "sage  L1 %1.3e %1.3e" % (a,b))
+    if echo: print(i, "sage  L1 %1.3e %1.3e" % (a,b))
     El[4] += list(G.flatten())
     E[4,:] = [ a,b]
 
@@ -223,11 +229,14 @@ if __name__ == "__main__":
             dist(i)
         
     if True:
-        results = [comp(0), comp(17), comp(31) ]
+
+        
+        #results = [ comp(i) for i in range(32)] # , comp(17), comp(31) ]
+        results = [ comp(30) ] # , comp(17), comp(31) ]
         
         E =  numpy.zeros((5,len(results),2))
         El =  [ [] for i in range(5) ]
-        for i in R:
+        for i in range(len(results)):
             E[:,i,:] = results[i][1]
         for j in range(5):
             El[j] += results[i][0][j]
@@ -240,13 +249,8 @@ if __name__ == "__main__":
             "block        L1 %1.3e MAX %1.3e" % (numpy.mean(E[3,:,0]),numpy.max(E[3,:,1])),
             "sage         L1 %1.3e MAX %1.3e" % (numpy.mean(E[4,:,0]),numpy.max(E[4,:,1]))
         ]
-        names =[ 
-            "scipy64",
-            "scipy",
-            "sepa",
-            "block",
-            "sage"
-        ]
+        for t in titles:
+            print(t)
 
     if False :
         results = [quant( 0,16,16), quant( 0,16,16,Norm=False),
