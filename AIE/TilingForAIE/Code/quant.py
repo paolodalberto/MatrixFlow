@@ -1,5 +1,13 @@
-
-
+######
+## 
+## This is taken directly from gemini blabbering because I notice my
+## quantization was faulty in hte corner cases close by the borders.
+##
+## Notice we use numpy.int64 although it should be int8 because we
+## need actually more bits for the corner cases and later for the
+## computations...
+##
+#######
 
 
 import numpy 
@@ -10,8 +18,6 @@ def quantize(x_float, num_bits=8, signed=False):
 
     Args:
         x_float (float): The floating-point value to quantize.
-        min_val (float): The minimum value of the float range.
-        max_val (float): The maximum value of the float range.
         num_bits (int): The number of bits for the integer representation (default: 8).
         signed (bool): Whether the integer representation is signed (default: True).
 
@@ -54,22 +60,38 @@ def quantize(x_float, num_bits=8, signed=False):
     return (x_q).astype(numpy.int64), scale, zero_point
 
 def dequantize(X):
+    """Dequantize: X is is list 
+    x_q is int64, scale is float and zero is int
+
+    you may need to format the output it does not need to be a float32
+    """
+
     x_q, scale, zero_point = X 
     return  scale * (x_q - zero_point)
-
 
 
 
 if __name__ == "__main__":
 
 
+    ###
+    ## Examples: For comparison purpose I use a lot max(fabs(X-XQ))
+    ## that is the maximum absolute error. However, we are also
+    ## interested in the location of the error and it is nice the heat
+    ## plot as well.
+    ###
+
+    
     SIZE =256
 
+    ## Random uniform [-1/2, 1/2] 
     Q = numpy.random.rand(SIZE,SIZE) -1/2
     K = numpy.random.rand(SIZE,SIZE) -1/2
-    
+
+    ## it should be well behaved and this is the reference.
     R = numpy.matmul(Q,K)
 
+    ## quantize Q, K  as whole matrix 
     Qz,qs,qz = quantize(Q)
     print("MAX", numpy.max(Qz),numpy.min(Qz))
     print(f"Scale and zero: {qs} {qz}")
@@ -77,9 +99,12 @@ if __name__ == "__main__":
     print("MAX", numpy.max(Kz),numpy.min(Kz))
     print(f"Scale and zero: {ks} {kz}")
 
+
+
+    
+    ## returning back to the original 
     QQ = dequantize([Qz,qs,qz])
     print("MAX", numpy.max(QQ))
-    
     KK = dequantize([Kz,ks,kz])
     print("MAX", numpy.max(KK))
     
@@ -88,11 +113,17 @@ if __name__ == "__main__":
     print(numpy.max(numpy.fabs(K-KK)))
     
     #import pdb; pdb.set_trace()
+    # dequant GEMM 
     R1 = numpy.matmul(QQ,KK)
 
+    ## This should be the ideal difference with the intrinsic
+    ## limitation of the quantization
     print("R", numpy.max(numpy.fabs(R-R1)))
-    
+
+    ## quantized GEMM: range and understanding  
     RI = numpy.matmul(Qz-qz,Kz-kz)
     print("MAX", numpy.max(RI), numpy.min(RI),(2**7,2**15, 2**31))
+
+    ## dequantized GEMM 
     RQ = RI*qs*ks
     print(numpy.max(numpy.fabs(R-RQ)))

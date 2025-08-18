@@ -1359,59 +1359,6 @@ class MHA(Gemm):
         return N/D[:,None]
     
     
-    
-    def base_cache_block(
-            self,
-            Q : numpy.array, ## operand 
-            K : numpy.array, ## operand 
-            V : numpy.array, ## operand
-            x :  list        ## sub problem
-    ) -> list:
-        
-        [m,n,Qtime, KVtime]= x
-        M = numpy.zeros((m),dtype=Q.dtype)
-        R = Q*0
-        N = Q*0
-        D = numpy.zeros(Q.shape[0])
-        M = numpy.zeros(Q.shape[0])
-        ## ki, vi 
-        for k in range(0,K.shape[1],n):
-            #pdb.set_trace()
-            KI =  K[:, k:min(k+n, K.shape[1]) ]
-            T = numpy.matmul(Q,KI)
-            
-            ## normalization of the current and previous terms
-            M1 =  numpy.max(T,1)
-            if k>0:
-                M1 = numpy.maximum(M,M1) 
-                S = numpy.exp(M1-M)
-            else:
-                S = numpy.exp(M1)
-            T = numpy.exp(T-M1[:,None])
-            
-            #print(T,M1, M,S)
-            #pdb.set_trace()
-            M = M1
-            
-            VI =  V[ k:min(k+n, K.shape[1]),: ]
-            if k>0 :
-                # we could use D and N with better bit or
-                # accumulation to improve further the accuracy of
-                # the block computation.
-                D = D/S  + sum(T.transpose())
-                N = N/S[:,None] + numpy.matmul(T,VI)
-            else:
-                D = sum(T.transpose())
-                N = numpy.matmul(T,VI)
-                
-            #pdb.set_trace()
-            # blocked result
-
-            R[:min(m, Q.shape[0]) , :] = N/D[:,None]
-        
-        return R, N, D, M
-
-
     ###
     ##  This is the blocked computation we would do using AIE.
     ##
@@ -1428,100 +1375,18 @@ class MHA(Gemm):
     ##        t = qi*kj
     ##        M1 = max(t)
     ##        M1 = max(M,M1)
-    ##        t = exp(t - M1)
-    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
-    ##        D = D/S + sum(T)
-    ##        N = N/S + t*vi
-    ###
-    def cache_block(
-            self,
-            Q : numpy.array, ## operand 
-            K : numpy.array, ## operand 
-            V : numpy.array, ## operand
-            x :  list        ## sub problem
-    ) -> list:
-
-        [m,n,Qtime, KVtime]= x
-
-        if Qtime==1:
-            Q = Q/numpy.sqrt(Q.shape[1])
-        #print("P", Q.shape,m,n)
-
-        ## recursion step N-1 shape this is the previous computation
-        ## and we remember the previous result and temporary
-        R, Np, Dp, Mp = self.ddr_computation_block(
-            Q[0:(Q.shape[0]-m),:],
-            K[:,0:(K.shape[1]-n)],
-            V[0:(K.shape[1]-n),:],
-            [m,n,0, 0])
-
-
-        ## what follows it is incremental computation.
-        k = K.shape[1]-n
-
-        KI =  K[:, k:min(k+n, K.shape[1]) ]
-        VI =  V[ k:min(k+n, K.shape[1]),: ]
-        
-        ## border K,V
-        for q in range(0,Q.shape[0]-m,m):
-            #print("q", q,m,Q.shape[0] )
-            N = Np[q:min(q+m, Q.shape[0]),:]
-            D = Dp[q:min(q+m, Q.shape[0])]
-            M = Mp[q:min(q+m, Q.shape[0])]
-            Q0 =  Q[q:min(q+m, Q.shape[0]) , :]
-            T = numpy.matmul(Q0,KI)
-
-            ## normalization of the current and previous terms
-            M1 =  numpy.max(T,1)
-            if k>0 :
-                M1 = numpy.maximum(M,M1)
-                S = numpy.exp(M1-M)
-            else:
-                S = numpy.exp(M1)
-            T = numpy.exp(T-M1[:,None])
-            
-            M = M1
-            
-            # we could use D and N with better bit or
-            # accumulation to improve further the accuracy of
-            # the block computation.
-            D = D/S  + sum(T.transpose())
-            N = N/S[:,None] + numpy.matmul(T,VI)
-            
-            R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
-
-        R = numpy.resize(R,Q.shape)
-        N = numpy.resize(N,(Q.shape[0],V.shape[1]))
-        D = numpy.resize(D,Q.shape[0])
-        M = numpy.resize(M,Q.shape[0])
-
-        ## border and new Q
-        R[Q.shape[0]-m:,:], N[Q.shape[0]-m:,:], D[Q.shape[0]-m:], M[Q.shape[0]-m:] = self.ddr_computation_block(
-            Q[Q.shape[0]-m:,:], K,V,[m,n,0, 0])
-
-        
-        return R, N, D, M
-
-    ###
-    ##  This is the blocked computation we would do using AIE.
+    ##        T = exp(t - M1)
     ##
-    ##  The tiling suggests [m,n,Qtime, KVtime]= x. The parameter m
-    ##  specify the number of row of Q and thus the row of R we
-    ##  compute in one iteration. the parameter n specifies the number
-    ##  of column of K (the row of V) we use for the block computation of (Q0Ki)Vi
-    ## 
-    ##  for qi in Q
-    ##    N = 0
-    ##    D = 0
-    ##    M = 0
-    ##    for kj,vj  in K,V
-    ##        t = qi*kj
-    ##        M1 = max(t)
-    ##        M1 = max(M,M1)
-    ##        t = exp(t - M1)
-    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
-    ##        D = D/S + sum(T)
-    ##        N = N/S + t*vi
+    ##        S = exp(M-M1), M = M1 (instead of S=exp(M) and D/S we do
+    ##                                S = exp(-M) D*S the exp range
+    ##                                increses exponential M>1 we can
+    ##                                avoid to have overflow in this
+    ##                                way and the effects will be the
+    ##                                same ... no range enxiety for
+    ##                                the multiplication either
+    ##                                 
+    ##        D = D*S + sum(T)
+    ##        N = N*S + t*vi
     ###
     def ddr_computation_block(
             self,
@@ -1534,15 +1399,23 @@ class MHA(Gemm):
 
         [m,n,Qtime, KVtime]= x
         R = Q*0
+
+        ## the intermediate results if any are stored in float32 or
+        ## can be in any extended format in AIE fp16 operands have
+        ## float32 accumulators
         Ttype = numpy.float32
         N = numpy.zeros((m,V.shape[1]),dtype=Ttype)
         D = numpy.zeros((m),dtype=Ttype)
+
         M = numpy.zeros((m),dtype=Q.dtype)
         M1 = numpy.zeros((m),dtype=Q.dtype)
-        Np = numpy.zeros((Q.shape[0],V.shape[1]),dtype=Q.dtype)
-        Dp = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
-        Mp = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
-        M1p = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
+
+        if multiple:
+            ## we have a lot of intermediary result that we may need in
+            ## case we want to jump start the computation incrementally
+            Np = numpy.zeros((Q.shape[0],V.shape[1]),dtype=Q.dtype)
+            Dp = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
+            Mp = numpy.zeros((Q.shape[0]),dtype=Q.dtype)
         
         #pdb.set_trace()     
 
@@ -1593,9 +1466,11 @@ class MHA(Gemm):
             #pdb.set_trace()
             # blocked result
             R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
-            Np[q:min(q+m, Q.shape[0]) , :] = N
-            Dp[q:min(q+m, Q.shape[0])] = D
-            Mp[q:min(q+m, Q.shape[0])] = M
+
+            if multiple:
+                Np[q:min(q+m, Q.shape[0]) , :] = N
+                Dp[q:min(q+m, Q.shape[0])] = D
+                Mp[q:min(q+m, Q.shape[0])] = M
 
         
         if multiple :
@@ -1669,13 +1544,19 @@ class MHA(Gemm):
     ##    D = 0
     ##    M = 0
     ##    for kj,vj  in K,V
-    ##        t = qi*kj
+    ##        t = Q(qi)*Q(kj)*S(qi)*S(kj)
     ##        M1 = max(t)
     ##        M1 = max(M,M1)
     ##        t = exp(t - M1)
-    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
-    ##        D = D/S + sum(T)
-    ##        N = N/S + t*vi
+    ##        S = exp(M-M1), M = M1 (instead of S=exp(M) and D/S we do
+    ##                                S = exp(-M) D*S the exp range
+    ##                                increses exponential M>1 we can
+    ##                                avoid to have overflow in this
+    ##                                way and the effects will be the
+    ##                                same ... no range enxiety for
+    ##                                the multiplication either
+    ##        D = D*S + sum(T)
+    ##        N = N*S + t*vi
     ###
     def sage_computation_block(
             self,
@@ -1702,37 +1583,44 @@ class MHA(Gemm):
         #import pdb; pdb.set_trace()
         # normalization of K
         if KN:
-            MK = numpy.mean(K,axis=1)
-            #print("Media K shape", MK.shape)
-            #print("K", K.shape)
-            #VT = numpy.var(K)
-            #MT = numpy.mean(K)
+            ## K is trnaspose !
             K = K - MK[:,None]
-            #print("var", VT, numpy.var(K))
-            #print("mean", MT,numpy.mean(K))
             if False:
                 import matplotlib.pyplot as plt
                 plt.imshow(K, cmap='hot', interpolation='nearest')
                 plt.colorbar(label='Value')
                 plt.show()
-            #pdb.set_trace()
+                #pdb.set_trace()
 
         
         ## Q and K quantized ... this is for inner products 
 
-        #pdb.set_trace()
+        #####
+        ##  QUANTIZATION ACROBATICS: did you consider the outer
+        ##  products ?
+        ##
+        ####
 
-        aaa  = True #True
+        ## Allow me some acrobatics:
+        aaa  = True # False the inner product is actually broken up
         if aaa:
+            # quantize the rows of Q and the column of K this is
+            # because we do inner products and we do not break the
+            # computation in between the inner dimension
             Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q,
                          [m, Q.shape[1]])
             Kz,ks,kz = q(K, [ K.shape[0],  n])
         else:
+            ## we split the inner dimension into blocks of 8 (8x8 = 64
+            ## bytes) this is an AIE thing ... this should improve the
+            ## granularity of the computation and thus reduce the
+            ## error
             tn = 8
             Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q,
                          [m, tn])
             Kz,ks,kz = q(K, [ tn,  n])
 
+        ## In case you would like to compare the quantization error
         #QR = dq([Qz,qs,qz])
         #KR = dq([Kz,ks,kz])
         #print(ks.shape,"m,n", m,n, numpy.max(numpy.fabs(QR-Q)),numpy.max(numpy.fabs(KR-K)))
@@ -1744,6 +1632,8 @@ class MHA(Gemm):
             D = D*0
             M = M*0
             Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
+
+            ## in case you do not want the quantization
             #QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
 
             
@@ -1752,11 +1642,14 @@ class MHA(Gemm):
                 #print("k", k)
                 #pdb.set_trace()
                 KI =  Kz[: , k:min(k+n, K.shape[1]) ]
+                ## in case you do not want the quantization
                 #KKI = K[:  , k:min(k+n, K.shape[1]) ]
                 VI =  V[k:min(k+n, K.shape[1]), : ]
-                #
+                
                 if aaa:
+                    ## in case you do not want the quantization
                     #T = numpy.matmul(QQ0,KKI)
+                    
                     T = numpy.matmul(Q0-qz[q//m,0],KI-kz[0,k//n])*qs[q//m,0]*ks[0,k//n]
                 else:
                     TZ = numpy.matmul(QQ0,KKI)
@@ -1767,20 +1660,15 @@ class MHA(Gemm):
                                           KI[mm*tn:(m+1)*tn,:]-kz[mm,k//n]) *qs[q//m,mm]*ks[mm,k//n]
                     
                   
-                T = T.astype(Q.dtype)
+                T = T.astype(Q.dtype) # you want the result back into
+                                      # its original precision
                 
-                #print("MM", m,n, numpy.max(numpy.fabs(T-TZ)))
-
-                RT = 0
-                
-                #pdb.set_trace()
                 ## normalization of the current and previous terms
                 M1 =  numpy.max(T,axis=1)
                 if k>0:
                     M1 = numpy.maximum(M,M1)
                     S = numpy.exp(M-M1)
                 T  = numpy.exp(T-M1[:,None])
-                #pdb.set_trace()
                 M  = M1
                 
                 if k>0 :
@@ -1794,119 +1682,11 @@ class MHA(Gemm):
                     N = numpy.matmul(T,VI)
 
             #pdb.set_trace()
-            # blocked result
+
             R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
+
         return R
-    ###
-    ##  This is the blocked computation we would do using AIE.
-    ##
-    ##  The tiling suggests [m,n,Qtime, KVtime]= x. The parameter m
-    ##  specify the number of row of Q and thus the row of R we
-    ##  compute in one iteration. the parameter n specifies the number
-    ##  of column of K (the row of V) we use for the block computation of (Q0Ki)Vi
-    ## 
-    ##  for qi in Q
-    ##    N = 0
-    ##    D = 0
-    ##    M = 0
-    ##    for kj,vj  in K,V
-    ##        t = qi*kj
-    ##        M1 = max(t)
-    ##        M1 = max(M,M1)
-    ##        t = exp(t - M1)
-    ##        s = exp(M1-M), M = M1  (if we could avoid the division by s and transform it 
-    ##        D = D/S + sum(T)
-    ##        N = N/S + t*vi
-    ###
-    def sage_computation_block_outer(
-            self,
-            Q : numpy.array, ## operand 
-            K : numpy.array, ## operand 
-            V : numpy.array, ## operand
-            x : list,        ## problem size
-            q =  quantize_int8_block,
-            dq = de_quantize_float16_block,
-            KN = True
-    ):
-        [m,n,Qtime, KVtime]= x
-        R = Q*0
 
-        ## temp
-        Ttype = numpy.float32
-        N  = numpy.zeros((m,V.shape[1]),dtype=Ttype)
-        D  = numpy.zeros((m),dtype=Ttype)
-        M  = numpy.ones((m),dtype=Q.dtype)
-        M1 = numpy.zeros((m),dtype=Q.dtype)
-        #import pdb; pdb.set_trace()
-        # normalization of K
-        if KN:
-            MK = numpy.mean(K,axis=1)
-            K = K - MK[:,None]
-            if False:
-                import matplotlib.pyplot as plt
-                plt.imshow(K, cmap='hot', interpolation='nearest')
-                plt.colorbar(label='Value')
-                plt.show()
-            #pdb.set_trace()
-
-        
-        ## Q and K quantized
-        
-        Qs,Qz = q( Q/numpy.sqrt(Q.shape[1]) if KN else Q, [Q.shape[0], 1 ] ) # Q.shape[1]])
-        Ks,Kz = q(K, [1 , K.shape[1] ])
-
-        QR = dq([Qs,Qz])
-        KR = dq([Ks,Kz])
-        #pdb.set_trace()
-        ## qi
-        for q in range(0,Q.shape[0],m):
-            N = N*0
-            D = D*0
-            M = M*0
-            Q0 = Qz[q:min(q+m, Q.shape[0]) , :]
-            QQ0 = Q[q:min(q+m, Q.shape[0]) , :]
-
-            ## ki, vi 
-            for k in range(0,K.shape[1],n):
-                pdb.set_trace()
-                KI =  Kz[:, k:min(k+n, K.shape[1]) ]
-                KKI = K[: , k:min(k+n, K.shape[1]) ]
-                VI =  V[k:min(k+n, K.shape[1]), : ]
-                
-                T = numpy.matmul(Q0[:,0:4],KI[0:4,:])*Qs[q//m,0]*Ks[0,k//n]
-                Z = numpy.matmul(QQ0[:,0:4],KKI[0:4,:])
-                print(T,Z)
-                for l in range(1,Q.shape[1]//4):
-                    T += numpy.matmul(Q0[:,l*4:(l+1)*4],KI[l*4:(l+1)*4,:])*Qs[q//m,l]*Ks[l,k//n]
-                    Z += numpy.matmul(QQ0[:,l*4:(l+1)*4],KKI[l*4:(l+1)*4,:])
-
-                    print(T,Z)
-                pdb.set_trace()
-                ## normalization of the current and previous terms
-                M1 =  numpy.max(T,axis=1)
-                if k>0:
-                    M1 = numpy.maximum(M,M1)
-                    S = numpy.exp(M1-M)
-                else:
-                    S = numpy.exp(M1)
-                T  = numpy.exp(T-M1[:,None])
-                #pdb.set_trace()
-                M  = M1
-                
-                if k>0 :
-                    # we could use D and N with better bit or
-                    # accumulation to improve further the accuracy of
-                    # the block computation.
-                    D = D/S  + sum(T.transpose())
-                    N = N/S[:,None] + numpy.matmul(T,VI)
-                else:
-                    D = sum(T.transpose())
-                    N = numpy.matmul(T,VI)
-
-            #pdb.set_trace()
-            # blocked result
-            R[q:min(q+m, Q.shape[0]) , :] = N/D[:,None]
-        return R
     ###
     ##  This is the blocked computation we would do using AIE.
     ##
