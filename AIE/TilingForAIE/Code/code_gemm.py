@@ -1652,8 +1652,8 @@ class MHA(Gemm):
                     
                     T = numpy.matmul(Q0-qz[q//m,0],KI-kz[0,k//n])*qs[q//m,0]*ks[0,k//n]
                 else:
-                    TZ = numpy.matmul(QQ0,KKI)
-                    T = TZ*0
+                    
+                    T = numpy.matmul(Q0,KI)*0.0
                     for mm in range(Q.shape[1]//tn):
                         
                         T += numpy.matmul(Q0[:,mm*tn:(m+1)*tn]-qz[q//m,mm],
