@@ -100,7 +100,7 @@ feh block.png
 # Please delve into the code of sage or ask questions even with 10
 # bits precision the situation improve especially for layer 0-16 but
 # the improvement is lesser for layer 16-31 ...
-#
+
 
 
 

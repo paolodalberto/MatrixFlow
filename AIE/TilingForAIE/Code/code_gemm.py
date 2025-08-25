@@ -1687,6 +1687,99 @@ class MHA(Gemm):
 
         return R
 
+
+
+
+    def sage_direction_analysis(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array, ## operand
+            x : list,        ## problem size
+            q =  quantize_int8_block,
+            dq = de_quantize_float16_block,
+            KN = True
+    ):
+        [m,n, k] = x
+        R = Q*0
+
+        #print(Q.shape)
+        #print(K.shape)
+        
+        ## temp
+        M  = numpy.ones((m),dtype=Q.dtype)
+        M1 = numpy.zeros((m),dtype=Q.dtype)
+        #import pdb; pdb.set_trace()
+        # normalization of K
+        if KN:
+            ## K is transpose !
+            MK = numpy.mean(K,axis=1)
+            K = K - MK[:,None]
+
+        
+        ## Q and K quantized ... this is for inner products 
+
+        #####
+        ##  QUANTIZATION ACROBATICS: did you consider the outer
+        ##  products ?
+        ##  quantization by token ?
+        ####
+        
+        Q = numpy.ndarray.astype(Q,numpy.float16)
+        K = numpy.ndarray.astype(K,numpy.float16)
+
+
+        
+        Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q, [m, k])
+        
+        Kz,ks,kz = q(K, [ k,  n])
+        
+        TT = numpy.zeros((Q.shape[0],K.shape[1])).astype(Q.dtype)
+        ## Qc = (Qz - qz)*qs
+
+        #print(Qz.shape, qs.shape, qz.shape)
+        #print(Kz.shape, ks.shape, kz.shape)
+
+        for ii in range(qs.shape[0]):
+            for jj in range(ks.shape[1]):
+                Tqq = numpy.zeros((m,n)).astype(Q.dtype)
+                for kk in range(ks.shape[0]):
+                    q0 = Qz
+                    Tqq += numpy.matmul(Qz[ii*m:(ii+1)*m,kk*k:(kk+1)*k] - qz[ii,kk],
+                                        Kz[kk*k:(kk+1)*k,jj*n:(jj+1)*n] - kz[kk,jj]
+                                        )*qs[ii,kk]*ks[kk,jj]
+
+                TT[ii*m:(ii+1)*m,jj*n:(jj+1)*n] = Tqq
+                       
+        T1 = numpy.exp(TT - numpy.max(TT,1)[:,None])
+        Dq = numpy.sum(T1, axis=1).astype(Q.dtype)
+        Tq = T1/Dq[:,None]
+
+
+
+        
+        T  = numpy.matmul(Q,K).astype(Q.dtype)
+        TQ = T- numpy.max(T,axis=1)[:,None]
+        T1 = numpy.exp(TQ).astype(Q.dtype)
+        D  = numpy.sum(T1, axis=1).astype(Q.dtype)
+        T2 = T1/D[:,None]
+
+        Tr = scipy.special.softmax(numpy.matmul(Q,K),1)
+
+        #print(numpy.sum(Tq, axis=1))
+        #print(numpy.sum(T2, axis=1))
+        #print(numpy.sum(Tr, axis=1))
+
+        #import pdb; pdb.set_trace()
+        MC = []
+        for i in range(T.shape[0]):
+            rt = scipy.stats.pearsonr(Tq[i,:], Tr[i,:])
+            MC.append(rt.statistic)
+        
+        m = numpy.mean(rt)
+        mx = numpy.max(rt)
+        return [[m],[mx]]
+
     ###
     ##  This is the blocked computation we would do using AIE.
     ##

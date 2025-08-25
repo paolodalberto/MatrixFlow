@@ -39,6 +39,57 @@ RT = [128,128,1,1]
 ## Layers 
 L = 32
 
+
+
+
+
+def analyze(ii, heads = 32, M =128, I = 3072, norm= False, echo = True):
+
+    if echo: print("LAYER", ii)
+    E =  numpy.zeros((5,2))
+    El =  [ [] for i in range(5) ]
+    
+    kt = "phi/Phi-3.5-mini/gqo_4_%d_k_dump.txt"
+    qt = "phi/Phi-3.5-mini/gqo_4_%d_q_dump.txt"
+    vt = "phi/Phi-3.5-mini/gqo_4_%d_v_dump.txt"
+    K = numpy.loadtxt(kt % ii ).reshape(M,I)
+    Q = numpy.loadtxt(qt % ii).reshape(M, I)
+    V = numpy.loadtxt(vt % ii).reshape(M, I)
+
+    #rt = "phi/Phi-3.5-mini/gqo_4_%d_output_dump.txt"
+    #R1 = numpy.loadtxt(rt % ii).reshape(M,I)
+
+    
+    K = K.transpose()
+    #####
+    ##
+    ## REFERENCE 
+    ##
+    ## 32 heads ... this is the computational reference each head is
+    ## computed in the original precision and using numpy and scipy
+    ## only
+
+    def bl( Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array):
+        return mha.sage_direction_analysis(Q,K,V,[RT[0], RT[1],1], KN=False)
+
+    
+    H = I//heads
+    R = [[],[]] 
+    for i in range(heads):
+        #print("head",i)
+        r = bl(
+            Q[:,i*H:(i+1)*H],
+            K[i*H:(i+1)*H,:] ,
+            V[:,i*H:(i+1)*H]
+        )
+        R[0] += r[0]
+        R[1] += r[1]
+    m,M = numpy.mean(R[0]),numpy.mean(R[1])
+    
+    return (ii,m,M) 
+    
 ###
 ## We assume we have a data set for 32 Layers.
 ##
@@ -317,6 +368,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='A simple program that greets the user.')
  
+    parser.add_argument('-a', '--analyze', choices=['true', 'false'], default='false',
+                        help='analyze the direction of SM.')
     parser.add_argument('-s', '--sequential', choices=['true', 'false'], default='true',
                         help='sequential or pool.')
     parser.add_argument('-c', '--compare', choices=['true', 'false'], default='false',
@@ -330,12 +383,27 @@ if __name__ == "__main__":
     
     
 
+    if args.analyze == 'true':
+        ## you want to look at the distribution of the layers and heads ?
+        if args.sequential=='true':
 
+            results = [ analyze(i) for i in range(32)] # , comp(17), comp(31) ]
+
+        if args.sequential!='true':
+            from multiprocessing import Pool
+            R  = [i for i in range(32)]
+            with Pool(processes=16) as pool: # Create a pool with 4 worker processes
+                results = pool.map(analyze, R)
+
+            for r in results:
+                print("layer %d mean correlation %f mean max correlation %f" % (r[0], r[1], r[2]))
+            
     if args.distribution == 'true':
         ## you want to look at the distribution of the layers and heads ?
         R  = [i for i in range(32)]
         for i in R:
             dist(i)
+
 
     if args.quantization=='true' :
         # how a layer is affected by quantization, shape of the
