@@ -43,9 +43,9 @@ L = 32
 
 
 
-def analyze(ii, heads = 32, M =128, I = 3072, norm= False, echo = True):
+def analyze(ii, heads = 32, M =128, I = 3072, norm= True, echo = False):
 
-    if echo: print("LAYER", ii)
+    #if echo: print("LAYER", ii)
     E =  numpy.zeros((5,2))
     El =  [ [] for i in range(5) ]
     
@@ -74,11 +74,11 @@ def analyze(ii, heads = 32, M =128, I = 3072, norm= False, echo = True):
             V : numpy.array):
         return mha.sage_direction_analysis(Q,K,V,
                                            [RT[0], RT[1],1],
-                                           KN=False)
+                                           KN=norm)
 
     
     H = I//heads
-    R = [[],[], [], []] 
+    R = [[] for i in range(7)] 
     for i in range(heads):
         #print("head",i)
         r = bl(
@@ -91,18 +91,29 @@ def analyze(ii, heads = 32, M =128, I = 3072, norm= False, echo = True):
         #mx = numpy.max(MC)
         
         #print(r)
+        
         R[0] += r[0]
         R[1] += r[1]
         R[2] += r[2]
         R[3] += r[3]
-        
+        R[4] += r[4]
+        R[5] += r[5]
+        R[6] += r[6]
+
+    if echo:
+        print("LAYER", ii,
+              "not correlated", sum(R[4]),
+              "KN ", sum(R[5]),
+              "QN ", sum(R[6]),
+              "OVER", Q.shape[1]
+              )
     m,a,M,X = numpy.mean(R[0]),\
         numpy.mean(R[1]),\
         numpy.mean(R[2]),\
         numpy.max(R[3])
     
     
-    return (ii,m,a,M,X) 
+    return (ii,m,a,M,X, [ sum(R[i]) for i in [4,5,6] ]) 
     
 ###
 ## We assume we have a data set for 32 Layers.
@@ -410,7 +421,10 @@ if __name__ == "__main__":
                 results = pool.map(analyze, R)
 
         for r in results:
-            print("layer %d min %f mean  %f and max %f maxfabs %f" % (r[0], r[1], r[2], r[3], r[4]))
+            print("layer %2d min %f mean  %f and max %f maxfabs %f NO CORR %4d #K normal %4d #Q Normal %4d " % (
+                r[0], r[1], r[2], r[3], r[4], r[5][0], r[5][1], r[5][2])
+                  )
+
             
     if args.distribution == 'true':
         ## you want to look at the distribution of the layers and heads ?

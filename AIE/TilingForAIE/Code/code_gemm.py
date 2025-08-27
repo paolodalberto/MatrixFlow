@@ -1728,16 +1728,42 @@ class MHA(Gemm):
         Q = numpy.ndarray.astype(Q,numpy.float16)
         K = numpy.ndarray.astype(K,numpy.float16)
 
-        mean  = numpy.mean(K, axis=1)
-        sigma = numpy.sqrt(numpy.var(K, axis=1))
-        rng = numpy.random.default_rng()
-        x = scipy.stats.norm.rvs(size=K.shape[1], random_state=rng)
-        print(scipy.stats.kstest((K[0,:]-mean[0])/sigma[0],
-                                 scipy.stats.norm.cdf)
-              )
-        print(scipy.stats.kstest(x,
-                                 scipy.stats.norm.cdf)
-              )
+
+
+        
+        if True:
+
+            meank  = numpy.mean(K, axis=1)
+            sigmak = numpy.sqrt(numpy.var(K, axis=1))
+            #print("K stats", meank.shape)
+            meanq  = numpy.mean(Q, axis=0)
+            sigmaq = numpy.sqrt(numpy.var(Q, axis=0))
+            #print("Q stats", meank.shape)
+
+            
+            #import pdb; pdb.set_trace()
+            QS = scipy.stats.kstest((Q - meanq[None,:])/sigmaq[None,:],scipy.stats.norm.cdf,axis=0)
+            KS = scipy.stats.kstest((K-meank[:, None])/sigmak[:,None], scipy.stats.norm.cdf, axis=1)
+            #KS = scipy.stats.kstest(K, scipy.stats.norm.cdf, axis=1)
+            qn = Q.shape[1]
+            kn = Q.shape[1]
+            for i in range(Q.shape[1]):
+                qs,qp = QS.statistic[i], QS.pvalue[i]
+                ks,kp = KS.statistic[i], KS.pvalue[i]
+                ## p-value is the error we commit to reject the H0
+                ## H0 : same distribution 
+                if qp < 0.05:
+                    #print("Q Not Normal", i, qs,qp)
+                    qn-=1  
+                if kp < 0.05:
+                    #print("K Not Normal", i, ks,kp);
+                    kn -=1 
+                
+            #print(scipy.stats.kstest(x,
+            #                         scipy.stats.norm.cdf)
+            #      )
+            #print("# Q  %d and # K %d in N(0,1) " %(qn,kn))
+            #import pdb; pdb.set_trace()
         
         #for i in range(K.shape[0]):
         #    print(i,
@@ -1752,35 +1778,37 @@ class MHA(Gemm):
         
         Kz,ks,kz = q(K, [ k,  n])
         
-        TT = numpy.zeros((Q.shape[0],K.shape[1])).astype(Q.dtype)
+
         ## Qc = (Qz - qz)*qs
 
-        #print(Qz.shape, qs.shape, qz.shape)
-        #print(Kz.shape, ks.shape, kz.shape)
+        def MM(A, B):
+            Qz,qs,qz = A 
+            Kz,ks,kz = B 
 
-        for ii in range(qs.shape[0]):
-            for jj in range(ks.shape[1]):
-                Tqq = numpy.zeros((m,n)).astype(Q.dtype)
-                for kk in range(ks.shape[0]):
-                    q0 = Qz
-                    Tqq += numpy.matmul(Qz[ii*m:(ii+1)*m,kk*k:(kk+1)*k] - qz[ii,kk],
-                                        Kz[kk*k:(kk+1)*k,jj*n:(jj+1)*n] - kz[kk,jj]
-                                        )*qs[ii,kk]*ks[kk,jj]
-
-                TT[ii*m:(ii+1)*m,jj*n:(jj+1)*n] = Tqq
-                       
-        T1 = numpy.exp(TT - numpy.max(TT,1)[:,None])
-        Dq = numpy.sum(T1, axis=1).astype(Q.dtype)
-        Tq = (T1/Dq[:,None]).astype(Q.dtype)
-
-
-
+            TT = numpy.zeros((Q.shape[0],K.shape[1])).astype(Q.dtype)
         
-        T  = numpy.matmul(Q,K).astype(Q.dtype)
-        TQ = T- numpy.max(T,axis=1)[:,None]
-        T1 = numpy.exp(TQ).astype(Q.dtype)
-        D  = numpy.sum(T1, axis=1).astype(Q.dtype)
-        T2 = T1/D[:,None]
+            #print(Qz.shape, qs.shape, qz.shape)
+            #print(Kz.shape, ks.shape, kz.shape)
+            
+            for ii in range(qs.shape[0]):
+                for jj in range(ks.shape[1]):
+                    Tqq = numpy.zeros((m,n)).astype(Q.dtype)
+                    for kk in range(ks.shape[0]):
+                        Tqq += numpy.matmul(
+                            Qz[ii*m:(ii+1)*m,kk*k:(kk+1)*k] - qz[ii,kk],
+                            Kz[kk*k:(kk+1)*k,jj*n:(jj+1)*n] - kz[kk,jj]
+                        )*qs[ii,kk]*ks[kk,jj]
+                
+                    TT[ii*m:(ii+1)*m,jj*n:(jj+1)*n] = Tqq
+            return TT
+        
+        def Tail(TT):
+            T = numpy.exp(TT - numpy.max(TT,1)[:,None])
+            D = numpy.sum(T, axis=1).astype(Q.dtype)
+            T = (T/D[:,None]).astype(Q.dtype)
+            return T
+
+        Tq = Tail(MM([Qz,qs,qz],[Kz,ks,kz]))
 
         Tr = scipy.special.softmax(numpy.matmul(Q,K),1)
 
@@ -1788,19 +1816,39 @@ class MHA(Gemm):
         #print(numpy.sum(T2, axis=1))
         #print(numpy.sum(Tr, axis=1))
 
+
+        count = 0
         #import pdb; pdb.set_trace()
         MC = []
-        for i in range(T.shape[0]):
-            rt = scipy.stats.pearsonr(Tq[i,:], Tr[i,:])
+        for i in range(Tq.shape[0]):
+            #print(Tq[i,:])
+            #print(Tr[i,:])
+            rt  = scipy.stats.pearsonr(Tq[i,:], Tr[i,:])
+            rq = scipy.stats.spearmanr(Tq[i,:], Tr[i,:])
+            A = sorted(list(enumerate(Tq[i,:].flatten())), key=lambda x: x[1])
+            B = sorted(list(enumerate(Tr[i,:].flatten())), key=lambda x: x[1])
+            #print(A)
+            AA = numpy.array([ a[0] for a in A])
+            BB = numpy.array([ a[0] for a in B])
+            #print(AA)
+            #print(BB)
+            res = scipy.stats.spearmanr(AA, BB)
+            #import pdb; pdb.set_trace()
             
-            #print(rt)
-            #if rt.statistic!= 1.0:
-            #    import pdb; pdb.set_trace()
-            #    import matplotlib.pyplot as plt
-            #    print(Tq[i,:], Tr[i,:])
-            #    plt.plot(Tq[i,:],'r+')
-            #    plt.plot(Tr[i,:], 'b-')
-            #    plt.show()
+
+            if res.statistic < .5:
+                count +=1
+                #print(rt)
+                #print(rq)
+                #print(res)
+                #print(AA-BB)
+                #import pdb; pdb.set_trace()
+                if False:
+                    import matplotlib.pyplot as plt
+                    print(Tq[i,:], Tr[i,:])
+                    
+                    plt.plot(Tq[i,:],Tr[i,:],'r+')
+                    plt.show()
 
             MC.append(rt.statistic)
         
@@ -1809,7 +1857,7 @@ class MHA(Gemm):
         mx = numpy.max(MC)
         fab= numpy.max(numpy.fabs(Tq-Tr))
 
-        return [[xm], [m],[mx], [fab]]
+        return [[xm], [m],[mx], [fab], [count], [kn], [qn]]
 
     ###
     ##  This is the blocked computation we would do using AIE.
