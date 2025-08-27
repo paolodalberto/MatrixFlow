@@ -1728,9 +1728,27 @@ class MHA(Gemm):
         Q = numpy.ndarray.astype(Q,numpy.float16)
         K = numpy.ndarray.astype(K,numpy.float16)
 
-
+        mean  = numpy.mean(K, axis=1)
+        sigma = numpy.sqrt(numpy.var(K, axis=1))
+        rng = numpy.random.default_rng()
+        x = scipy.stats.norm.rvs(size=K.shape[1], random_state=rng)
+        print(scipy.stats.kstest((K[0,:]-mean[0])/sigma[0],
+                                 scipy.stats.norm.cdf)
+              )
+        print(scipy.stats.kstest(x,
+                                 scipy.stats.norm.cdf)
+              )
         
-        Qz,qs,qz = q(Q/numpy.sqrt(Q.shape[1]) if KN else Q, [m, k])
+        #for i in range(K.shape[0]):
+        #    print(i,
+        #          scipy.stats.kstest(K[i,:],
+        #                             scipy.stats.norm.cdf)
+        #          )
+        if KN:
+            Q = Q/numpy.sqrt(Q.shape[1])
+        
+        
+        Qz,qs,qz = q(Q, [m, k])
         
         Kz,ks,kz = q(K, [ k,  n])
         
@@ -1753,7 +1771,7 @@ class MHA(Gemm):
                        
         T1 = numpy.exp(TT - numpy.max(TT,1)[:,None])
         Dq = numpy.sum(T1, axis=1).astype(Q.dtype)
-        Tq = T1/Dq[:,None]
+        Tq = (T1/Dq[:,None]).astype(Q.dtype)
 
 
 
@@ -1774,11 +1792,24 @@ class MHA(Gemm):
         MC = []
         for i in range(T.shape[0]):
             rt = scipy.stats.pearsonr(Tq[i,:], Tr[i,:])
+            
+            #print(rt)
+            #if rt.statistic!= 1.0:
+            #    import pdb; pdb.set_trace()
+            #    import matplotlib.pyplot as plt
+            #    print(Tq[i,:], Tr[i,:])
+            #    plt.plot(Tq[i,:],'r+')
+            #    plt.plot(Tr[i,:], 'b-')
+            #    plt.show()
+
             MC.append(rt.statistic)
         
-        m = numpy.mean(rt)
-        mx = numpy.max(rt)
-        return [[m],[mx]]
+        xm = numpy.min(MC)
+        m  = numpy.mean(MC)
+        mx = numpy.max(MC)
+        fab= numpy.max(numpy.fabs(Tq-Tr))
+
+        return [[xm], [m],[mx], [fab]]
 
     ###
     ##  This is the blocked computation we would do using AIE.

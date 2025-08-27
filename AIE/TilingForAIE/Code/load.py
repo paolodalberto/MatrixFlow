@@ -72,11 +72,13 @@ def analyze(ii, heads = 32, M =128, I = 3072, norm= False, echo = True):
     def bl( Q : numpy.array, ## operand 
             K : numpy.array, ## operand 
             V : numpy.array):
-        return mha.sage_direction_analysis(Q,K,V,[RT[0], RT[1],1], KN=False)
+        return mha.sage_direction_analysis(Q,K,V,
+                                           [RT[0], RT[1],1],
+                                           KN=False)
 
     
     H = I//heads
-    R = [[],[]] 
+    R = [[],[], [], []] 
     for i in range(heads):
         #print("head",i)
         r = bl(
@@ -84,11 +86,23 @@ def analyze(ii, heads = 32, M =128, I = 3072, norm= False, echo = True):
             K[i*H:(i+1)*H,:] ,
             V[:,i*H:(i+1)*H]
         )
+        #xm = numpy.min(MC)
+        #m  = numpy.mean(MC)
+        #mx = numpy.max(MC)
+        
+        #print(r)
         R[0] += r[0]
         R[1] += r[1]
-    m,M = numpy.mean(R[0]),numpy.mean(R[1])
+        R[2] += r[2]
+        R[3] += r[3]
+        
+    m,a,M,X = numpy.mean(R[0]),\
+        numpy.mean(R[1]),\
+        numpy.mean(R[2]),\
+        numpy.max(R[3])
     
-    return (ii,m,M) 
+    
+    return (ii,m,a,M,X) 
     
 ###
 ## We assume we have a data set for 32 Layers.
@@ -387,7 +401,7 @@ if __name__ == "__main__":
         ## you want to look at the distribution of the layers and heads ?
         if args.sequential=='true':
 
-            results = [ analyze(i) for i in range(32)] # , comp(17), comp(31) ]
+            results = [ analyze(0) ] # , analyze(17), analyze(31) ]
 
         if args.sequential!='true':
             from multiprocessing import Pool
@@ -395,8 +409,8 @@ if __name__ == "__main__":
             with Pool(processes=16) as pool: # Create a pool with 4 worker processes
                 results = pool.map(analyze, R)
 
-            for r in results:
-                print("layer %d mean correlation %f mean max correlation %f" % (r[0], r[1], r[2]))
+        for r in results:
+            print("layer %d min %f mean  %f and max %f maxfabs %f" % (r[0], r[1], r[2], r[3], r[4]))
             
     if args.distribution == 'true':
         ## you want to look at the distribution of the layers and heads ?
