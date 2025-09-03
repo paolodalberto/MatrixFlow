@@ -1690,6 +1690,71 @@ class MHA(Gemm):
 
 
 
+        ###
+    ##  This is the blocked computation we would do using AIE.
+    ##
+    ##  The tiling suggests [m,n,Qtime, KVtime]= x. The parameter m
+    ##  specify the number of row of Q and thus the row of R we
+    ##  compute in one iteration. the parameter n specifies the number
+    ##  of column of K (the row of V) we use for the block computation of (Q0Ki)Vi
+    ## 
+    ##  for qi in Q
+    ##    N = 0
+    ##    D = 0
+    ##    M = 0
+    ##    for kj,vj  in K,V
+    ##        t = Q(qi)*Q(kj)*S(qi)*S(kj)
+    ##        M1 = max(t)
+    ##        M1 = max(M,M1)
+    ##        t = exp(t - M1)
+    ##        S = exp(M-M1), M = M1 (instead of S=exp(M) and D/S we do
+    ##                                S = exp(-M) D*S the exp range
+    ##                                increses exponential M>1 we can
+    ##                                avoid to have overflow in this
+    ##                                way and the effects will be the
+    ##                                same ... no range enxiety for
+    ##                                the multiplication either
+    ##        D = D*S + sum(T)
+    ##        N = N*S + t*vi
+    ###
+    def sm_quantized_computation_block(
+            self,
+            Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array, ## operand
+            q =  quantize_int8_block,
+            dq = de_quantize_float16_block,
+            KN = True
+    ):
+        #print("m,n", m,n);
+        ## result 
+        R = Q*0
+        self.STATIC +=1
+        
+        ## temp
+        # normalization of K
+        if KN:
+            ## K is trnaspose !
+            MK = numpy.mean(K,axis=1)
+            K = K - MK[:,None]
+            Q = Q/numpy.sqrt(Q.shape[1])
+
+        SM = scipy.special.softmax(
+            numpy.matmul(Q,K),
+            1).astype(Q.dtype)
+
+        Sz,ss,sz = q(SM, SM.shape)
+        
+        Vz,vs,vz = q(V, V.shape)
+        
+        R = numpy.matmul(Sz-sz,Vz-vz)*ss*vs
+
+
+        return R
+
+
+
+
     def sage_direction_analysis(
             self,
             Q : numpy.array, ## operand 

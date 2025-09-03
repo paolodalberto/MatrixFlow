@@ -114,6 +114,57 @@ def analyze(ii, heads = 32, M =128, I = 3072, norm= True, echo = False):
     
     
     return (ii,m,a,M,X, [ sum(R[i]) for i in [4,5,6] ]) 
+
+
+
+def sm(ii, H = 32, M =128, I = 3072, norm= False, echo = False):
+
+    #if echo: print("LAYER", ii)
+    E =  numpy.zeros((5,2))
+    El =  [ [] for i in range(5) ]
+    
+    kt = "phi/Phi-3.5-mini/gqo_4_%d_k_dump.txt"
+    qt = "phi/Phi-3.5-mini/gqo_4_%d_q_dump.txt"
+    vt = "phi/Phi-3.5-mini/gqo_4_%d_v_dump.txt"
+    K = numpy.loadtxt(kt % ii ).reshape(M,I)
+    Q = numpy.loadtxt(qt % ii).reshape(M, I)
+    V = numpy.loadtxt(vt % ii).reshape(M, I)
+
+    #rt = "phi/Phi-3.5-mini/gqo_4_%d_output_dump.txt"
+    #R1 = numpy.loadtxt(rt % ii).reshape(M,I)
+
+    
+    K = K.transpose()
+    #####
+    ##
+    ## REFERENCE 
+    ##
+    ## 32 H ... this is the computational reference each head is
+    ## computed in the original precision and using numpy and scipy
+    ## only
+
+    R = mha.heads(Q,K,V, H, mha.shead)  
+
+    Q16 = numpy.ndarray.astype(Q,numpy.float16)
+    K16 = numpy.ndarray.astype(K,numpy.float16)
+    V16 = numpy.ndarray.astype(V,numpy.float16)
+    
+    def bl( Q : numpy.array, ## operand 
+            K : numpy.array, ## operand 
+            V : numpy.array
+            ):
+        return mha.sm_quantized_computation_block(
+            Q,K,V,
+            KN=norm)
+
+    R1 = mha.heads(Q16,K16,V16,  H, bl)  
+    G = R1-R
+    A = numpy.fabs(G)
+    a =numpy.mean(A)
+    b =numpy.max(A)
+
+    #import pdb; pdb.set_trace()
+    return (ii,a,b, [ G.flatten()])
     
 ###
 ## We assume we have a data set for 32 Layers.
@@ -395,6 +446,8 @@ if __name__ == "__main__":
  
     parser.add_argument('-a', '--analyze', choices=['true', 'false'], default='false',
                         help='analyze the direction of SM.')
+    parser.add_argument('-v', '--quantizev', choices=['true', 'false'], default='false',
+                        help='analyze the direction of SM.')
     parser.add_argument('-s', '--sequential', choices=['true', 'false'], default='true',
                         help='sequential or pool.')
     parser.add_argument('-c', '--compare', choices=['true', 'false'], default='false',
@@ -424,6 +477,21 @@ if __name__ == "__main__":
             print("layer %2d min %f mean  %f and max %f maxfabs %f NO CORR %4d #K normal %4d #Q Normal %4d " % (
                 r[0], r[1], r[2], r[3], r[4], r[5][0], r[5][1], r[5][2])
                   )
+
+    if args.quantizev == 'true':
+        ## you want to look at the distribution of the layers and heads ?
+        if args.sequential=='true':
+
+            results = [ sm(0) ] # , analyze(17), analyze(31) ]
+
+        if args.sequential!='true':
+            from multiprocessing import Pool
+            R  = [i for i in range(32)]
+            with Pool(processes=16) as pool: # Create a pool with 4 worker processes
+                results = pool.map(sm, R)
+
+        for r in results:
+            print("layer %2d  mean  %f max %f " % (r[0], r[1], r[2]))
 
             
     if args.distribution == 'true':
