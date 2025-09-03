@@ -12,7 +12,7 @@
 
 import numpy 
 
-def quantize(x_float, num_bits=8, signed=False):
+def quantize(x_float, num_bits=12, signed=False):
     """
     Quantizes a floating-point value to an 8-bit integer.
 

@@ -1737,16 +1737,16 @@ class MHA(Gemm):
             ## K is trnaspose !
             MK = numpy.mean(K,axis=1)
             K = K - MK[:,None]
-            Q = Q/numpy.sqrt(Q.shape[1])
+            #Q = Q/numpy.sqrt(Q.shape[1])
 
         SM = scipy.special.softmax(
-            numpy.matmul(Q,K),
+            numpy.matmul(Q,K).astype(Q.dtype),
             1).astype(Q.dtype)
 
         Sz,ss,sz = q(SM, SM.shape)
         
         Vz,vs,vz = q(V, V.shape)
-        
+        #print(ss.shape)
         R = numpy.matmul(Sz-sz,Vz-vz)*ss*vs
 
 

@@ -135,6 +135,7 @@ def sm(ii, H = 32, M =128, I = 3072, norm= False, echo = False):
 
     
     K = K.transpose()
+    Q = Q/numpy.sqrt(I/H)
     #####
     ##
     ## REFERENCE 
@@ -489,10 +490,13 @@ if __name__ == "__main__":
             R  = [i for i in range(32)]
             with Pool(processes=16) as pool: # Create a pool with 4 worker processes
                 results = pool.map(sm, R)
-
+        m = results[0][1]
+        M = results[0][2]
         for r in results:
             print("layer %2d  mean  %f max %f " % (r[0], r[1], r[2]))
-
+            m += r[1]
+            M = max(M, r[2])
+        print("mean  %f max %f " % ( m/len(results), M))
             
     if args.distribution == 'true':
         ## you want to look at the distribution of the layers and heads ?
