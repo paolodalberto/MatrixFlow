@@ -2651,7 +2651,7 @@ class CONV(Gemm):
             P      : list , ## aligned problem size
             
     ):
-        #pdb.set_trace()
+        pdb.set_trace()
         y,x,w,b,p,s  = P
         core, memsub = X
         yc,xc,wc,bc,pc,sc  = core
@@ -2666,9 +2666,9 @@ class CONV(Gemm):
         norm    = self.opspace(memsub) < Mem 
         dbx     = self.opspace_dbx(memsub) < Mem
 
-        CC = self.compute(P)
+        ##CC = self.compute(P)
         
-        CM = self.compute(memsub)
+        ##CM = self.compute(memsub)
 
         # input + weights 
         load_to_core  =   self.opspace(core)/(2*self.tocorebandwidth)
@@ -3617,9 +3617,9 @@ if __name__ == "__main__":
 
 #    estimate_head_psj()
 #    estimate_head_psf()
-#    test_conv()
+    test_conv()
 #    test_conv_2()
-    test_mha()
+#    test_mha()
 #    test_gemm_2(4,8,8)
 #     test_mha_L(8)
 #    test_layernorm()
