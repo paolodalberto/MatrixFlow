@@ -39,6 +39,7 @@
 ## T_j = \sum_i^K alpha_i*P ... this is the linear regression
 ##
 ##
+
 import pandas as pd
 import numpy 
 import math
